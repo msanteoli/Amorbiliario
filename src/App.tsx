@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute, AdminRoute } from '@/components/ProtectedRoute'
 import { AppLayout } from '@/components/AppLayout'
+import { UnderConstructionPage } from '@/components/UnderConstructionPage'
 
 import Login from '@/pages/Login'
 import Hoje from '@/pages/Hoje'
@@ -41,6 +42,11 @@ const App = () => (
               <Route path="/clientes/:id" element={<ClienteDetalhe />} />
               <Route path="/clientes/:id/editar" element={<EditarCliente />} />
               <Route path="/imoveis" element={<Imoveis />} />
+              <Route path="/imoveis/novo" element={<UnderConstructionPage title="Novo imóvel" />} />
+              <Route
+                path="/imoveis/:id"
+                element={<UnderConstructionPage title="Ficha do imóvel" />}
+              />
               <Route path="/agenda" element={<Agenda />} />
 
               {/* Admin-only route */}
