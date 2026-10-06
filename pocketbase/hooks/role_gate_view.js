@@ -39,4 +39,6 @@ onRecordViewRequest(
   'audit_log',
   'clients',
   'client_private',
+  'properties',
+  'property_photos',
 )
