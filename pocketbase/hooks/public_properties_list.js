@@ -1,9 +1,10 @@
 // Busca pública de imóveis. Sem login. Só imóvel Disponível; só campos públicos (nunca
 // endereço completo, proprietário, captador nem data de revisão).
 routerAdd('GET', '/backend/v1/public/properties', (e) => {
-  const bypass = String($secrets.get('PUBLIC_RATE_BYPASS') || '')
-  const given = String(e.request.header.get('X-Rate-Bypass') || '')
-  if (!bypass || given !== bypass) {
+  // admin logado (testes automatizados) não é limitado; visitantes anônimos são
+  const isAdmin =
+    !!e.auth && e.auth.get('active') === true && String(e.auth.get('role') || '') === 'admin'
+  if (!isAdmin) {
     const ip = e.realIP()
     const win = Math.floor(Date.now() / 60000)
     const key = 'thr:props:' + ip + ':' + win
