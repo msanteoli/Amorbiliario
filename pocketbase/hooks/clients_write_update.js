@@ -6,7 +6,10 @@ onRecordUpdateRequest((e) => {
   const rec = e.record
   const orig = rec.original()
 
-  let phone = String(rec.get('phone') || '').replace(/\D/g, '')
+  // tira também os zeros à esquerda (prefixo de DDD, ex.: 011 98765-4321)
+  let phone = String(rec.get('phone') || '')
+    .replace(/\D/g, '')
+    .replace(/^0+/, '')
   if (phone.length === 10 || phone.length === 11) phone = '55' + phone
   if (phone && (phone.length < 12 || phone.length > 13)) {
     throw new BadRequestError('Telefone inválido. Informe DDD e número.')
@@ -39,9 +42,12 @@ onRecordUpdateRequest((e) => {
     status = 'unknown'
     rec.set('consent_status', status)
   }
+  // a data do consentimento é sempre do servidor: só muda quando o status muda
   const before = orig.getString('consent_status') || 'unknown'
   if (status !== before && status !== 'unknown') {
     rec.set('consent_at', new Date().toISOString())
+  } else {
+    rec.set('consent_at', orig.getString('consent_at'))
   }
   return e.next()
 }, 'clients')

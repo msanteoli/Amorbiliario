@@ -16,7 +16,10 @@ routerAdd(
     const name = String(body.name || '')
       .trim()
       .toLowerCase()
-    let phone = String(body.phone || '').replace(/\D/g, '')
+    // tira também os zeros à esquerda (prefixo de DDD, ex.: 011 98765-4321)
+    let phone = String(body.phone || '')
+      .replace(/\D/g, '')
+      .replace(/^0+/, '')
     if (phone.length === 10 || phone.length === 11) phone = '55' + phone
     const email = String(body.email || '')
       .trim()

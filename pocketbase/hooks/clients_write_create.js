@@ -6,7 +6,10 @@ onRecordCreateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record
 
-  let phone = String(rec.get('phone') || '').replace(/\D/g, '')
+  // tira também os zeros à esquerda (prefixo de DDD, ex.: 011 98765-4321)
+  let phone = String(rec.get('phone') || '')
+    .replace(/\D/g, '')
+    .replace(/^0+/, '')
   if (phone.length === 10 || phone.length === 11) phone = '55' + phone
   if (phone && (phone.length < 12 || phone.length > 13)) {
     throw new BadRequestError('Telefone inválido. Informe DDD e número.')
@@ -40,8 +43,7 @@ onRecordCreateRequest((e) => {
     status = 'unknown'
     rec.set('consent_status', status)
   }
-  if (status !== 'unknown' && !rec.getString('consent_at')) {
-    rec.set('consent_at', new Date().toISOString())
-  }
+  // a data do consentimento é sempre do servidor: o valor enviado é ignorado
+  rec.set('consent_at', status !== 'unknown' ? new Date().toISOString() : '')
   return e.next()
 }, 'clients')
