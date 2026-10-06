@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-10-06T15:17:16.990Z",
+  "generatedAt": "2026-10-06T15:21:33.596Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id",
-        "view": "id = @request.auth.id",
-        "create": "",
-        "update": "id = @request.auth.id",
-        "delete": "id = @request.auth.id"
+        "list": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
+        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
+        "create": "@request.auth.role = 'admin' && @request.body.organization_id = @request.auth.organization_id",
+        "update": "organization_id = @request.auth.organization_id && ((@request.auth.role = 'admin' && (@request.body.organization_id:isset = false || @request.body.organization_id = @request.auth.organization_id)) || (id = @request.auth.id && @request.body.role:isset = false && @request.body.organization_id:isset = false && @request.body.active:isset = false))",
+        "delete": null
       },
       "fields": [
         {
@@ -29,19 +29,193 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "admin",
+            "sdr",
+            "corretor",
+            "agente",
+            "outro"
+          ]
+        },
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "active",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
         "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
         "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ]
+    },
+    {
+      "name": "organizations",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && id = @request.auth.organization_id",
+        "view": "@request.auth.id != '' && id = @request.auth.organization_id",
+        "create": null,
+        "update": "@request.auth.role = 'admin' && id = @request.auth.organization_id",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "timezone",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_organizations_slug ON organizations (slug)"
+      ]
+    },
+    {
+      "name": "audit_log",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.role = 'admin' && organization_id = @request.auth.organization_id",
+        "view": "@request.auth.role = 'admin' && organization_id = @request.auth.organization_id",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "actor_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "actor_role",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "collection_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "record_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "field_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "occurred_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_audit_log_org_created ON audit_log (organization_id, created DESC)"
       ]
     }
   ]
