@@ -81,31 +81,6 @@ routerAdd(
     }
 
     const scheduled = !!brokerId && !!start
-    if (scheduled) {
-      const fmt = (d) => d.toISOString().replace('T', ' ')
-      const buffer = 30 * 60000
-      const clash = $app.findRecordsByFilter(
-        'visits',
-        'organization_id = {:o} && broker_id = {:b} && (status = "agendada" || status = "confirmada") && start_at < {:e} && end_at > {:s}',
-        'start_at',
-        1,
-        0,
-        {
-          o: orgId,
-          b: brokerId,
-          e: fmt(new Date(end.getTime() + buffer)),
-          s: fmt(new Date(start.getTime() - buffer)),
-        },
-      )
-      if (clash.length) {
-        return e.json(409, {
-          message:
-            'Conflito de agenda: o corretor já tem visita nesse horário ou a menos de 30 minutos dele.',
-          conflict_start: clash[0].getString('start_at'),
-          conflict_end: clash[0].getString('end_at'),
-        })
-      }
-    }
 
     const visit = new Record($app.findCollectionByNameOrId('visits'))
     visit.set('organization_id', orgId)
@@ -119,7 +94,38 @@ routerAdd(
     }
     visit.set('status', scheduled ? 'agendada' : 'pendente_agenda')
     visit.set('created_by', actor.id)
-    $app.save(visit)
+
+    // a conferência do conflito e a gravação acontecem na mesma transação: duas chamadas
+    // simultâneas para o mesmo corretor e horário não passam juntas
+    let clash = []
+    $app.runInTransaction((tx) => {
+      if (scheduled) {
+        const fmt = (d) => d.toISOString().replace('T', ' ')
+        const buffer = 30 * 60000
+        clash = tx.findRecordsByFilter(
+          'visits',
+          'organization_id = {:o} && broker_id = {:b} && (status = "agendada" || status = "confirmada") && start_at < {:e} && end_at > {:s}',
+          'start_at',
+          1,
+          0,
+          {
+            o: orgId,
+            b: brokerId,
+            e: fmt(new Date(end.getTime() + buffer)),
+            s: fmt(new Date(start.getTime() - buffer)),
+          },
+        )
+      }
+      if (!clash.length) tx.save(visit)
+    })
+    if (clash.length) {
+      return e.json(409, {
+        message:
+          'Conflito de agenda: o corretor já tem visita nesse horário ou a menos de 30 minutos dele.',
+        conflict_start: clash[0].getString('start_at'),
+        conflict_end: clash[0].getString('end_at'),
+      })
+    }
 
     if (lead) {
       try {
