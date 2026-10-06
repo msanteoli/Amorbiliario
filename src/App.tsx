@@ -10,6 +10,9 @@ import Login from '@/pages/Login'
 import Hoje from '@/pages/Hoje'
 import Leads from '@/pages/Leads'
 import Clientes from '@/pages/Clientes'
+import NovoCliente from '@/pages/NovoCliente'
+import ClienteDetalhe from '@/pages/ClienteDetalhe'
+import EditarCliente from '@/pages/EditarCliente'
 import Imoveis from '@/pages/Imoveis'
 import Agenda from '@/pages/Agenda'
 import Admin from '@/pages/Admin'
@@ -34,6 +37,9 @@ const App = () => (
               <Route path="/hoje" element={<Hoje />} />
               <Route path="/leads" element={<Leads />} />
               <Route path="/clientes" element={<Clientes />} />
+              <Route path="/clientes/novo" element={<NovoCliente />} />
+              <Route path="/clientes/:id" element={<ClienteDetalhe />} />
+              <Route path="/clientes/:id/editar" element={<EditarCliente />} />
               <Route path="/imoveis" element={<Imoveis />} />
               <Route path="/agenda" element={<Agenda />} />
 
