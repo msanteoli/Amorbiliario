@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T15:59:28.950Z",
+  "generatedAt": "2026-10-06T16:32:59.555Z",
   "collections": [
     {
       "name": "users",
@@ -29,21 +29,32 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["admin", "sdr", "corretor", "agente", "outro"]
+          "selectValues": [
+            "admin",
+            "sdr",
+            "corretor",
+            "agente",
+            "outro"
+          ]
         },
         {
           "name": "organization_id",
@@ -98,17 +109,24 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_organizations_slug ON organizations (slug)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_organizations_slug ON organizations (slug)"
+      ]
     },
     {
       "name": "audit_log",
@@ -181,18 +199,189 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
         "CREATE INDEX idx_audit_log_org_created ON audit_log (organization_id, created DESC)"
+      ]
+    },
+    {
+      "name": "clients",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || responsible_id = @request.auth.id)",
+        "view": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || responsible_id = @request.auth.id)",
+        "create": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && @request.body.organization_id = @request.auth.organization_id && (@request.auth.role != 'corretor' || @request.body.responsible_id = @request.auth.id)",
+        "update": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || responsible_id = @request.auth.id) && @request.body.organization_id:isset = false && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.body.responsible_id:isset = false)",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "email",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "kind",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "comprador",
+            "locatario",
+            "proprietario",
+            "investidor"
+          ]
+        },
+        {
+          "name": "responsible_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "consent_status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "opt_in",
+            "opt_out",
+            "unknown"
+          ]
+        },
+        {
+          "name": "consent_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "consent_channel",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_clients_org_phone ON clients (organization_id, phone)",
+        "CREATE INDEX idx_clients_org_email ON clients (organization_id, email)",
+        "CREATE INDEX idx_clients_org_responsible ON clients (organization_id, responsible_id)"
+      ]
+    },
+    {
+      "name": "client_private",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || (@request.auth.role = 'corretor' && client_id.responsible_id = @request.auth.id))",
+        "view": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || (@request.auth.role = 'corretor' && client_id.responsible_id = @request.auth.id))",
+        "create": "@request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'corretor') && @request.body.organization_id = @request.auth.organization_id",
+        "update": "@request.auth.active = true && organization_id = @request.auth.organization_id && @request.body.organization_id:isset = false && @request.body.client_id:isset = false && (@request.auth.role = 'admin' || (@request.auth.role = 'corretor' && client_id.responsible_id = @request.auth.id))",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "client_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "cpf",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "birth_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_client_private_client ON client_private (client_id)",
+        "CREATE UNIQUE INDEX idx_client_private_cpf ON client_private (organization_id, cpf) WHERE cpf != ''"
       ]
     }
   ]

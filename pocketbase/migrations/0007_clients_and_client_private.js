@@ -17,12 +17,8 @@ migrate(
       createRule:
         authOk +
         " && @request.body.organization_id = @request.auth.organization_id && (@request.auth.role != 'corretor' || @request.body.responsible_id = @request.auth.id)",
-      // ninguém muda a organização; o corretor também não muda o responsável
-      updateRule:
-        authOk +
-        sameOrg +
-        rowAccess +
-        " && @request.body.organization_id:isset = false && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.body.responsible_id:isset = false)",
+      // a regra de edição completa (com :isset) é atribuída logo abaixo, depois do save
+      updateRule: authOk + sameOrg + rowAccess,
       deleteRule: null,
       fields: [
         {
@@ -62,6 +58,17 @@ migrate(
     })
     app.save(clients)
 
+    // O validador do Skip não aceita o modificador :isset numa coleção recém-criada
+    // (new Collection); a regra completa é atribuída à coleção já existente.
+    // Ninguém muda a organização; o corretor também não muda o responsável.
+    const clientsFinal = app.findCollectionByNameOrId('clients')
+    clientsFinal.updateRule =
+      authOk +
+      sameOrg +
+      rowAccess +
+      " && @request.body.organization_id:isset = false && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.body.responsible_id:isset = false)"
+    app.save(clientsFinal)
+
     const clientsId = app.findCollectionByNameOrId('clients').id
     const privateCol = new Collection({
       name: 'client_private',
@@ -78,8 +85,11 @@ migrate(
       // quem é o responsável do cliente é conferido pelo hook client_private_write_create
       createRule:
         "@request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'corretor') && @request.body.organization_id = @request.auth.organization_id",
+      // a regra de edição completa (com :isset) é atribuída logo abaixo, depois do save
       updateRule:
-        "@request.auth.active = true && organization_id = @request.auth.organization_id && @request.body.organization_id:isset = false && @request.body.client_id:isset = false && (@request.auth.role = 'admin' || (@request.auth.role = 'corretor' && client_id.responsible_id = @request.auth.id))",
+        authOk +
+        sameOrg +
+        " && (@request.auth.role = 'admin' || (@request.auth.role = 'corretor' && client_id.responsible_id = @request.auth.id))",
       deleteRule: null,
       fields: [
         {
@@ -107,6 +117,11 @@ migrate(
       ],
     })
     app.save(privateCol)
+
+    const privateFinal = app.findCollectionByNameOrId('client_private')
+    privateFinal.updateRule =
+      "@request.auth.active = true && organization_id = @request.auth.organization_id && @request.body.organization_id:isset = false && @request.body.client_id:isset = false && (@request.auth.role = 'admin' || (@request.auth.role = 'corretor' && client_id.responsible_id = @request.auth.id))"
+    app.save(privateFinal)
   },
   (app) => {
     app.delete(app.findCollectionByNameOrId('client_private'))
