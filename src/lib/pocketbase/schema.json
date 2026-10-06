@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-10-06T15:58:03.355Z",
+  "generatedAt": "2026-10-06T15:59:28.950Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
         "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id",
-        "view": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id",
+        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
         "create": "@request.auth.active = true && @request.auth.role = 'admin' && @request.body.organization_id = @request.auth.organization_id",
         "update": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && ((@request.auth.role = 'admin' && (@request.body.organization_id:isset = false || @request.body.organization_id = @request.auth.organization_id)) || (id = @request.auth.id && @request.body.role:isset = false && @request.body.organization_id:isset = false && @request.body.active:isset = false))",
         "delete": null
@@ -80,7 +80,7 @@
       "type": "base",
       "apiRules": {
         "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && id = @request.auth.organization_id",
-        "view": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && id = @request.auth.organization_id",
+        "view": "@request.auth.id != '' && id = @request.auth.organization_id",
         "create": null,
         "update": "@request.auth.active = true && @request.auth.role = 'admin' && id = @request.auth.organization_id",
         "delete": null
