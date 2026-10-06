@@ -25,6 +25,34 @@ onRecordUpdateRequest((e) => {
   rec.set('email', email)
   rec.set('name', String(rec.get('name') || '').trim())
 
+  // trocar telefone ou e-mail para o de outro lead cria uma pendência de duplicidade
+  let dupOf = ''
+  const dparts = []
+  const dparams = { o: rec.getString('organization_id'), s: rec.id }
+  if (phone && phone !== orig.getString('phone')) {
+    dparts.push('phone = {:p}')
+    dparams.p = phone
+  }
+  if (email && email !== orig.getString('email')) {
+    dparts.push('email = {:m}')
+    dparams.m = email
+  }
+  if (dparts.length) {
+    const other = $app.findRecordsByFilter(
+      'leads',
+      'organization_id = {:o} && id != {:s} && (' + dparts.join(' || ') + ')',
+      '-created',
+      1,
+      0,
+      dparams,
+    )
+    if (other.length) {
+      dupOf = other[0].id
+      rec.set('dedupe_status', 'pendente')
+      rec.set('dedupe_of', dupOf)
+    }
+  }
+
   // o corretor só mexe em etapa, motivo da perda, próximo passo e prazo
   const locked = [
     'name',
@@ -118,6 +146,23 @@ onRecordUpdateRequest((e) => {
   const res = e.next()
   try {
     const col = $app.findCollectionByNameOrId('lead_events')
+    if (dupOf) {
+      events.push({
+        type: 'pendencia_dedupe',
+        text: 'Telefone ou e-mail alterado para o de outro lead: possível duplicidade.',
+      })
+      const r2 = new Record(col)
+      r2.set('organization_id', rec.get('organization_id'))
+      r2.set('lead_id', dupOf)
+      r2.set('type', 'pendencia_dedupe')
+      r2.set('author_id', e.auth.id)
+      r2.set('occurred_at', new Date().toISOString())
+      r2.set(
+        'text',
+        'Outro lead teve o telefone ou e-mail alterado para o deste: possível duplicidade.',
+      )
+      $app.save(r2)
+    }
     events.forEach((ev) => {
       const r = new Record(col)
       r.set('organization_id', rec.get('organization_id'))

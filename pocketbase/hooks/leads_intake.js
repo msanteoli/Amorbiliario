@@ -1,8 +1,9 @@
 // Cadastro de lead com deduplicação. É o único caminho de criação de lead (a coleção não
 // aceita criação direta). Telefone ou e-mail iguais a um lead existente, sem contradição,
-// não criam segundo lead (devolve o existente e registra o novo contato). Telefone igual com
-// e-mail diferente, ou o inverso, cria o lead marcado como pendência para o SDR, sem mesclar.
-// Telefone ou e-mail de um cliente cadastrado ligam o lead a esse cliente.
+// não criam segundo lead (devolve o existente e registra o novo contato; lead perdido é
+// reaberto como Novo). Telefone igual com e-mail diferente, ou o inverso, cria o lead marcado
+// como pendência para o SDR, sem mesclar. Telefone ou e-mail de um cliente cadastrado ligam o
+// lead a esse cliente.
 routerAdd(
   'POST',
   '/backend/v1/leads/intake',
@@ -100,6 +101,8 @@ routerAdd(
     let consistent = null
     let conflict = null
     rows.forEach((l) => {
+      // lead encerrado como duplicado nunca recebe recontato: vale o lead que ficou
+      if (l.getString('lost_reason') === 'duplicado') return
       const lp = l.getString('phone')
       const le = l.getString('email')
       const samePhone = !!phone && lp === phone
@@ -116,10 +119,20 @@ routerAdd(
 
     if (consistent) {
       addEvent(consistent.id, 'contato_repetido', 'Novo contato recebido (origem: ' + origin + ')')
+      // quem foi perdido e voltou a falar não pode ficar escondido: o lead é reaberto como Novo
+      let reopened = false
+      if (consistent.getString('stage') === 'perdido') {
+        consistent.set('stage', 'novo')
+        consistent.set('lost_reason', '')
+        $app.save(consistent)
+        addEvent(consistent.id, 'estagio', 'perdido → novo (novo contato)')
+        reopened = true
+      }
       return e.json(200, {
         status: 'existing',
         lead_id: consistent.id,
         already_client: !!consistent.getString('client_id'),
+        reopened: reopened,
       })
     }
 
@@ -182,6 +195,25 @@ routerAdd(
       lead.set('dedupe_of', conflict.id)
     }
     $app.save(lead)
+
+    // duas chamadas simultâneas podem não se enxergar antes de gravar: relê depois de gravar
+    // e, se achar outro lead com o mesmo telefone ou e-mail, marca este como pendência
+    if (!conflict) {
+      const late = $app.findRecordsByFilter(
+        'leads',
+        'organization_id = {:o} && id != {:s} && (' + parts.join(' || ') + ')',
+        'created',
+        1,
+        0,
+        Object.assign({ s: lead.id }, params),
+      )
+      if (late.length) {
+        conflict = late[0]
+        lead.set('dedupe_status', 'pendente')
+        lead.set('dedupe_of', conflict.id)
+        $app.save(lead)
+      }
+    }
 
     addEvent(
       lead.id,
