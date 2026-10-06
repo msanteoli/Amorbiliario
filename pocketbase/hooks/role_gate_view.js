@@ -11,7 +11,9 @@ onRecordViewRequest(
     const allowed = allowedByCollection[collectionName] || defaultAllowed
     const role = String(e.auth.get('role') || '')
 
-    if (allowed.indexOf(role) < 0) {
+    const isActive = e.auth.get('active') === true
+
+    if (!isActive || allowed.indexOf(role) < 0) {
       try {
         const col = $app.findCollectionByNameOrId('audit_log')
         const rec = new Record(col)
@@ -20,13 +22,15 @@ onRecordViewRequest(
         rec.set('actor_role', role)
         rec.set('action', 'acesso_negado')
         rec.set('collection_name', collectionName)
-        rec.set('reason', 'papel_sem_permissao')
+        rec.set('reason', isActive ? 'papel_sem_permissao' : 'conta_inativa')
         rec.set('occurred_at', new Date().toISOString())
         $app.save(rec)
       } catch (err) {
         $app.logger().error('role_gate_audit_failed', 'err', String((err && err.message) || err))
       }
-      throw new ForbiddenError('Papel sem acesso a estes dados.')
+      throw new ForbiddenError(
+        isActive ? 'Papel sem acesso a estes dados.' : 'Conta inativa. Fale com o administrador.',
+      )
     }
     return e.next()
   },

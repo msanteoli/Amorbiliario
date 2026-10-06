@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-10-06T15:43:04.950Z",
+  "generatedAt": "2026-10-06T15:58:03.355Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
-        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
-        "create": "@request.auth.role = 'admin' && @request.body.organization_id = @request.auth.organization_id",
-        "update": "organization_id = @request.auth.organization_id && ((@request.auth.role = 'admin' && (@request.body.organization_id:isset = false || @request.body.organization_id = @request.auth.organization_id)) || (id = @request.auth.id && @request.body.role:isset = false && @request.body.organization_id:isset = false && @request.body.active:isset = false))",
+        "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id",
+        "view": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id",
+        "create": "@request.auth.active = true && @request.auth.role = 'admin' && @request.body.organization_id = @request.auth.organization_id",
+        "update": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && ((@request.auth.role = 'admin' && (@request.body.organization_id:isset = false || @request.body.organization_id = @request.auth.organization_id)) || (id = @request.auth.id && @request.body.role:isset = false && @request.body.organization_id:isset = false && @request.body.active:isset = false))",
         "delete": null
       },
       "fields": [
@@ -29,21 +29,32 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         },
         {
           "name": "role",
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["admin", "sdr", "corretor", "agente", "outro"]
+          "selectValues": [
+            "admin",
+            "sdr",
+            "corretor",
+            "agente",
+            "outro"
+          ]
         },
         {
           "name": "organization_id",
@@ -68,10 +79,10 @@
       "name": "organizations",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && id = @request.auth.organization_id",
-        "view": "@request.auth.id != '' && id = @request.auth.organization_id",
+        "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && id = @request.auth.organization_id",
+        "view": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && id = @request.auth.organization_id",
         "create": null,
-        "update": "@request.auth.role = 'admin' && id = @request.auth.organization_id",
+        "update": "@request.auth.active = true && @request.auth.role = 'admin' && id = @request.auth.organization_id",
         "delete": null
       },
       "fields": [
@@ -98,24 +109,31 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
-      "indexes": ["CREATE UNIQUE INDEX idx_organizations_slug ON organizations (slug)"]
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_organizations_slug ON organizations (slug)"
+      ]
     },
     {
       "name": "audit_log",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.role = 'admin' && organization_id = @request.auth.organization_id",
-        "view": "@request.auth.role = 'admin' && organization_id = @request.auth.organization_id",
+        "list": "@request.auth.active = true && @request.auth.role = 'admin' && organization_id = @request.auth.organization_id",
+        "view": "@request.auth.active = true && @request.auth.role = 'admin' && organization_id = @request.auth.organization_id",
         "create": null,
         "update": null,
         "delete": null
@@ -181,14 +199,19 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate"]
+          "autodateTriggers": [
+            "onCreate"
+          ]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": ["onCreate", "onUpdate"]
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
         }
       ],
       "indexes": [
