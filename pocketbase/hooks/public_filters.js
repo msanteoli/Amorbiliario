@@ -8,9 +8,9 @@ routerAdd('GET', '/backend/v1/public/filters', (e) => {
     const ip = e.realIP()
     const win = Math.floor(Date.now() / 60000)
     const key = 'thr:filters:' + ip + ':' + win
-    const n = Number($store.get(key) || 0) + 1
-    $store.set(key, n)
-    $store.remove('thr:filters:' + ip + ':' + (win - 1))
+    const n = Number($app.store().get(key) || 0) + 1
+    $app.store().set(key, n)
+    $app.store().remove('thr:filters:' + ip + ':' + (win - 1))
     if (n > 120)
       throw new TooManyRequestsError('Muitas tentativas. Aguarde um minuto e tente de novo.')
   }
