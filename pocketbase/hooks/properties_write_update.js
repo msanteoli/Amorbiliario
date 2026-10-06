@@ -9,24 +9,10 @@ onRecordUpdateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record
   const orig = rec.original()
-  const body = e.requestInfo().body || {}
   const role = String(e.auth.get('role'))
 
-  const moneyFields = ['sale_price', 'rent_price', 'condo_fee', 'iptu']
-  moneyFields.forEach((f) => {
-    const v = body[f]
-    // O motor já trocou nulo (limpar o valor) e texto inválido por 0 antes do hook, então 0
-    // só é recusado quando não há valor a limpar; com valor guardado, 0 significa "limpar".
-    const isNum = typeof v === 'number'
-    const isStr = typeof v === 'string' && v.trim() !== ''
-    if (isNum || isStr) {
-      const n = Number(v)
-      if (isNaN(n)) throw new BadRequestError('Valor inválido.')
-      if (n === 0 && !(Number(orig.get(f)) > 0)) {
-        throw new BadRequestError('Valor zero não é válido. Deixe em branco quando não informado.')
-      }
-    }
-  })
+  // Dinheiro: o motor troca nulo e texto inválido por 0 antes do hook, então aqui 0 só pode
+  // significar "limpar" ou "sem valor"; a recusa de zero explícito vale na criação.
 
   rec.set('code', String(rec.get('code') || '').trim())
   if (rec.getString('code') !== orig.getString('code')) {
