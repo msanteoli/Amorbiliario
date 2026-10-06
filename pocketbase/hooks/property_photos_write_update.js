@@ -8,6 +8,9 @@ onRecordUpdateRequest((e) => {
   const wasActive = orig.get('is_active') === true
   const willBeActive = rec.get('is_active') === true
   const pid = rec.getString('property_id')
+  if (pid !== orig.getString('property_id') || rec.getString('file') !== orig.getString('file')) {
+    throw new ForbiddenError('Só é possível ativar ou desativar a foto.')
+  }
 
   if (!wasActive && willBeActive) {
     const active = $app.findRecordsByFilter(

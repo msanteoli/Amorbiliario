@@ -3,8 +3,8 @@
 //  - um imóvel Disponível que perde um item volta para Rascunho;
 //  - a data de revisão é sempre do servidor (o valor enviado é ignorado).
 // Grava o histórico no audit_log (só nomes de campos, nunca valores). A lista de itens da
-// completude é duplicada em properties_ficha.js e property_photos_write_update.js de
-// propósito (o Skip não permite funções compartilhadas no topo do arquivo).
+// completude NÃO é compartilhada com outros arquivos (o Skip não permite funções no topo);
+// properties_ficha.js só lê, e property_photos_write_update.js só conta fotos.
 onRecordUpdateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record
@@ -15,15 +15,34 @@ onRecordUpdateRequest((e) => {
   const moneyFields = ['sale_price', 'rent_price', 'condo_fee', 'iptu']
   moneyFields.forEach((f) => {
     const v = body[f]
-    if (v !== undefined && v !== null && v !== '' && Number(v) === 0) {
-      throw new BadRequestError('Valor zero não é válido. Deixe em branco quando não informado.')
+    // só número ou texto contam: nulo (limpar o valor) chega como outro tipo e passa
+    const isNum = typeof v === 'number'
+    const isStr = typeof v === 'string' && v.trim() !== ''
+    if (isNum || isStr) {
+      const n = Number(v)
+      if (isNaN(n)) throw new BadRequestError('Valor inválido.')
+      if (n === 0) {
+        throw new BadRequestError('Valor zero não é válido. Deixe em branco quando não informado.')
+      }
     }
   })
 
   rec.set('code', String(rec.get('code') || '').trim())
+  if (rec.getString('code') !== orig.getString('code')) {
+    const sameCode = $app.findRecordsByFilter(
+      'properties',
+      'organization_id = {:o} && code = {:c} && id != {:i}',
+      '',
+      1,
+      0,
+      { o: rec.getString('organization_id'), c: rec.getString('code'), i: rec.id },
+    )
+    if (sameCode.length) throw new BadRequestError('Já existe um imóvel com este código.')
+  }
 
   const capId = rec.getString('captured_by')
   if (capId !== orig.getString('captured_by')) {
+    if (role !== 'admin') throw new ForbiddenError('Só o admin muda o captador.')
     let cap = null
     try {
       cap = $app.findRecordById('users', capId)
@@ -107,7 +126,6 @@ onRecordUpdateRequest((e) => {
       }
     }
   }
-  rec.set('last_reviewed_at', new Date().toISOString())
 
   const watched = [
     'code',
@@ -134,6 +152,11 @@ onRecordUpdateRequest((e) => {
     'captured_by',
   ]
   const changed = watched.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
+  // só uma edição de verdade renova a data; o valor enviado pelo cliente nunca vale
+  rec.set(
+    'last_reviewed_at',
+    changed.length ? new Date().toISOString() : orig.get('last_reviewed_at'),
+  )
 
   const res = e.next()
   try {

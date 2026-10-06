@@ -10,13 +10,29 @@ onRecordCreateRequest((e) => {
   const moneyFields = ['sale_price', 'rent_price', 'condo_fee', 'iptu']
   moneyFields.forEach((f) => {
     const v = body[f]
-    if (v !== undefined && v !== null && v !== '' && Number(v) === 0) {
-      throw new BadRequestError('Valor zero não é válido. Deixe em branco quando não informado.')
+    // só número ou texto contam: nulo (limpar o valor) chega como outro tipo e passa
+    const isNum = typeof v === 'number'
+    const isStr = typeof v === 'string' && v.trim() !== ''
+    if (isNum || isStr) {
+      const n = Number(v)
+      if (isNaN(n)) throw new BadRequestError('Valor inválido.')
+      if (n === 0) {
+        throw new BadRequestError('Valor zero não é válido. Deixe em branco quando não informado.')
+      }
     }
   })
 
   rec.set('code', String(rec.get('code') || '').trim())
   if (!rec.getString('code')) throw new BadRequestError('Informe o código do imóvel.')
+  const sameCode = $app.findRecordsByFilter(
+    'properties',
+    'organization_id = {:o} && code = {:c}',
+    '',
+    1,
+    0,
+    { o: rec.getString('organization_id'), c: rec.getString('code') },
+  )
+  if (sameCode.length) throw new BadRequestError('Já existe um imóvel com este código.')
 
   // captador: usuário ativo da mesma organização, com papel corretor ou admin
   let cap = null
