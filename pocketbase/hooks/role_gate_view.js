@@ -41,4 +41,6 @@ onRecordViewRequest(
   'client_private',
   'properties',
   'property_photos',
+  'leads',
+  'lead_events',
 )
