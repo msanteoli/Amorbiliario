@@ -48,4 +48,5 @@ onRecordsListRequest(
   'lead_events',
   'visits',
   'tasks',
+  'property_visit_slots',
 )
