@@ -46,4 +46,6 @@ onRecordsListRequest(
   'property_photos',
   'leads',
   'lead_events',
+  'visits',
+  'tasks',
 )
