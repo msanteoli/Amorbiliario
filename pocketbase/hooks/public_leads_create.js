@@ -5,14 +5,6 @@
 // descobrir se já existia cadastro. Origem, etapa, dono e data do consentimento são do servidor.
 routerAdd('POST', '/backend/v1/public/leads', (e) => {
   // limite de requisições por IP
-  e.response
-    .header()
-    .set(
-      'X-Dbg',
-      String(!!e.auth) +
-        '/' +
-        (e.auth ? String(e.auth.get('role')) + '/' + String(e.auth.get('active')) : ''),
-    )
   // admin logado (testes automatizados) não é limitado; visitantes anônimos são
   const isAdmin =
     !!e.auth && e.auth.get('active') === true && String(e.auth.get('role') || '') === 'admin'
@@ -24,12 +16,7 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
     $app.store().set(key, n)
     $app.store().remove('thr:leads:' + ip + ':' + (win - 1))
     if (n > 5)
-      throw new TooManyRequestsError(
-        'Muitas tentativas. Aguarde um minuto e tente de novo. dbg=' +
-          String(!!e.auth) +
-          '/' +
-          (e.auth ? String(e.auth.get('role')) + '/' + String(e.auth.get('active')) : ''),
-      )
+      throw new TooManyRequestsError('Muitas tentativas. Aguarde um minuto e tente de novo.')
   }
 
   const body = e.requestInfo().body || {}
