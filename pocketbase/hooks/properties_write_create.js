@@ -10,7 +10,7 @@ onRecordCreateRequest((e) => {
   const moneyFields = ['sale_price', 'rent_price', 'condo_fee', 'iptu']
   moneyFields.forEach((f) => {
     const v = body[f]
-    // só número ou texto contam: nulo (limpar o valor) chega como outro tipo e passa
+    // o motor troca nulo e texto inválido por 0 antes do hook; na criação a tela omite o campo
     const isNum = typeof v === 'number'
     const isStr = typeof v === 'string' && v.trim() !== ''
     if (isNum || isStr) {

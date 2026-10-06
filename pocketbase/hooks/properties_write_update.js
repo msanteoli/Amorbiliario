@@ -15,13 +15,14 @@ onRecordUpdateRequest((e) => {
   const moneyFields = ['sale_price', 'rent_price', 'condo_fee', 'iptu']
   moneyFields.forEach((f) => {
     const v = body[f]
-    // só número ou texto contam: nulo (limpar o valor) chega como outro tipo e passa
+    // O motor já trocou nulo (limpar o valor) e texto inválido por 0 antes do hook, então 0
+    // só é recusado quando não há valor a limpar; com valor guardado, 0 significa "limpar".
     const isNum = typeof v === 'number'
     const isStr = typeof v === 'string' && v.trim() !== ''
     if (isNum || isStr) {
       const n = Number(v)
       if (isNaN(n)) throw new BadRequestError('Valor inválido.')
-      if (n === 0) {
+      if (n === 0 && !(Number(orig.get(f)) > 0)) {
         throw new BadRequestError('Valor zero não é válido. Deixe em branco quando não informado.')
       }
     }
