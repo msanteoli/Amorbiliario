@@ -16,6 +16,7 @@ import ClienteDetalhe from '@/pages/ClienteDetalhe'
 import EditarCliente from '@/pages/EditarCliente'
 import Imoveis from '@/pages/Imoveis'
 import NovoImovel from '@/pages/NovoImovel'
+import ImovelDetalhe from '@/pages/ImovelDetalhe'
 import EditarImovel from '@/pages/EditarImovel'
 import Agenda from '@/pages/Agenda'
 import Admin from '@/pages/Admin'
@@ -45,10 +46,7 @@ const App = () => (
               <Route path="/clientes/:id/editar" element={<EditarCliente />} />
               <Route path="/imoveis" element={<Imoveis />} />
               <Route path="/imoveis/novo" element={<NovoImovel />} />
-              <Route
-                path="/imoveis/:id"
-                element={<UnderConstructionPage title="Ficha do imóvel" />}
-              />
+              <Route path="/imoveis/:id" element={<ImovelDetalhe />} />
               <Route path="/imoveis/:id/editar" element={<EditarImovel />} />
               <Route path="/agenda" element={<Agenda />} />
 

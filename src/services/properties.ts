@@ -67,6 +67,14 @@ export interface PropertyOwnerRecord {
   kind?: string[]
 }
 
+export interface PropertyHistoryItem {
+  action: string
+  field?: string
+  reason?: string
+  occurred_at: string
+  actor: string
+}
+
 export interface PropertyRecord extends RecordModel {
   organization_id: string
   code: string
@@ -138,11 +146,11 @@ export interface UpdatePropertyInput {
   bathrooms?: number
   parking?: number
   area?: number
-  sale_price?: number
-  rent_price?: number
+  sale_price?: number | null
+  rent_price?: number | null
   price_on_request?: boolean
-  condo_fee?: number
-  iptu?: number
+  condo_fee?: number | null
+  iptu?: number | null
   description?: string
   owner_id?: string
   captured_by?: string
@@ -527,12 +535,18 @@ export async function updateProperty(
     payload.price_on_request = Boolean(input.price_on_request)
   }
 
-  if (input.sale_price !== undefined)
-    payload.sale_price = input.sale_price > 0 ? input.sale_price : 0
-  if (input.rent_price !== undefined)
-    payload.rent_price = input.rent_price > 0 ? input.rent_price : 0
-  if (input.condo_fee !== undefined) payload.condo_fee = input.condo_fee > 0 ? input.condo_fee : 0
-  if (input.iptu !== undefined) payload.iptu = input.iptu > 0 ? input.iptu : 0
+  if (input.sale_price !== undefined) {
+    payload.sale_price = input.sale_price !== null && input.sale_price > 0 ? input.sale_price : null
+  }
+  if (input.rent_price !== undefined) {
+    payload.rent_price = input.rent_price !== null && input.rent_price > 0 ? input.rent_price : null
+  }
+  if (input.condo_fee !== undefined) {
+    payload.condo_fee = input.condo_fee !== null && input.condo_fee > 0 ? input.condo_fee : null
+  }
+  if (input.iptu !== undefined) {
+    payload.iptu = input.iptu !== null && input.iptu > 0 ? input.iptu : null
+  }
 
   if (input.description !== undefined) payload.description = input.description.trim()
   if (input.owner_id !== undefined) payload.owner_id = input.owner_id.trim()
@@ -541,6 +555,84 @@ export async function updateProperty(
   return await pb.collection('properties').update<PropertyRecord>(id, payload, {
     expand: 'captured_by,owner_id',
   })
+}
+
+/**
+ * Lista as fotos ativas de um imóvel ordenadas por criação
+ */
+export async function listPropertyPhotos(propertyId: string): Promise<PropertyPhotoRecord[]> {
+  const records = await pb.collection('property_photos').getFullList<PropertyPhotoRecord>({
+    filter: `property_id = "${propertyId}" && is_active = true`,
+    sort: 'created',
+  })
+  return records
+}
+
+/**
+ * Envia uma foto para o imóvel (uma por requisição, multipart)
+ */
+export async function uploadPropertyPhoto(
+  propertyId: string,
+  organizationId: string,
+  file: File,
+): Promise<PropertyPhotoRecord> {
+  const formData = new FormData()
+  formData.append('property_id', propertyId)
+  formData.append('organization_id', organizationId)
+  formData.append('file', file)
+  formData.append('is_active', 'true')
+
+  return await pb.collection('property_photos').create<PropertyPhotoRecord>(formData)
+}
+
+/**
+ * Remove (desativa) uma foto do imóvel setando is_active = false
+ */
+export async function deactivatePropertyPhoto(photoId: string): Promise<PropertyPhotoRecord> {
+  return await pb.collection('property_photos').update<PropertyPhotoRecord>(photoId, {
+    is_active: false,
+  })
+}
+
+/**
+ * Obtém o histórico de alterações do imóvel
+ */
+export async function getPropertyHistory(propertyId: string): Promise<PropertyHistoryItem[]> {
+  const res = await pb.send<{ items: PropertyHistoryItem[] }>(
+    `/backend/v1/properties/${propertyId}/history`,
+    {
+      method: 'GET',
+    },
+  )
+  return res.items || []
+}
+
+/**
+ * Confirma os dados do imóvel (/backend/v1/properties/:id/confirm)
+ */
+export async function confirmPropertyData(
+  propertyId: string,
+): Promise<{ last_reviewed_at: string }> {
+  return await pb.send<{ last_reviewed_at: string }>(
+    `/backend/v1/properties/${propertyId}/confirm`,
+    {
+      method: 'POST',
+    },
+  )
+}
+
+/**
+ * Obtém o texto da ficha para envio via WhatsApp (/backend/v1/properties/:id/ficha)
+ */
+export async function getPropertyFicha(
+  propertyId: string,
+): Promise<{ code: string; text: string }> {
+  return await pb.send<{ code: string; text: string }>(
+    `/backend/v1/properties/${propertyId}/ficha`,
+    {
+      method: 'GET',
+    },
+  )
 }
 
 /**

@@ -185,10 +185,15 @@ export default function EditarImovel() {
     const area = formData.area ? parseFloat(formData.area.replace(',', '.')) : 0
 
     // Processa valores monetários
-    const salePrice = parseCurrencyInput(formData.sale_price) || 0
-    const rentPrice = parseCurrencyInput(formData.rent_price) || 0
-    const condoFee = parseCurrencyInput(formData.condo_fee) || 0
-    const iptu = parseCurrencyInput(formData.iptu) || 0
+    const rawSalePrice = parseCurrencyInput(formData.sale_price)
+    const rawRentPrice = parseCurrencyInput(formData.rent_price)
+    const rawCondoFee = parseCurrencyInput(formData.condo_fee)
+    const rawIptu = parseCurrencyInput(formData.iptu)
+
+    const salePrice = rawSalePrice !== undefined && rawSalePrice > 0 ? rawSalePrice : null
+    const rentPrice = rawRentPrice !== undefined && rawRentPrice > 0 ? rawRentPrice : null
+    const condoFee = rawCondoFee !== undefined && rawCondoFee > 0 ? rawCondoFee : null
+    const iptu = rawIptu !== undefined && rawIptu > 0 ? rawIptu : null
 
     const intendedStatus = formData.status
 
