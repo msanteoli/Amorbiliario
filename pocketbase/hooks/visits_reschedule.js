@@ -85,6 +85,11 @@ routerAdd(
       (end ? end.toISOString() : '') !==
         (oldEndRaw ? new Date(oldEndRaw.replace(' ', 'T')).toISOString() : '')
 
+    // um pedido pendente não vira Agendada num horário que já passou
+    if (complete && oldStatus === 'pendente_agenda' && start.getTime() < Date.now()) {
+      throw new BadRequestError('O horário já passou.')
+    }
+
     if (complete && (changedPlan || oldStatus === 'pendente_agenda')) {
       const fmt = (d) => d.toISOString().replace('T', ' ')
       const buffer = 30 * 60000
@@ -155,12 +160,14 @@ routerAdd(
         ev.set('occurred_at', nowIso)
         ev.set(
           'text',
-          oldStatus === 'pendente_agenda'
-            ? 'Visita agendada: ' +
+          oldStatus === 'pendente_agenda' && !complete
+            ? 'Pedido de visita atualizado: ' + property.getString('code')
+            : oldStatus === 'pendente_agenda'
+              ? 'Visita agendada: ' +
                 property.getString('code') +
                 ' em ' +
                 label(visit.getString('start_at'))
-            : 'Visita remarcada: ' +
+              : 'Visita remarcada: ' +
                 property.getString('code') +
                 ' de ' +
                 label(oldStartRaw) +
