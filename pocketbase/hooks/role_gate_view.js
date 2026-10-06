@@ -5,7 +5,7 @@ onRecordViewRequest(
     if (e.hasSuperuserAuth()) return e.next()
     if (!e.auth) throw new UnauthorizedError('Autenticação necessária.')
 
-    const allowedByCollection = { audit_log: ['admin'] }
+    const allowedByCollection = { audit_log: ['admin'], client_private: ['admin', 'corretor'] }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
     const allowed = allowedByCollection[collectionName] || defaultAllowed
@@ -37,4 +37,6 @@ onRecordViewRequest(
   'organizations',
   'users',
   'audit_log',
+  'clients',
+  'client_private',
 )

@@ -1,6 +1,6 @@
 // Controle de papel na LISTAGEM. A regra da coleção filtra linhas (lista vazia
-// quando não bate); este hook garante 401 sem login e 403 para papel sem acesso,
-// e registra a negação no audit_log SEM o valor negado.
+// quando não bate); este hook garante 401 sem login e 403 para papel sem acesso
+// ou conta inativa, e registra a negação no audit_log SEM o valor negado.
 // Ao criar uma coleção nova, acrescente-a aos argumentos finais e ao mapa abaixo
 // (e faça o mesmo em role_gate_view.js).
 onRecordsListRequest(
@@ -8,7 +8,7 @@ onRecordsListRequest(
     if (e.hasSuperuserAuth()) return e.next()
     if (!e.auth) throw new UnauthorizedError('Autenticação necessária.')
 
-    const allowedByCollection = { audit_log: ['admin'] }
+    const allowedByCollection = { audit_log: ['admin'], client_private: ['admin', 'corretor'] }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
     const allowed = allowedByCollection[collectionName] || defaultAllowed
@@ -40,4 +40,6 @@ onRecordsListRequest(
   'organizations',
   'users',
   'audit_log',
+  'clients',
+  'client_private',
 )
