@@ -24,7 +24,12 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
     $app.store().set(key, n)
     $app.store().remove('thr:leads:' + ip + ':' + (win - 1))
     if (n > 5)
-      throw new TooManyRequestsError('Muitas tentativas. Aguarde um minuto e tente de novo.')
+      throw new TooManyRequestsError(
+        'Muitas tentativas. Aguarde um minuto e tente de novo. dbg=' +
+          String(!!e.auth) +
+          '/' +
+          (e.auth ? String(e.auth.get('role')) + '/' + String(e.auth.get('active')) : ''),
+      )
   }
 
   const body = e.requestInfo().body || {}
