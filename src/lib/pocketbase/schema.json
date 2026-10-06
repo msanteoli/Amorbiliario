@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T21:36:55.631Z",
+  "generatedAt": "2026-10-06T21:41:37.512Z",
   "collections": [
     {
       "name": "users",
@@ -973,7 +973,8 @@
             "dedupe_resolvido",
             "contato_repetido",
             "interesse_site",
-            "busca_site"
+            "busca_site",
+            "visita"
           ]
         },
         {
@@ -1025,6 +1026,256 @@
         "CREATE INDEX idx_lead_events_lead ON lead_events (lead_id, created)",
         "CREATE UNIQUE INDEX idx_lead_events_intent ON lead_events (lead_id, intent_key) WHERE intent_key != ''",
         "CREATE INDEX `idx_lead_events_intent_key` ON `lead_events` (intent_key) WHERE intent_key != ''"
+      ]
+    },
+    {
+      "name": "visits",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || broker_id = @request.auth.id)",
+        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id && (@request.auth.role != 'corretor' || broker_id = @request.auth.id)",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "lead_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "leads"
+        },
+        {
+          "name": "client_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "property_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "properties"
+        },
+        {
+          "name": "broker_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "start_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "end_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "pendente_agenda",
+            "agendada",
+            "confirmada",
+            "realizada",
+            "cancelada",
+            "nao_compareceu"
+          ]
+        },
+        {
+          "name": "result_text",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cancel_reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cancelled_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "cancelled_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_visits_org_broker_start ON visits (organization_id, broker_id, start_at)",
+        "CREATE INDEX idx_visits_org_status ON visits (organization_id, status)",
+        "CREATE INDEX idx_visits_lead ON visits (lead_id)"
+      ]
+    },
+    {
+      "name": "tasks",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || assigned_to = @request.auth.id || created_by = @request.auth.id)",
+        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id && ((@request.auth.role != 'sdr' && @request.auth.role != 'corretor') || assigned_to = @request.auth.id || created_by = @request.auth.id)",
+        "create": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && @request.body.organization_id = @request.auth.organization_id",
+        "update": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || assigned_to = @request.auth.id || created_by = @request.auth.id) && @request.body.organization_id:isset = false && @request.body.created_by:isset = false && @request.body.closed_by:isset = false && @request.body.closed_at:isset = false && @request.body.lead_id:isset = false && @request.body.client_id:isset = false && @request.body.property_id:isset = false && (@request.auth.role != 'corretor' || @request.body.assigned_to:isset = false)",
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "due_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "assigned_to",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "aberta",
+            "concluida",
+            "cancelada"
+          ]
+        },
+        {
+          "name": "closed_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "closed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "lead_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "leads"
+        },
+        {
+          "name": "client_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "property_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "properties"
+        },
+        {
+          "name": "created_by",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_tasks_org_assigned ON tasks (organization_id, assigned_to, status)",
+        "CREATE INDEX idx_tasks_org_due ON tasks (organization_id, due_at)"
       ]
     }
   ]
