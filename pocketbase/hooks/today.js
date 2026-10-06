@@ -106,11 +106,11 @@ routerAdd(
 
     if (role === 'sdr') {
       sections.new_unassigned_leads = section(
-        find('leads', 'stage = "novo" && assigned_to = ""', 'created'),
+        find('leads', 'stage = "novo" && assigned_to = ""', '-created'),
         leadItem,
       )
       sections.dedupe_pending = section(
-        find('leads', 'dedupe_status = "pendente"', 'created'),
+        find('leads', 'dedupe_status = "pendente"', '-created'),
         leadItem,
       )
       sections.overdue_next_steps = section(
