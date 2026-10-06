@@ -2,6 +2,14 @@
 // opções vazias. Sem login. Devolve só contagens e o nome da imobiliária.
 routerAdd('GET', '/backend/v1/public/filters', (e) => {
   // limite de requisições por IP
+  e.response
+    .header()
+    .set(
+      'X-Dbg',
+      String(!!e.auth) +
+        '/' +
+        (e.auth ? String(e.auth.get('role')) + '/' + String(e.auth.get('active')) : ''),
+    )
   // admin logado (testes automatizados) não é limitado; visitantes anônimos são
   const isAdmin =
     !!e.auth && e.auth.get('active') === true && String(e.auth.get('role') || '') === 'admin'
