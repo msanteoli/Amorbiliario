@@ -28,12 +28,20 @@ onRecordAfterCreateSuccess((e) => {
       ? rec.getString('property_id') + '|' + new Date(startMs).toISOString()
       : ''
     if (rec.getString('slot_key') !== desired) {
-      rec.set('slot_key', desired)
-      try {
-        $app.save(rec)
-      } catch (err) {
-        // outra visita já segura esse horário: esta não o segura
-        rec.set('slot_key', '')
+      // outra visita já segura esse horário: esta não o segura (e nunca regrava, para não entrar em laço)
+      const clash = desired
+        ? $app.findRecordsByFilter('visits', 'slot_key = {:k} && id != {:i}', '', 1, 0, {
+            k: desired,
+            i: rec.id,
+          })
+        : []
+      if (clash.length) {
+        if (rec.getString('slot_key') !== '') {
+          rec.set('slot_key', '')
+          $app.save(rec)
+        }
+      } else {
+        rec.set('slot_key', desired)
         $app.save(rec)
       }
     }
@@ -66,12 +74,20 @@ onRecordAfterUpdateSuccess((e) => {
       ? rec.getString('property_id') + '|' + new Date(startMs).toISOString()
       : ''
     if (rec.getString('slot_key') !== desired) {
-      rec.set('slot_key', desired)
-      try {
-        $app.save(rec)
-      } catch (err) {
-        // outra visita já segura esse horário: esta não o segura
-        rec.set('slot_key', '')
+      // outra visita já segura esse horário: esta não o segura (e nunca regrava, para não entrar em laço)
+      const clash = desired
+        ? $app.findRecordsByFilter('visits', 'slot_key = {:k} && id != {:i}', '', 1, 0, {
+            k: desired,
+            i: rec.id,
+          })
+        : []
+      if (clash.length) {
+        if (rec.getString('slot_key') !== '') {
+          rec.set('slot_key', '')
+          $app.save(rec)
+        }
+      } else {
+        rec.set('slot_key', desired)
         $app.save(rec)
       }
     }
