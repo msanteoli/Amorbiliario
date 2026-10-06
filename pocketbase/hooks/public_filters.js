@@ -4,6 +4,7 @@ routerAdd('GET', '/backend/v1/public/filters', (e) => {
   // limite de requisições por IP (o segredo PUBLIC_RATE_BYPASS é só dos testes)
   const bypass = String($secrets.get('PUBLIC_RATE_BYPASS') || '')
   const given = String(e.request.header.get('X-Rate-Bypass') || '')
+  $app.logger().info('bypass_dbg', 'slen', bypass.length, 'glen', given.length)
   if (!bypass || given !== bypass) {
     const ip = e.realIP()
     const win = Math.floor(Date.now() / 60000)
