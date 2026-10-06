@@ -10,6 +10,8 @@ import { UnderConstructionPage } from '@/components/UnderConstructionPage'
 import Login from '@/pages/Login'
 import Hoje from '@/pages/Hoje'
 import Leads from '@/pages/Leads'
+import NovoLead from '@/pages/NovoLead'
+import LeadDetalhe from '@/pages/LeadDetalhe'
 import Clientes from '@/pages/Clientes'
 import NovoCliente from '@/pages/NovoCliente'
 import ClienteDetalhe from '@/pages/ClienteDetalhe'
@@ -40,6 +42,8 @@ const App = () => (
             <Route element={<AppLayout />}>
               <Route path="/hoje" element={<Hoje />} />
               <Route path="/leads" element={<Leads />} />
+              <Route path="/leads/novo" element={<NovoLead />} />
+              <Route path="/leads/:id" element={<LeadDetalhe />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/clientes/novo" element={<NovoCliente />} />
               <Route path="/clientes/:id" element={<ClienteDetalhe />} />
