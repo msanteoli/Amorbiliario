@@ -4,10 +4,11 @@
 // ambíguo vira pendência para o SDR. A resposta ao visitante é sempre a mesma, para ele nunca
 // descobrir se já existia cadastro. Origem, etapa, dono e data do consentimento são do servidor.
 routerAdd('POST', '/backend/v1/public/leads', (e) => {
-  // limite de requisições por IP (o segredo PUBLIC_RATE_BYPASS é só dos testes)
-  const bypass = String($secrets.get('PUBLIC_RATE_BYPASS') || '')
-  const given = String(e.request.header.get('X-Rate-Bypass') || '')
-  if (!bypass || given !== bypass) {
+  // limite de requisições por IP
+  // admin logado (testes automatizados) não é limitado; visitantes anônimos são
+  const isAdmin =
+    !!e.auth && e.auth.get('active') === true && String(e.auth.get('role') || '') === 'admin'
+  if (!isAdmin) {
     const ip = e.realIP()
     const win = Math.floor(Date.now() / 60000)
     const key = 'thr:leads:' + ip + ':' + win

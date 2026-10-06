@@ -26,6 +26,19 @@ import { EditLeadModal } from '@/components/leads/EditLeadModal'
 import { SendFichaModal } from '@/components/leads/SendFichaModal'
 import { ConvertLeadModal } from '@/components/leads/ConvertLeadModal'
 import { CorrectOriginModal } from '@/components/leads/CorrectOriginModal'
+import { CreateVisitModal } from '@/components/agenda/CreateVisitModal'
+import { VisitDetailModal, getVisitStatusBadge } from '@/components/agenda/VisitDetailModal'
+import { listVisitsByLead, VisitRecord, formatDateTimeBahia } from '@/services/visits'
+import { CreateTaskModal } from '@/components/agenda/CreateTaskModal'
+import { TaskDetailModal, getTaskStatusBadge } from '@/components/agenda/TaskDetailModal'
+import {
+  listTasksByLead,
+  TaskRecord,
+  formatTaskDateTimeBahia,
+  isTaskOverdue,
+  completeTask,
+  extractTaskErrorMessage,
+} from '@/services/tasks'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -93,6 +106,18 @@ export default function LeadDetalhe() {
   const [sendFichaModalOpen, setSendFichaModalOpen] = useState(false)
   const [convertModalOpen, setConvertModalOpen] = useState(false)
   const [correctOriginModalOpen, setCorrectOriginModalOpen] = useState(false)
+  const [createVisitModalOpen, setCreateVisitModalOpen] = useState(false)
+  const [selectedVisit, setSelectedVisit] = useState<VisitRecord | null>(null)
+  const [visitDetailModalOpen, setVisitDetailModalOpen] = useState(false)
+  const [visits, setVisits] = useState<VisitRecord[]>([])
+  const [loadingVisits, setLoadingVisits] = useState(false)
+
+  // Tarefas vinculadas ao lead
+  const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<TaskRecord | null>(null)
+  const [taskDetailModalOpen, setTaskDetailModalOpen] = useState(false)
+  const [tasks, setTasks] = useState<TaskRecord[]>([])
+  const [loadingTasks, setLoadingTasks] = useState(false)
 
   // Próximo passo local state
   const [nextStepText, setNextStepText] = useState('')
@@ -143,6 +168,16 @@ export default function LeadDetalhe() {
       // Carrega eventos
       const eventsData = await listLeadEvents(id)
       setEvents(eventsData)
+
+      // Carrega visitas do lead
+      listVisitsByLead(id)
+        .then(setVisits)
+        .catch(() => {})
+
+      // Carrega tarefas do lead
+      listTasksByLead(id)
+        .then(setTasks)
+        .catch(() => {})
     } catch (err: unknown) {
       // Se a leitura do lead voltar 404 para o corretor logado:
       // mostre "Você não tem acesso a este lead." e leve para /leads
@@ -396,6 +431,31 @@ export default function LeadDetalhe() {
             <Button size="sm" onClick={() => setConvertModalOpen(true)} className="gap-1.5 text-xs">
               <UserCheck className="h-3.5 w-3.5" />
               <span>Converter em cliente</span>
+            </Button>
+          )}
+
+          {/* Agendar visita (só admin e SDR) */}
+          {canManageLeads && (
+            <Button
+              size="sm"
+              onClick={() => setCreateVisitModalOpen(true)}
+              className="gap-1.5 text-xs bg-primary"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Agendar visita</span>
+            </Button>
+          )}
+
+          {/* Criar tarefa (admin, SDR, ou corretor se o lead for dele) */}
+          {canOperateLead && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCreateTaskModalOpen(true)}
+              className="gap-1.5 text-xs"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              <span>Criar tarefa</span>
             </Button>
           )}
         </div>
@@ -796,6 +856,175 @@ export default function LeadDetalhe() {
         </Card>
       )}
 
+      {/* SEÇÃO VISITAS DO LEAD */}
+      <Card>
+        <CardHeader className="py-3 px-6 border-b flex flex-row items-center justify-between">
+          <div className="space-y-0.5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span>Visitas ({visits.length})</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Visitas agendadas e realizadas para este lead
+            </CardDescription>
+          </div>
+          {canManageLeads && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCreateVisitModalOpen(true)}
+              className="text-xs h-8 gap-1"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Agendar visita</span>
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="p-6">
+          {visits.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              Nenhuma visita registrada para este lead.
+            </p>
+          ) : (
+            <div className="divide-y rounded-md border">
+              {visits.map((v) => {
+                const prop = v.expand?.property_id
+                const broker = v.expand?.broker_id
+                return (
+                  <div
+                    key={v.id}
+                    onClick={() => {
+                      setSelectedVisit(v)
+                      setVisitDetailModalOpen(true)
+                    }}
+                    className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">
+                          {formatDateTimeBahia(v.start_at)}
+                        </span>
+                        {getVisitStatusBadge(v.status)}
+                      </div>
+                      <p className="text-muted-foreground">
+                        Imóvel:{' '}
+                        <strong className="text-foreground">
+                          [{prop?.code || '-'}] {prop?.title || ''}
+                        </strong>
+                        {broker && (
+                          <span>
+                            {' '}
+                            · Corretor:{' '}
+                            <strong className="text-foreground">
+                              {broker.name || broker.email}
+                            </strong>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* SEÇÃO TAREFAS DO LEAD */}
+      <Card>
+        <CardHeader className="py-3 px-6 border-b flex flex-row items-center justify-between">
+          <div className="space-y-0.5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              <span>Tarefas ({tasks.length})</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Tarefas operacionais vinculadas a este lead
+            </CardDescription>
+          </div>
+          {canOperateLead && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCreateTaskModalOpen(true)}
+              className="text-xs h-8 gap-1"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              <span>Criar tarefa</span>
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="p-6">
+          {tasks.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              Nenhuma tarefa vinculada a este lead.
+            </p>
+          ) : (
+            <div className="divide-y rounded-md border">
+              {tasks.map((t) => {
+                const overdue = isTaskOverdue(t)
+                const assignee = t.expand?.assigned_to
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => {
+                      setSelectedTask(t)
+                      setTaskDetailModalOpen(true)
+                    }}
+                    className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">{t.title}</span>
+                        {getTaskStatusBadge(t)}
+                      </div>
+                      <p className="text-muted-foreground">
+                        Prazo:{' '}
+                        <span className={overdue ? 'text-destructive font-bold' : ''}>
+                          {formatTaskDateTimeBahia(t.due_at)}
+                        </span>
+                        {assignee && (
+                          <span>
+                            {' '}
+                            · Responsável:{' '}
+                            <strong className="text-foreground">
+                              {assignee.name || assignee.email}
+                            </strong>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {t.status === 'aberta' && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          onClick={async () => {
+                            try {
+                              await completeTask(t.id)
+                              if (lead) {
+                                const freshTasks = await listTasksByLead(lead.id)
+                                setTasks(freshTasks)
+                              }
+                            } catch (err) {
+                              setErrorMessage(extractTaskErrorMessage(err))
+                            }
+                          }}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Concluir
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* LINHA DO TEMPO */}
       <Card>
         <CardHeader className="py-4 px-6 border-b">
@@ -953,6 +1182,67 @@ export default function LeadDetalhe() {
           }}
         />
       )}
+
+      {/* MODAL AGENDAR VISITA */}
+      {lead && (
+        <CreateVisitModal
+          open={createVisitModalOpen}
+          onOpenChange={setCreateVisitModalOpen}
+          fixedTarget={{ lead: { id: lead.id, name: lead.name } }}
+          onSuccess={async (status) => {
+            setSuccessBanner(
+              status === 'agendada' ? 'Visita agendada.' : 'Pedido de visita registrado.',
+            )
+            // Atualiza linha do tempo, etapa e lista de visitas
+            await loadData()
+            const vs = await listVisitsByLead(lead.id)
+            setVisits(vs)
+          }}
+        />
+      )}
+
+      {/* MODAL DETALHE DA VISITA */}
+      <VisitDetailModal
+        visit={selectedVisit}
+        open={visitDetailModalOpen}
+        onOpenChange={setVisitDetailModalOpen}
+        onUpdated={async () => {
+          if (lead) {
+            await loadData()
+            const vs = await listVisitsByLead(lead.id)
+            setVisits(vs)
+          }
+          setVisitDetailModalOpen(false)
+        }}
+      />
+
+      {/* MODAL CRIAR TAREFA */}
+      {lead && (
+        <CreateTaskModal
+          open={createTaskModalOpen}
+          onOpenChange={setCreateTaskModalOpen}
+          fixedBinding={{ lead: { id: lead.id, name: lead.name } }}
+          onCreated={async () => {
+            setSuccessBanner('Tarefa criada com sucesso.')
+            const freshTasks = await listTasksByLead(lead.id)
+            setTasks(freshTasks)
+          }}
+        />
+      )}
+
+      {/* MODAL DETALHE DA TAREFA */}
+      <TaskDetailModal
+        task={selectedTask}
+        open={taskDetailModalOpen}
+        onOpenChange={setTaskDetailModalOpen}
+        onUpdated={async () => {
+          if (lead) {
+            const freshTasks = await listTasksByLead(lead.id)
+            setTasks(freshTasks)
+          }
+          setTaskDetailModalOpen(false)
+        }}
+      />
     </div>
   )
 }

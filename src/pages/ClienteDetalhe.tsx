@@ -16,7 +16,22 @@ import {
 } from '@/lib/clientUtils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useAuth } from '@/contexts/AuthContext'
+import { CreateVisitModal } from '@/components/agenda/CreateVisitModal'
+import { VisitDetailModal, getVisitStatusBadge } from '@/components/agenda/VisitDetailModal'
+import { listVisitsByClient, VisitRecord, formatDateTimeBahia } from '@/services/visits'
+import { CreateTaskModal } from '@/components/agenda/CreateTaskModal'
+import { TaskDetailModal, getTaskStatusBadge } from '@/components/agenda/TaskDetailModal'
+import {
+  listTasksByClient,
+  TaskRecord,
+  formatTaskDateTimeBahia,
+  isTaskOverdue,
+  completeTask,
+  extractTaskErrorMessage,
+} from '@/services/tasks'
 import {
   ArrowLeft,
   Edit,
@@ -29,16 +44,37 @@ import {
   Loader2,
   AlertCircle,
   Building2,
+  Check,
+  Clock,
 } from 'lucide-react'
 
 export default function ClienteDetalhe() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const role = user?.role || ''
+  const isAdmin = role === 'admin'
+  const isSdr = role === 'sdr'
+  const isCorretor = role === 'corretor'
+  const canManageVisits = isAdmin || isSdr
 
   const [client, setClient] = useState<ClientRecord | null>(null)
   const [clientPrivate, setClientPrivate] = useState<ClientPrivateRecord | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [successBanner, setSuccessBanner] = useState<string | null>(null)
+
+  // Visitas do cliente
+  const [visits, setVisits] = useState<VisitRecord[]>([])
+  const [createVisitModalOpen, setCreateVisitModalOpen] = useState(false)
+  const [selectedVisit, setSelectedVisit] = useState<VisitRecord | null>(null)
+  const [visitDetailModalOpen, setVisitDetailModalOpen] = useState(false)
+
+  // Tarefas do cliente
+  const [tasks, setTasks] = useState<TaskRecord[]>([])
+  const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<TaskRecord | null>(null)
+  const [taskDetailModalOpen, setTaskDetailModalOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -46,14 +82,18 @@ export default function ClienteDetalhe() {
     setLoading(true)
     setErrorMessage(null)
 
-    Promise.all([getClientById(id), getClientPrivate(id)])
-      .then(([clientData, privateData]) => {
+    Promise.all([
+      getClientById(id),
+      getClientPrivate(id),
+      listVisitsByClient(id).catch(() => [] as VisitRecord[]),
+      listTasksByClient(id).catch(() => [] as TaskRecord[]),
+    ])
+      .then(([clientData, privateData, clientVisits, clientTasks]) => {
         if (!active) return
         setClient(clientData)
-        // A seção "Dados pessoais" (CPF e data de nascimento) SÓ aparece quando a consulta
-        // a client_private daquele cliente devolve um registro; se devolver erro ou vazio,
-        // não mostrar a seção nem mensagem de erro.
         setClientPrivate(privateData)
+        setVisits(clientVisits)
+        setTasks(clientTasks)
       })
       .catch((err) => {
         if (!active) return
@@ -97,8 +137,40 @@ export default function ClienteDetalhe() {
   const respName =
     client.expand?.responsible_id?.name || client.expand?.responsible_id?.email || 'Não atribuído'
 
+  // Regra: O corretor só vê "Criar tarefa" nas telas de cliente dele (responsible_id === user.id)
+  const isClientResponsible = isCorretor && client.responsible_id === user?.id
+  const canCreateTask = isAdmin || isSdr || isClientResponsible
+
+  const reloadVisitsAndTasks = async () => {
+    if (!id) return
+    const [vs, ts] = await Promise.all([
+      listVisitsByClient(id).catch(() => [] as VisitRecord[]),
+      listTasksByClient(id).catch(() => [] as TaskRecord[]),
+    ])
+    setVisits(vs)
+    setTasks(ts)
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {/* Banner de sucesso */}
+      {successBanner && (
+        <Alert className="border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300">
+          <Check className="h-4 w-4 text-emerald-600" />
+          <AlertDescription className="text-sm font-medium flex items-center justify-between">
+            <span>{successBanner}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSuccessBanner(null)}
+              className="h-6 text-xs"
+            >
+              Fechar
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Barra de Navegação Superior */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -118,12 +190,37 @@ export default function ClienteDetalhe() {
           </div>
         </div>
 
-        <Button asChild className="gap-2 shrink-0">
-          <Link to={`/clientes/${client.id}/editar`}>
-            <Edit className="h-4 w-4" />
-            <span>Editar</span>
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {canManageVisits && (
+            <Button
+              size="sm"
+              onClick={() => setCreateVisitModalOpen(true)}
+              className="gap-1.5 text-xs bg-primary"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Agendar visita</span>
+            </Button>
+          )}
+
+          {canCreateTask && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCreateTaskModalOpen(true)}
+              className="gap-1.5 text-xs"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              <span>Criar tarefa</span>
+            </Button>
+          )}
+
+          <Button asChild variant="outline" size="sm" className="gap-2 shrink-0 text-xs">
+            <Link to={`/clientes/${client.id}/editar`}>
+              <Edit className="h-3.5 w-3.5" />
+              <span>Editar</span>
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Cartão de Informações Principais */}
@@ -243,6 +340,225 @@ export default function ClienteDetalhe() {
           )}
         </CardContent>
       </Card>
+
+      {/* SEÇÃO VISITAS DO CLIENTE */}
+      <Card className="border-border">
+        <CardHeader className="py-3 px-6 border-b flex flex-row items-center justify-between">
+          <div className="space-y-0.5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span>Visitas ({visits.length})</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Visitas agendadas e realizadas para este cliente
+            </CardDescription>
+          </div>
+          {canManageVisits && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCreateVisitModalOpen(true)}
+              className="text-xs h-8 gap-1"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Agendar visita</span>
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="p-6">
+          {visits.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              Nenhuma visita registrada para este cliente.
+            </p>
+          ) : (
+            <div className="divide-y rounded-md border">
+              {visits.map((v) => {
+                const prop = v.expand?.property_id
+                const broker = v.expand?.broker_id
+                return (
+                  <div
+                    key={v.id}
+                    onClick={() => {
+                      setSelectedVisit(v)
+                      setVisitDetailModalOpen(true)
+                    }}
+                    className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">
+                          {formatDateTimeBahia(v.start_at)}
+                        </span>
+                        {getVisitStatusBadge(v.status)}
+                      </div>
+                      <p className="text-muted-foreground">
+                        Imóvel:{' '}
+                        <strong className="text-foreground">
+                          [{prop?.code || '-'}] {prop?.title || ''}
+                        </strong>
+                        {broker && (
+                          <span>
+                            {' '}
+                            · Corretor:{' '}
+                            <strong className="text-foreground">
+                              {broker.name || broker.email}
+                            </strong>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* SEÇÃO TAREFAS DO CLIENTE */}
+      <Card className="border-border">
+        <CardHeader className="py-3 px-6 border-b flex flex-row items-center justify-between">
+          <div className="space-y-0.5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              <span>Tarefas ({tasks.length})</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Tarefas operacionais vinculadas a este cliente
+            </CardDescription>
+          </div>
+          {canCreateTask && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCreateTaskModalOpen(true)}
+              className="text-xs h-8 gap-1"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              <span>Criar tarefa</span>
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="p-6">
+          {tasks.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              Nenhuma tarefa vinculada a este cliente.
+            </p>
+          ) : (
+            <div className="divide-y rounded-md border">
+              {tasks.map((t) => {
+                const overdue = isTaskOverdue(t)
+                const assignee = t.expand?.assigned_to
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => {
+                      setSelectedTask(t)
+                      setTaskDetailModalOpen(true)
+                    }}
+                    className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">{t.title}</span>
+                        {getTaskStatusBadge(t)}
+                      </div>
+                      <p className="text-muted-foreground">
+                        Prazo:{' '}
+                        <span className={overdue ? 'text-destructive font-bold' : ''}>
+                          {formatTaskDateTimeBahia(t.due_at)}
+                        </span>
+                        {assignee && (
+                          <span>
+                            {' '}
+                            · Responsável:{' '}
+                            <strong className="text-foreground">
+                              {assignee.name || assignee.email}
+                            </strong>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {t.status === 'aberta' && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          onClick={async () => {
+                            try {
+                              await completeTask(t.id)
+                              if (client) {
+                                const freshTasks = await listTasksByClient(client.id)
+                                setTasks(freshTasks)
+                              }
+                            } catch (err) {
+                              setErrorMessage(extractTaskErrorMessage(err))
+                            }
+                          }}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Concluir
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* MODAL AGENDAR VISITA */}
+      {client && (
+        <CreateVisitModal
+          open={createVisitModalOpen}
+          onOpenChange={setCreateVisitModalOpen}
+          fixedTarget={{ client: { id: client.id, name: client.name } }}
+          onSuccess={async (status) => {
+            setSuccessBanner(
+              status === 'agendada' ? 'Visita agendada.' : 'Pedido de visita registrado.',
+            )
+            await reloadVisitsAndTasks()
+          }}
+        />
+      )}
+
+      {/* MODAL DETALHE DA VISITA */}
+      <VisitDetailModal
+        visit={selectedVisit}
+        open={visitDetailModalOpen}
+        onOpenChange={setVisitDetailModalOpen}
+        onUpdated={async () => {
+          await reloadVisitsAndTasks()
+          setVisitDetailModalOpen(false)
+        }}
+      />
+
+      {/* MODAL CRIAR TAREFA */}
+      {client && (
+        <CreateTaskModal
+          open={createTaskModalOpen}
+          onOpenChange={setCreateTaskModalOpen}
+          fixedBinding={{ client: { id: client.id, name: client.name } }}
+          onCreated={async () => {
+            setSuccessBanner('Tarefa criada com sucesso.')
+            await reloadVisitsAndTasks()
+          }}
+        />
+      )}
+
+      {/* MODAL DETALHE DA TAREFA */}
+      <TaskDetailModal
+        task={selectedTask}
+        open={taskDetailModalOpen}
+        onOpenChange={setTaskDetailModalOpen}
+        onUpdated={async () => {
+          await reloadVisitsAndTasks()
+          setTaskDetailModalOpen(false)
+        }}
+      />
     </div>
   )
 }

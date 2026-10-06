@@ -1,11 +1,11 @@
 // Filtros do site público: bairros e tipos que têm imóvel Disponível, para a tela não mostrar
 // opções vazias. Sem login. Devolve só contagens e o nome da imobiliária.
 routerAdd('GET', '/backend/v1/public/filters', (e) => {
-  // limite de requisições por IP (o segredo PUBLIC_RATE_BYPASS é só dos testes)
-  const bypass = String($secrets.get('PUBLIC_RATE_BYPASS') || '')
-  const given = String(e.request.header.get('X-Rate-Bypass') || '')
-
-  if (!bypass || given !== bypass) {
+  // limite de requisições por IP
+  // admin logado (testes automatizados) não é limitado; visitantes anônimos são
+  const isAdmin =
+    !!e.auth && e.auth.get('active') === true && String(e.auth.get('role') || '') === 'admin'
+  if (!isAdmin) {
     const ip = e.realIP()
     const win = Math.floor(Date.now() / 60000)
     const key = 'thr:filters:' + ip + ':' + win

@@ -35,6 +35,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { CreateTaskModal } from '@/components/agenda/CreateTaskModal'
+import { TaskDetailModal, getTaskStatusBadge } from '@/components/agenda/TaskDetailModal'
+import {
+  listTasksByProperty,
+  TaskRecord,
+  formatTaskDateTimeBahia,
+  isTaskOverdue,
+  completeTask,
+  extractTaskErrorMessage,
+} from '@/services/tasks'
 import {
   ArrowLeft,
   Edit,
@@ -62,6 +72,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Check,
 } from 'lucide-react'
 
 // Mapa de campos para o histórico de alterações
@@ -142,6 +153,12 @@ export default function ImovelDetalhe() {
   const [photos, setPhotos] = useState<PropertyPhotoRecord[]>([])
   const [historyItems, setHistoryItems] = useState<PropertyHistoryItem[]>([])
 
+  // Tarefas vinculadas ao imóvel
+  const [tasks, setTasks] = useState<TaskRecord[]>([])
+  const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<TaskRecord | null>(null)
+  const [taskDetailModalOpen, setTaskDetailModalOpen] = useState(false)
+
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [warningMessage, setWarningMessage] = useState<string | null>(null)
@@ -173,17 +190,19 @@ export default function ImovelDetalhe() {
   const isCaptador = Boolean(property && property.captured_by === user?.id)
   const canManage = !isSdr && (isAdmin || isCaptador)
 
-  // Carrega imóvel, fotos e histórico
+  // Carrega imóvel, fotos, histórico e tarefas
   const loadData = async (imovelId: string) => {
     try {
-      const [propData, photosData, histData] = await Promise.all([
+      const [propData, photosData, histData, tasksData] = await Promise.all([
         getPropertyById(imovelId),
         listPropertyPhotos(imovelId),
         getPropertyHistory(imovelId).catch(() => [] as PropertyHistoryItem[]),
+        listTasksByProperty(imovelId).catch(() => [] as TaskRecord[]),
       ])
       setProperty(propData)
       setPhotos(photosData)
       setHistoryItems(histData)
+      setTasks(tasksData)
     } catch (err) {
       setErrorMessage(formatErrorMessage(err))
     }
@@ -544,6 +563,15 @@ export default function ImovelDetalhe() {
 
         {/* Botões de Ação do Cabeçalho */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Botão Criar tarefa */}
+          <Button
+            variant="outline"
+            onClick={() => setCreateTaskModalOpen(true)}
+            className="gap-1.5 text-xs h-9"
+          >
+            <Clock className="h-4 w-4" />
+            <span>Criar tarefa</span>
+          </Button>
           {/* Botão Copiar Ficha: Disponível para admin, sdr e corretor SÓ quando status = disponivel */}
           {property.status === 'disponivel' && (
             <Button
@@ -1031,6 +1059,101 @@ export default function ImovelDetalhe() {
         </CardContent>
       </Card>
 
+      {/* SEÇÃO TAREFAS DO IMÓVEL */}
+      <Card className="border-border">
+        <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+          <div className="space-y-0.5">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              <span>Tarefas ({tasks.length})</span>
+            </CardTitle>
+            <CardDescription>Tarefas operacionais vinculadas a este imóvel</CardDescription>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setCreateTaskModalOpen(true)}
+            className="text-xs h-8 gap-1"
+          >
+            <Clock className="h-3.5 w-3.5" />
+            <span>Criar tarefa</span>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          {tasks.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              Nenhuma tarefa vinculada a este imóvel.
+            </p>
+          ) : (
+            <div className="divide-y rounded-md border">
+              {tasks.map((t) => {
+                const overdue = isTaskOverdue(t)
+                const assignee = t.expand?.assigned_to
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => {
+                      setSelectedTask(t)
+                      setTaskDetailModalOpen(true)
+                    }}
+                    className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">{t.title}</span>
+                        {getTaskStatusBadge(t)}
+                      </div>
+                      <p className="text-muted-foreground">
+                        Prazo:{' '}
+                        <span className={overdue ? 'text-destructive font-bold' : ''}>
+                          {formatTaskDateTimeBahia(t.due_at)}
+                        </span>
+                        {assignee && (
+                          <span>
+                            {' '}
+                            · Responsável:{' '}
+                            <strong className="text-foreground">
+                              {assignee.name || assignee.email}
+                            </strong>
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {t.status === 'aberta' && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          onClick={async () => {
+                            try {
+                              await completeTask(t.id)
+                              if (property) {
+                                const freshTasks = await listTasksByProperty(property.id)
+                                setTasks(freshTasks)
+                              }
+                            } catch (err) {
+                              toast({
+                                title: 'Erro ao concluir tarefa',
+                                description: extractTaskErrorMessage(err),
+                                variant: 'destructive',
+                              })
+                            }
+                          }}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Concluir
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* 5. SEÇÃO: HISTÓRICO DE ALTERAÇÕES */}
       <Card className="border-border">
         <CardHeader className="pb-3 border-b">
@@ -1200,6 +1323,36 @@ export default function ImovelDetalhe() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL CRIAR TAREFA */}
+      {property && (
+        <CreateTaskModal
+          open={createTaskModalOpen}
+          onOpenChange={setCreateTaskModalOpen}
+          fixedBinding={{
+            property: { id: property.id, code: property.code, title: property.title },
+          }}
+          onCreated={async () => {
+            toast({ title: 'Tarefa criada com sucesso.' })
+            const freshTasks = await listTasksByProperty(property.id)
+            setTasks(freshTasks)
+          }}
+        />
+      )}
+
+      {/* MODAL DETALHE DA TAREFA */}
+      <TaskDetailModal
+        task={selectedTask}
+        open={taskDetailModalOpen}
+        onOpenChange={setTaskDetailModalOpen}
+        onUpdated={async () => {
+          if (property) {
+            const freshTasks = await listTasksByProperty(property.id)
+            setTasks(freshTasks)
+          }
+          setTaskDetailModalOpen(false)
+        }}
+      />
     </div>
   )
 }
