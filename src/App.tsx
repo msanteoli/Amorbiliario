@@ -8,6 +8,8 @@ import { AppLayout } from '@/components/AppLayout'
 import { UnderConstructionPage } from '@/components/UnderConstructionPage'
 
 import Login from '@/pages/Login'
+import BuscarPage from '@/pages/BuscarPage'
+import ImovelPublicoPage from '@/pages/ImovelPublicoPage'
 import Hoje from '@/pages/Hoje'
 import Leads from '@/pages/Leads'
 import NovoLead from '@/pages/NovoLead'
@@ -33,6 +35,10 @@ const App = () => (
         <Routes>
           {/* Public login route */}
           <Route path="/login" element={<Login />} />
+
+          {/* Public site routes (fora de ProtectedRoute e de AppLayout) */}
+          <Route path="/buscar" element={<BuscarPage />} />
+          <Route path="/buscar/:codigo" element={<ImovelPublicoPage />} />
 
           {/* Root route redirects to /hoje */}
           <Route path="/" element={<Navigate to="/hoje" replace />} />
