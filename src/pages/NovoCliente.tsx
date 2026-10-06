@@ -128,9 +128,9 @@ export default function NovoCliente() {
         cpf: canSeeCpf && rawCpf ? rawCpf : undefined,
       })
 
-      setVerifiedCpf(rawCpf)
       if (res.status === 'none') {
-        // Segue direto para a etapa 2
+        // Só marca como verificado quando não encontrou duplicidade
+        setVerifiedCpf(rawCpf)
         setMatchResult(null)
         setStep(2)
       } else {
@@ -243,6 +243,7 @@ export default function NovoCliente() {
     }
 
     // Se o CPF mudou em relação ao verificado na etapa 1 (inclusive se etapa 1 foi sem CPF),
+    // ou se ainda não foi verificado com sucesso ('none' ou confirmação explícita),
     // roda a verificação de duplicidade antes de criar qualquer coisa.
     const effectiveCpf = canSeeCpf ? rawCpf : ''
     if (effectiveCpf !== verifiedCpf) {
@@ -254,7 +255,6 @@ export default function NovoCliente() {
           email: trimmedEmail || undefined,
           cpf: effectiveCpf || undefined,
         })
-        setVerifiedCpf(effectiveCpf)
 
         if (res.status !== 'none') {
           // Bloqueia a criação e exibe as mesmas opções da etapa 1
@@ -262,6 +262,8 @@ export default function NovoCliente() {
           setSaving(false)
           return
         }
+        // Só marca como verificado quando o resultado for 'none'
+        setVerifiedCpf(effectiveCpf)
       } catch (err) {
         setErrorMessage(formatErrorMessage(err))
         setSaving(false)
@@ -448,6 +450,9 @@ export default function NovoCliente() {
                       <Button
                         variant="secondary"
                         onClick={() => {
+                          const rawCpf = cpf.replace(/\D/g, '')
+                          const effectiveCpf = canSeeCpf ? rawCpf : ''
+                          setVerifiedCpf(effectiveCpf)
                           setMatchResult(null)
                           if (step === 2) {
                             executeCreateClient()
@@ -473,6 +478,9 @@ export default function NovoCliente() {
                   <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <Button
                       onClick={() => {
+                        const rawCpf = cpf.replace(/\D/g, '')
+                        const effectiveCpf = canSeeCpf ? rawCpf : ''
+                        setVerifiedCpf(effectiveCpf)
                         setMatchResult(null)
                         if (step === 2) {
                           executeCreateClient()
