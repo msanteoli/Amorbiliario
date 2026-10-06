@@ -66,6 +66,18 @@ export interface ListClientsParams {
   sort?: string
 }
 
+export class ClientPrivateSaveError extends Error {
+  clientId: string
+  originalError: unknown
+
+  constructor(clientId: string, originalError: unknown) {
+    super(formatErrorMessage(originalError))
+    this.name = 'ClientPrivateSaveError'
+    this.clientId = clientId
+    this.originalError = originalError
+  }
+}
+
 export interface CreateClientInput {
   name: string
   phone?: string
@@ -182,7 +194,7 @@ function translateGenericMessage(msg: string): string {
  */
 export function normalizePhoneForBackend(phone?: string): string {
   if (!phone) return ''
-  let digits = phone.replace(/\D/g, '')
+  let digits = phone.replace(/\D/g, '').replace(/^0+/, '')
   if (digits.length === 10 || digits.length === 11) {
     digits = '55' + digits
   }
@@ -223,7 +235,7 @@ export async function listClients(params: ListClientsParams = {}) {
 
   if (search && search.trim()) {
     const term = search.trim().replace(/['"\\]/g, '')
-    const digits = search.replace(/\D/g, '')
+    const digits = search.replace(/\D/g, '').replace(/^0+/, '')
     const searchConditions: string[] = [`name ~ "${term}"`, `email ~ "${term}"`]
     if (digits) {
       searchConditions.push(`phone ~ "${digits}"`)
@@ -326,12 +338,16 @@ export async function createClient(
   const birthDate = input.birth_date ? input.birth_date.trim() : ''
 
   if (cpfDigits || birthDate) {
-    await pb.collection('client_private').create({
-      organization_id: orgId,
-      client_id: createdClient.id,
-      cpf: cpfDigits,
-      birth_date: birthDate || undefined,
-    })
+    try {
+      await pb.collection('client_private').create({
+        organization_id: orgId,
+        client_id: createdClient.id,
+        cpf: cpfDigits,
+        birth_date: birthDate || undefined,
+      })
+    } catch (privateErr) {
+      throw new ClientPrivateSaveError(createdClient.id, privateErr)
+    }
   }
 
   return createdClient

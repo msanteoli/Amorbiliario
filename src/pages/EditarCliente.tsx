@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   getClientById,
@@ -36,15 +36,18 @@ import { AlertCircle, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
 export default function EditarCliente() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
 
   const role = user?.role || ''
   const isCorretor = role === 'corretor'
   const canSeeCpf = role === 'admin' || role === 'corretor'
 
+  const initialError = (location.state as { errorMessage?: string } | null)?.errorMessage || null
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(initialError)
 
   // Formulário
   const [name, setName] = useState('')
@@ -72,7 +75,7 @@ export default function EditarCliente() {
     if (!id) return
     let active = true
     setLoading(true)
-    setErrorMessage(null)
+    setErrorMessage(initialError)
 
     Promise.all([getClientById(id), getClientPrivate(id)])
       .then(([clientData, privateData]) => {

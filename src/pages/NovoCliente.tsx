@@ -10,6 +10,7 @@ import {
   ClientKind,
   ConsentStatus,
   formatErrorMessage,
+  ClientPrivateSaveError,
 } from '@/services/clients'
 import {
   maskPhoneInput,
@@ -71,6 +72,9 @@ export default function NovoCliente() {
   const [consentStatus, setConsentStatus] = useState<ConsentStatus>('unknown')
   const [consentChannel, setConsentChannel] = useState('')
 
+  // Guarda o CPF verificado na etapa 1 (apenas dígitos) para detectar mudanças na etapa 2
+  const [verifiedCpf, setVerifiedCpf] = useState<string>('')
+
   // Lista de corretores e admins para responsável
   const [responsibleUsers, setResponsibleUsers] = useState<ResponsibleUser[]>([])
 
@@ -124,6 +128,7 @@ export default function NovoCliente() {
         cpf: canSeeCpf && rawCpf ? rawCpf : undefined,
       })
 
+      setVerifiedCpf(rawCpf)
       if (res.status === 'none') {
         // Segue direto para a etapa 2
         setMatchResult(null)
@@ -149,6 +154,49 @@ export default function NovoCliente() {
         return [...prev, kind]
       }
     })
+  }
+
+  // Executa a criação efetiva do cliente
+  const executeCreateClient = async () => {
+    if (!user) {
+      setErrorMessage('Sessão expirada. Faça login novamente.')
+      return
+    }
+
+    const trimmedName = name.trim()
+    const trimmedPhone = phone.trim()
+    const trimmedEmail = email.trim()
+    const rawCpf = cpf.replace(/\D/g, '')
+
+    setSaving(true)
+    try {
+      const created = await createClient(
+        {
+          name: trimmedName,
+          phone: trimmedPhone || undefined,
+          email: trimmedEmail || undefined,
+          kind: kinds,
+          responsible_id: isCorretor ? user.id : responsibleId || undefined,
+          consent_status: consentStatus,
+          consent_channel: consentChannel || undefined,
+          cpf: canSeeCpf && rawCpf ? rawCpf : undefined,
+          birth_date: canSeeCpf && birthDate ? birthDate : undefined,
+        },
+        user,
+      )
+
+      navigate(`/clientes/${created.id}`)
+    } catch (err) {
+      if (err instanceof ClientPrivateSaveError) {
+        navigate(`/clientes/${err.clientId}/editar`, {
+          state: { errorMessage: err.message },
+        })
+        return
+      }
+      setErrorMessage(formatErrorMessage(err))
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Submissão da ETAPA 2 (Salvar cliente)
@@ -194,29 +242,34 @@ export default function NovoCliente() {
       }
     }
 
-    setSaving(true)
-    try {
-      const created = await createClient(
-        {
+    // Se o CPF mudou em relação ao verificado na etapa 1 (inclusive se etapa 1 foi sem CPF),
+    // roda a verificação de duplicidade antes de criar qualquer coisa.
+    const effectiveCpf = canSeeCpf ? rawCpf : ''
+    if (effectiveCpf !== verifiedCpf) {
+      setSaving(true)
+      try {
+        const res = await checkClientMatch({
           name: trimmedName,
           phone: trimmedPhone || undefined,
           email: trimmedEmail || undefined,
-          kind: kinds,
-          responsible_id: isCorretor ? user.id : responsibleId || undefined,
-          consent_status: consentStatus,
-          consent_channel: consentChannel || undefined,
-          cpf: canSeeCpf && rawCpf ? rawCpf : undefined,
-          birth_date: canSeeCpf && birthDate ? birthDate : undefined,
-        },
-        user,
-      )
+          cpf: effectiveCpf || undefined,
+        })
+        setVerifiedCpf(effectiveCpf)
 
-      navigate(`/clientes/${created.id}`)
-    } catch (err) {
-      setErrorMessage(formatErrorMessage(err))
-    } finally {
-      setSaving(false)
+        if (res.status !== 'none') {
+          // Bloqueia a criação e exibe as mesmas opções da etapa 1
+          setMatchResult(res)
+          setSaving(false)
+          return
+        }
+      } catch (err) {
+        setErrorMessage(formatErrorMessage(err))
+        setSaving(false)
+        return
+      }
     }
+
+    await executeCreateClient()
   }
 
   return (
@@ -326,7 +379,6 @@ export default function NovoCliente() {
                         variant="outline"
                         onClick={() => {
                           setMatchResult(null)
-                          setStep(1)
                         }}
                         className="w-full sm:w-auto"
                       >
@@ -349,7 +401,6 @@ export default function NovoCliente() {
                         variant="outline"
                         onClick={() => {
                           setMatchResult(null)
-                          setStep(1)
                         }}
                       >
                         Voltar
@@ -398,7 +449,11 @@ export default function NovoCliente() {
                         variant="secondary"
                         onClick={() => {
                           setMatchResult(null)
-                          setStep(2)
+                          if (step === 2) {
+                            executeCreateClient()
+                          } else {
+                            setStep(2)
+                          }
                         }}
                         className="w-full sm:w-auto"
                       >
@@ -419,7 +474,11 @@ export default function NovoCliente() {
                     <Button
                       onClick={() => {
                         setMatchResult(null)
-                        setStep(2)
+                        if (step === 2) {
+                          executeCreateClient()
+                        } else {
+                          setStep(2)
+                        }
                       }}
                       className="w-full sm:w-auto"
                     >
@@ -429,7 +488,7 @@ export default function NovoCliente() {
                       variant="outline"
                       onClick={() => {
                         setMatchResult(null)
-                        setStep(1)
+                        // Permanece na etapa atual
                       }}
                       className="w-full sm:w-auto"
                     >

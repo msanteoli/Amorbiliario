@@ -15,6 +15,8 @@ export function formatPhoneNumber(phone?: string | null): string {
     digits = digits.slice(2)
   }
 
+  digits = digits.replace(/^0+/, '')
+
   if (digits.length === 11) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
   }
@@ -30,7 +32,7 @@ export function formatPhoneNumber(phone?: string | null): string {
  * Aplica máscara de telefone durante a digitação: (XX) XXXXX-XXXX
  */
 export function maskPhoneInput(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 11)
+  const digits = value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 11)
   if (!digits) return ''
   if (digits.length <= 2) return `(${digits}`
   if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
