@@ -1,0 +1,307 @@
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
+import {
+  getPropertyById,
+  updateProperty,
+  formatErrorMessage,
+  PropertyOwnerRecord,
+} from '@/services/properties'
+import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/clients'
+import { parseCurrencyInput, formatCurrencyInput } from '@/lib/currencyUtils'
+import { PropertyForm, PropertyFormData } from '@/components/properties/PropertyForm'
+import { useToast } from '@/hooks/use-toast'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { AlertCircle, ArrowLeft, Loader2, ShieldAlert } from 'lucide-react'
+
+export default function EditarImovel() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { user, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
+
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [warningMessage, setWarningMessage] = useState<string | null>(null)
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null)
+
+  const [eligibleUsers, setEligibleUsers] = useState<ResponsibleUser[]>([])
+  const [initialFormData, setInitialFormData] = useState<Partial<PropertyFormData> | null>(null)
+  const [initialOwner, setInitialOwner] = useState<PropertyOwnerRecord | null>(null)
+
+  const role = user?.role || ''
+  const isAuthorizedRole = role === 'admin' || role === 'corretor'
+
+  // Redireciona SDR para /imoveis
+  useEffect(() => {
+    if (!authLoading && user && !isAuthorizedRole) {
+      navigate('/imoveis', { replace: true })
+    }
+  }, [authLoading, user, isAuthorizedRole, navigate])
+
+  // Carrega usuários elegíveis para captador
+  useEffect(() => {
+    listEligibleResponsibleUsers()
+      .then(setEligibleUsers)
+      .catch(() => {})
+  }, [])
+
+  // Carrega imóvel e valida permissão de corretor
+  useEffect(() => {
+    if (!id || !user || !isAuthorizedRole) return
+
+    let active = true
+    setLoading(true)
+    setErrorMessage(null)
+
+    getPropertyById(id)
+      .then((prop) => {
+        if (!active) return
+
+        // Regra: "O corretor só edita imóveis que ele captou (se abrir outro, mostre "Você não tem permissão para editar este imóvel.")."
+        if (role === 'corretor' && prop.captured_by !== user.id) {
+          setHasPermission(false)
+          setLoading(false)
+          return
+        }
+
+        setHasPermission(true)
+
+        // Configura dados iniciais do formulário
+        setInitialFormData({
+          code: prop.code || '',
+          title: prop.title || '',
+          purpose: prop.purpose,
+          property_type: prop.property_type,
+          status: prop.status,
+          street: prop.street || '',
+          street_number: prop.street_number || '',
+          complement: prop.complement || '',
+          neighborhood: prop.neighborhood || '',
+          city: prop.city || '',
+          bedrooms: prop.bedrooms && prop.bedrooms > 0 ? String(prop.bedrooms) : '',
+          bathrooms: prop.bathrooms && prop.bathrooms > 0 ? String(prop.bathrooms) : '',
+          parking: prop.parking && prop.parking > 0 ? String(prop.parking) : '',
+          area: prop.area && prop.area > 0 ? String(prop.area) : '',
+          sale_price: formatCurrencyInput(prop.sale_price),
+          rent_price: formatCurrencyInput(prop.rent_price),
+          condo_fee: formatCurrencyInput(prop.condo_fee),
+          iptu: formatCurrencyInput(prop.iptu),
+          price_on_request: Boolean(prop.price_on_request),
+          description: prop.description || '',
+          owner_id: prop.owner_id || '',
+          captured_by: prop.captured_by || user.id,
+        })
+
+        if (prop.expand?.owner_id) {
+          setInitialOwner(prop.expand.owner_id)
+        } else if (prop.owner_id) {
+          setInitialOwner({
+            id: prop.owner_id,
+            name: 'Proprietário vinculado',
+          })
+        }
+      })
+      .catch((err) => {
+        if (!active) return
+        setErrorMessage(formatErrorMessage(err))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [id, user, role, isAuthorizedRole])
+
+  if (authLoading || (!isAuthorizedRole && user)) {
+    return (
+      <div className="flex flex-col items-center justify-center p-16 text-muted-foreground gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm">Verificando permissões...</p>
+      </div>
+    )
+  }
+
+  // Corretor tentando editar imóvel que não captou
+  if (hasPermission === false) {
+    return (
+      <div className="max-w-xl mx-auto space-y-6 pt-6">
+        <Card className="border-border">
+          <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+              <ShieldAlert className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-foreground">Acesso negado</h2>
+              <p className="text-sm text-muted-foreground">
+                Você não tem permissão para editar este imóvel.
+              </p>
+            </div>
+            <Button onClick={() => navigate('/imoveis')} variant="outline" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Voltar para Imóveis</span>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-16 text-muted-foreground gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm">Carregando dados do imóvel...</p>
+      </div>
+    )
+  }
+
+  if (!user || !id) {
+    return null
+  }
+
+  const handleUpdate = async (formData: PropertyFormData) => {
+    setErrorMessage(null)
+    setWarningMessage(null)
+
+    if (!formData.code.trim()) {
+      setErrorMessage('Informe o código do imóvel.')
+      return
+    }
+
+    if (!formData.title.trim()) {
+      setErrorMessage('Informe o título do imóvel.')
+      return
+    }
+
+    // Processa cômodos e área
+    const bedrooms = formData.bedrooms ? parseInt(formData.bedrooms, 10) : 0
+    const bathrooms = formData.bathrooms ? parseInt(formData.bathrooms, 10) : 0
+    const parking = formData.parking ? parseInt(formData.parking, 10) : 0
+    const area = formData.area ? parseFloat(formData.area.replace(',', '.')) : 0
+
+    // Processa valores monetários
+    const salePrice = parseCurrencyInput(formData.sale_price) || 0
+    const rentPrice = parseCurrencyInput(formData.rent_price) || 0
+    const condoFee = parseCurrencyInput(formData.condo_fee) || 0
+    const iptu = parseCurrencyInput(formData.iptu) || 0
+
+    const intendedStatus = formData.status
+
+    setSaving(true)
+    try {
+      // Atualiza imóvel
+      await updateProperty(id, {
+        code: formData.code,
+        title: formData.title,
+        purpose: formData.purpose,
+        property_type: formData.property_type,
+        status: intendedStatus,
+        street: formData.street,
+        street_number: formData.street_number,
+        complement: formData.complement,
+        neighborhood: formData.neighborhood,
+        city: formData.city,
+        bedrooms: !isNaN(bedrooms) ? bedrooms : 0,
+        bathrooms: !isNaN(bathrooms) ? bathrooms : 0,
+        parking: !isNaN(parking) ? parking : 0,
+        area: !isNaN(area) ? area : 0,
+        sale_price: salePrice,
+        rent_price: rentPrice,
+        price_on_request: formData.price_on_request,
+        condo_fee: condoFee,
+        iptu: iptu,
+        description: formData.description,
+        owner_id: formData.owner_id,
+        // O corretor não pode alterar captured_by; só o admin pode
+        captured_by: role === 'admin' ? formData.captured_by : undefined,
+      })
+
+      // Releitura do imóvel conforme especificação:
+      // "depois de salvar, releia o imóvel e mostre 'Este imóvel voltou para Rascunho porque está incompleto.'
+      // quando a situação voltar diferente do que o usuário havia escolhido."
+      const reloaded = await getPropertyById(id)
+
+      if (intendedStatus && intendedStatus !== 'rascunho' && reloaded.status === 'rascunho') {
+        setWarningMessage('Este imóvel voltou para Rascunho porque está incompleto.')
+        toast({
+          title: 'Atenção',
+          description: 'Este imóvel voltou para Rascunho porque está incompleto.',
+          variant: 'destructive',
+        })
+        // Atualiza formulário com novo status
+        setInitialFormData((prev) => ({
+          ...prev,
+          status: 'rascunho',
+        }))
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } else {
+        toast({
+          title: 'Imóvel atualizado.',
+          description: 'As alterações foram salvas com sucesso.',
+        })
+        navigate(`/imoveis/${id}`)
+      }
+    } catch (err) {
+      setErrorMessage(formatErrorMessage(err))
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Cabeçalho */}
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate(`/imoveis/${id}`)}
+          className="h-8 w-8"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Editar imóvel</h1>
+          <p className="text-xs text-muted-foreground">
+            Altere as informações, situação, valores e características do imóvel.
+          </p>
+        </div>
+      </div>
+
+      {/* Alerta de erro do servidor no topo (ex: imóvel incompleto) */}
+      {errorMessage && (
+        <div className="flex items-start gap-2 p-4 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20 font-medium">
+          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {/* Alerta de retorno para rascunho */}
+      {warningMessage && (
+        <div className="flex items-start gap-2 p-4 rounded-lg bg-amber-500/15 text-amber-900 dark:text-amber-200 text-sm border border-amber-500/30 font-medium">
+          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+          <span>{warningMessage}</span>
+        </div>
+      )}
+
+      {initialFormData && (
+        <PropertyForm
+          isEditing={true}
+          initialData={initialFormData}
+          initialOwner={initialOwner}
+          eligibleUsers={eligibleUsers}
+          currentUser={user}
+          onSubmit={handleUpdate}
+          saving={saving}
+          onCancel={() => navigate(`/imoveis/${id}`)}
+        />
+      )}
+    </div>
+  )
+}

@@ -59,6 +59,14 @@ export interface PropertyUserRecord {
   role?: string
 }
 
+export interface PropertyOwnerRecord {
+  id: string
+  name: string
+  phone?: string
+  email?: string
+  kind?: string[]
+}
+
 export interface PropertyRecord extends RecordModel {
   organization_id: string
   code: string
@@ -86,8 +94,58 @@ export interface PropertyRecord extends RecordModel {
   last_reviewed_at?: string
   expand?: {
     captured_by?: PropertyUserRecord
+    owner_id?: PropertyOwnerRecord
     property_photos_via_property_id?: PropertyPhotoRecord[]
   }
+}
+
+export interface CreatePropertyInput {
+  code: string
+  title: string
+  purpose: PropertyPurpose
+  property_type: PropertyType
+  street?: string
+  street_number?: string
+  complement?: string
+  neighborhood?: string
+  city?: string
+  bedrooms?: number
+  bathrooms?: number
+  parking?: number
+  area?: number
+  sale_price?: number
+  rent_price?: number
+  price_on_request?: boolean
+  condo_fee?: number
+  iptu?: number
+  description?: string
+  owner_id?: string
+  captured_by: string
+}
+
+export interface UpdatePropertyInput {
+  code?: string
+  title?: string
+  purpose?: PropertyPurpose
+  property_type?: PropertyType
+  status?: PropertyStatus
+  street?: string
+  street_number?: string
+  complement?: string
+  neighborhood?: string
+  city?: string
+  bedrooms?: number
+  bathrooms?: number
+  parking?: number
+  area?: number
+  sale_price?: number
+  rent_price?: number
+  price_on_request?: boolean
+  condo_fee?: number
+  iptu?: number
+  description?: string
+  owner_id?: string
+  captured_by?: string
 }
 
 export interface ListPropertiesParams {
@@ -142,6 +200,14 @@ function translateFieldMessage(field: string, msg: string): string {
   if (msg.includes('Captador inválido')) return msg
   if (msg.includes('Proprietário inválido')) return msg
   if (msg.includes('Valor zero não é válido')) return msg
+  if (msg.includes('Imóvel incompleto')) return msg
+  if (
+    msg.toLowerCase().includes('unique') ||
+    msg.toLowerCase().includes('already exists') ||
+    msg.includes('idx_properties_org_code')
+  ) {
+    return 'Já existe um imóvel com este código.'
+  }
 
   switch (field) {
     case 'code':
@@ -168,6 +234,7 @@ function translateFieldMessage(field: string, msg: string): string {
 }
 
 function translateGenericMessage(msg: string): string {
+  if (msg.includes('Imóvel incompleto')) return msg
   if (msg.includes('Papel sem acesso a estes dados.')) return 'Papel sem acesso a estes dados.'
   if (msg.includes('Conta inativa. Fale com o administrador.'))
     return 'Conta inativa. Fale com o administrador.'
@@ -177,6 +244,13 @@ function translateGenericMessage(msg: string): string {
   if (msg.includes('Proprietário inválido.')) return 'Proprietário inválido.'
   if (msg.includes('Valor zero não é válido. Deixe em branco quando não informado.')) {
     return 'Valor zero não é válido. Deixe em branco quando não informado.'
+  }
+  if (
+    msg.toLowerCase().includes('unique') ||
+    msg.toLowerCase().includes('already exists') ||
+    msg.includes('idx_properties_org_code')
+  ) {
+    return 'Já existe um imóvel com este código.'
   }
   if (msg.includes('Imóvel não encontrado.')) return 'Imóvel não encontrado.'
   if (msg.includes('Failed to create record') || msg.includes('Failed to update record')) {
@@ -364,6 +438,136 @@ export async function listProperties(params: ListPropertiesParams = {}) {
  */
 export async function getPropertyById(id: string): Promise<PropertyRecord> {
   return await pb.collection('properties').getOne<PropertyRecord>(id, {
-    expand: 'property_photos_via_property_id,captured_by',
+    expand: 'property_photos_via_property_id,captured_by,owner_id',
   })
+}
+
+/**
+ * Cria um novo imóvel na coleção `properties`
+ */
+export async function createProperty(
+  input: CreatePropertyInput,
+  currentUser: { organization_id?: string },
+): Promise<PropertyRecord> {
+  const orgId = currentUser.organization_id
+  if (!orgId) {
+    throw new Error('Organização do usuário não identificada.')
+  }
+
+  const payload: Record<string, unknown> = {
+    organization_id: orgId,
+    code: input.code.trim(),
+    title: input.title.trim(),
+    purpose: input.purpose,
+    property_type: input.property_type,
+    captured_by: input.captured_by,
+  }
+
+  if (input.street?.trim()) payload.street = input.street.trim()
+  if (input.street_number?.trim()) payload.street_number = input.street_number.trim()
+  if (input.complement?.trim()) payload.complement = input.complement.trim()
+  if (input.neighborhood?.trim()) payload.neighborhood = input.neighborhood.trim()
+  if (input.city?.trim()) payload.city = input.city.trim()
+
+  if (typeof input.bedrooms === 'number' && input.bedrooms > 0) payload.bedrooms = input.bedrooms
+  if (typeof input.bathrooms === 'number' && input.bathrooms > 0)
+    payload.bathrooms = input.bathrooms
+  if (typeof input.parking === 'number' && input.parking > 0) payload.parking = input.parking
+  if (typeof input.area === 'number' && input.area > 0) payload.area = input.area
+
+  if (input.price_on_request) {
+    payload.price_on_request = true
+  } else {
+    payload.price_on_request = false
+  }
+
+  if (typeof input.sale_price === 'number' && input.sale_price > 0)
+    payload.sale_price = input.sale_price
+  if (typeof input.rent_price === 'number' && input.rent_price > 0)
+    payload.rent_price = input.rent_price
+  if (typeof input.condo_fee === 'number' && input.condo_fee > 0)
+    payload.condo_fee = input.condo_fee
+  if (typeof input.iptu === 'number' && input.iptu > 0) payload.iptu = input.iptu
+
+  if (input.description?.trim()) payload.description = input.description.trim()
+  if (input.owner_id?.trim()) payload.owner_id = input.owner_id.trim()
+
+  return await pb.collection('properties').create<PropertyRecord>(payload, {
+    expand: 'captured_by,owner_id',
+  })
+}
+
+/**
+ * Atualiza um imóvel na coleção `properties`
+ */
+export async function updateProperty(
+  id: string,
+  input: UpdatePropertyInput,
+): Promise<PropertyRecord> {
+  const payload: Record<string, unknown> = {}
+
+  if (input.code !== undefined) payload.code = input.code.trim()
+  if (input.title !== undefined) payload.title = input.title.trim()
+  if (input.purpose !== undefined) payload.purpose = input.purpose
+  if (input.property_type !== undefined) payload.property_type = input.property_type
+  if (input.status !== undefined) payload.status = input.status
+
+  if (input.street !== undefined) payload.street = input.street.trim()
+  if (input.street_number !== undefined) payload.street_number = input.street_number.trim()
+  if (input.complement !== undefined) payload.complement = input.complement.trim()
+  if (input.neighborhood !== undefined) payload.neighborhood = input.neighborhood.trim()
+  if (input.city !== undefined) payload.city = input.city.trim()
+
+  if (input.bedrooms !== undefined) payload.bedrooms = input.bedrooms > 0 ? input.bedrooms : 0
+  if (input.bathrooms !== undefined) payload.bathrooms = input.bathrooms > 0 ? input.bathrooms : 0
+  if (input.parking !== undefined) payload.parking = input.parking > 0 ? input.parking : 0
+  if (input.area !== undefined) payload.area = input.area > 0 ? input.area : 0
+
+  if (input.price_on_request !== undefined) {
+    payload.price_on_request = Boolean(input.price_on_request)
+  }
+
+  if (input.sale_price !== undefined)
+    payload.sale_price = input.sale_price > 0 ? input.sale_price : 0
+  if (input.rent_price !== undefined)
+    payload.rent_price = input.rent_price > 0 ? input.rent_price : 0
+  if (input.condo_fee !== undefined) payload.condo_fee = input.condo_fee > 0 ? input.condo_fee : 0
+  if (input.iptu !== undefined) payload.iptu = input.iptu > 0 ? input.iptu : 0
+
+  if (input.description !== undefined) payload.description = input.description.trim()
+  if (input.owner_id !== undefined) payload.owner_id = input.owner_id.trim()
+  if (input.captured_by !== undefined) payload.captured_by = input.captured_by
+
+  return await pb.collection('properties').update<PropertyRecord>(id, payload, {
+    expand: 'captured_by,owner_id',
+  })
+}
+
+/**
+ * Busca clientes proprietários (kind ~ 'proprietario')
+ */
+export async function searchOwners(term: string): Promise<PropertyOwnerRecord[]> {
+  const filterParts: string[] = ['kind ~ "proprietario"']
+  if (term.trim()) {
+    const cleanTerm = term.trim().replace(/['"\\]/g, '')
+    const digits = term.replace(/\D/g, '').replace(/^0+/, '')
+    const searchConditions: string[] = [`name ~ "${cleanTerm}"`]
+    if (digits) {
+      searchConditions.push(`phone ~ "${digits}"`)
+    }
+    filterParts.push(`(${searchConditions.join(' || ')})`)
+  }
+
+  const res = await pb.collection('clients').getList<RecordModel>(1, 20, {
+    filter: filterParts.join(' && '),
+    sort: 'name',
+  })
+
+  return res.items.map((item) => ({
+    id: item.id,
+    name: item.name as string,
+    phone: (item.phone as string) || '',
+    email: (item.email as string) || '',
+    kind: (item.kind as string[]) || [],
+  }))
 }
