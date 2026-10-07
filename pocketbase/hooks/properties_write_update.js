@@ -80,7 +80,8 @@ onRecordUpdateRequest((e) => {
   rec.set('source', orig.getString('source'))
   rec.set('import_batch_id', orig.getString('import_batch_id'))
 
-  const missingItems = (r, photoCount) => {    const m = []
+  const missingItems = (r, photoCount) => {
+    const m = []
     const num = (k) => Number(r.get(k) || 0)
     if (!r.getString('code')) m.push('código')
     if (!r.getString('title')) m.push('título')
@@ -104,7 +105,8 @@ onRecordUpdateRequest((e) => {
     if (!r.getString('description')) m.push('descrição')
     if (!r.getString('owner_id')) m.push('proprietário')
     if (r.get('in_condominium') === true && !r.getString('condominium_id')) m.push('condomínio')
-    if (photoCount < 5) m.push('pelo menos 5 fotos')    return m
+    if (photoCount < 5) m.push('pelo menos 5 fotos')
+    return m
   }
 
   let autoDraft = false
@@ -154,7 +156,8 @@ onRecordUpdateRequest((e) => {
     'use_type',
     'in_condominium',
     'condominium_id',
-  ]  const changed = watched.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
+  ]
+  const changed = watched.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
   // só uma edição de verdade renova a data; o valor enviado pelo cliente nunca vale
   rec.set(
     'last_reviewed_at',

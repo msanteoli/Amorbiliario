@@ -87,7 +87,8 @@ onRecordCreateRequest((e) => {
   rec.set('source', 'manual')
   rec.set('import_batch_id', '')
 
-  rec.set('status', 'rascunho')  rec.set('last_reviewed_at', new Date().toISOString())
+  rec.set('status', 'rascunho')
+  rec.set('last_reviewed_at', new Date().toISOString())
 
   const res = e.next()
   try {
