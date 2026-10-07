@@ -375,27 +375,29 @@ export default function Agenda() {
           </p>
         </div>
 
-        {/* Botões de Ação Superiores */}
+        {/* Botões de Ação Superiores: o da aba aberta preenchido, o outro de contorno */}
         <div className="flex items-center gap-2">
-          {activeTab === 'visitas' && canCreateVisit && (
+          {canCreateVisit && (
             <Button
+              variant={activeTab === 'visitas' ? 'default' : 'outline'}
+              size="sm"
               onClick={() => setCreateVisitOpen(true)}
-              className="gap-1.5 text-xs font-semibold"
+              className="gap-1.5 text-xs font-normal rounded-full"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
               <span>Agendar visita</span>
             </Button>
           )}
 
-          {activeTab === 'tarefas' && (
-            <Button
-              onClick={() => setCreateTaskOpen(true)}
-              className="gap-1.5 text-xs font-semibold"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Nova tarefa</span>
-            </Button>
-          )}
+          <Button
+            variant={activeTab === 'tarefas' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCreateTaskOpen(true)}
+            className="gap-1.5 text-xs font-normal rounded-full"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Nova tarefa</span>
+          </Button>
         </div>
       </div>
 
@@ -405,49 +407,62 @@ export default function Agenda() {
         onValueChange={(val) => setActiveTab(val as 'visitas' | 'tarefas')}
         className="w-full"
       >
-        <TabsList className="grid w-full sm:w-64 grid-cols-2">
-          <TabsTrigger value="visitas" className="gap-2 text-xs">
-            <CalendarIcon className="h-4 w-4" />
-            <span>Visitas</span>
+        <TabsList className="inline-flex h-9 items-center justify-start rounded-full bg-secondary p-1 text-muted-foreground">
+          <TabsTrigger
+            value="visitas"
+            className="rounded-full px-4 py-1 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+          >
+            Visitas
           </TabsTrigger>
-          <TabsTrigger value="tarefas" className="gap-2 text-xs">
-            <ListTodo className="h-4 w-4" />
-            <span>Tarefas</span>
+          <TabsTrigger
+            value="tarefas"
+            className="rounded-full px-4 py-1 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
+          >
+            Tarefas
           </TabsTrigger>
         </TabsList>
 
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* ABA 1: VISITAS */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <TabsContent value="visitas" className="space-y-4 pt-4">
+        <TabsContent value="visitas" className="space-y-6 pt-4">
           {/* Barra de Ferramentas / Filtros de Visitas */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 rounded-lg bg-card border">
-            {/* Seletor de Visão: Semana, Dia, Lista */}
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant={visitView === 'semana' ? 'default' : 'outline'}
-                size="sm"
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 py-3 border-y border-border">
+            {/* Seletor de Visão: Semana, Dia, Lista como grupo de pílulas */}
+            <div className="inline-flex rounded-full border border-border p-0.5 bg-background">
+              <button
+                type="button"
                 onClick={() => setVisitView('semana')}
-                className="text-xs h-8"
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                  visitView === 'semana'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
                 Semana
-              </Button>
-              <Button
-                variant={visitView === 'dia' ? 'default' : 'outline'}
-                size="sm"
+              </button>
+              <button
+                type="button"
                 onClick={() => setVisitView('dia')}
-                className="text-xs h-8"
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                  visitView === 'dia'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
                 Dia
-              </Button>
-              <Button
-                variant={visitView === 'lista' ? 'default' : 'outline'}
-                size="sm"
+              </button>
+              <button
+                type="button"
                 onClick={() => setVisitView('lista')}
-                className="text-xs h-8"
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                  visitView === 'lista'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
                 Lista
-              </Button>
+              </button>
             </div>
 
             {/* Controles do meio: Navegação de datas (Semana / Dia) */}
@@ -456,25 +471,30 @@ export default function Agenda() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 min-h-[36px] min-w-[36px] rounded-full"
                   onClick={handlePrev}
                   title="Anterior"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" className="text-xs h-8" onClick={handleToday}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 rounded-full px-3 font-normal"
+                  onClick={handleToday}
+                >
                   Hoje
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 min-h-[36px] min-w-[36px] rounded-full"
                   onClick={handleNext}
                   title="Próxima"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <span className="text-xs font-semibold text-foreground px-2">
+                <span className="text-xs font-normal tabular text-foreground px-2">
                   {visitView === 'semana'
                     ? `${weekDays[0]?.label} a ${weekDays[6]?.label}`
                     : currentDayLabel}
@@ -494,7 +514,7 @@ export default function Agenda() {
                       setVisitsPage(1)
                     }}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 text-xs rounded-full">
                       <SelectValue placeholder="Corretor" />
                     </SelectTrigger>
                     <SelectContent>
@@ -519,7 +539,7 @@ export default function Agenda() {
                       setVisitsPage(1)
                     }}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 text-xs rounded-full">
                       <SelectValue placeholder="Situação" />
                     </SelectTrigger>
                     <SelectContent>
@@ -536,19 +556,14 @@ export default function Agenda() {
 
               {/* Opção: Mostrar canceladas (ocultar é o padrão) */}
               {visitView !== 'lista' && (
-                <div className="flex items-center space-x-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                   <Checkbox
                     id="show-cancelled"
                     checked={showCancelledVisits}
                     onCheckedChange={(checked) => setShowCancelledVisits(Boolean(checked))}
                   />
-                  <Label
-                    htmlFor="show-cancelled"
-                    className="text-xs cursor-pointer text-muted-foreground font-normal"
-                  >
-                    Mostrar canceladas
-                  </Label>
-                </div>
+                  <span>Mostrar canceladas</span>
+                </label>
               )}
             </div>
           </div>
@@ -561,102 +576,166 @@ export default function Agenda() {
           ) : (
             <>
               {/* ────────────────────────────────────────────────────────── */}
-              {/* VISÃO SEMANA: 7 colunas no desktop, empilhado no celular   */}
+              {/* VISÃO SEMANA: 7 colunas desktop, empilhado no celular       */}
               {/* ────────────────────────────────────────────────────────── */}
               {visitView === 'semana' && (
-                <div className="grid grid-cols-1 md:grid-cols-7 gap-2">
-                  {weekDays.map((day) => {
-                    const dayVisits = visitsByDateKey[day.key] || []
-                    return (
-                      <div
-                        key={day.key}
-                        className={`rounded-lg border bg-card p-2 min-h-[160px] md:min-h-[380px] flex flex-col ${
-                          day.isToday ? 'border-primary/50 bg-primary/5' : ''
-                        }`}
-                      >
-                        {/* Cabeçalho do dia */}
-                        <div className="flex items-center justify-between pb-2 mb-2 border-b">
-                          <span
-                            className={`text-xs font-semibold ${
-                              day.isToday ? 'text-primary' : 'text-foreground'
-                            }`}
-                          >
-                            {day.label}
-                          </span>
-                          {dayVisits.length > 0 && (
-                            <Badge variant="secondary" className="text-[10px] h-4 px-1">
-                              {dayVisits.length}
-                            </Badge>
-                          )}
-                        </div>
+                <>
+                  {/* Desktop: 7 colunas com divisores de 1px */}
+                  <div className="hidden md:grid md:grid-cols-7 divide-x divide-border border border-border rounded-lg overflow-hidden bg-background">
+                    {weekDays.map((day) => {
+                      const dayVisits = visitsByDateKey[day.key] || []
+                      const dayParts = day.label.split(' ')
+                      const dayName = dayParts[0] // Seg, Ter, ...
+                      const dayNum = dayParts[1] || '' // 21/04
+                      return (
+                        <div key={day.key} className="flex flex-col min-h-[420px] p-2">
+                          {/* Cabeçalho do dia: eyebrow para dia da semana e número */}
+                          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
+                            <span className="eyebrow text-muted-foreground">{dayName}</span>
+                            {day.isToday ? (
+                              <span className="w-6 h-6 rounded-full bg-foreground text-background flex items-center justify-center text-[11px] tabular font-normal">
+                                {dayNum.split('/')[0]}
+                              </span>
+                            ) : (
+                              <span className="text-xs font-normal tabular text-foreground">
+                                {dayNum}
+                              </span>
+                            )}
+                          </div>
 
-                        {/* Lista de visitas do dia */}
-                        <div className="space-y-1.5 flex-1 overflow-y-auto">
+                          {/* Visitas do dia */}
+                          <div className="space-y-1.5 flex-1 overflow-y-auto">
+                            {dayVisits.length === 0 ? (
+                              <span className="text-xs text-muted-foreground block text-center py-4">
+                                —
+                              </span>
+                            ) : (
+                              dayVisits.map((v) => {
+                                const isCancelled = v.status === 'cancelada'
+                                const propCode = v.expand?.property_id?.code || 'Imóvel'
+                                const personName =
+                                  v.expand?.lead_id?.name || v.expand?.client_id?.name || 'Cliente'
+                                return (
+                                  <button
+                                    key={v.id}
+                                    type="button"
+                                    onClick={() => handleOpenVisitDetail(v)}
+                                    className={`w-full text-left p-2 rounded-lg border border-border text-xs transition-colors hover:bg-muted/40 ${
+                                      isCancelled ? 'opacity-40' : ''
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-1 mb-1">
+                                      <span className="tabular font-normal text-foreground">
+                                        {formatTimeBahia(v.start_at)}
+                                      </span>
+                                      {getVisitStatusBadge(v.status)}
+                                    </div>
+                                    <div className="font-normal text-foreground truncate">
+                                      [{propCode}]
+                                    </div>
+                                    <div className="text-muted-foreground truncate text-[11px]">
+                                      {personName}
+                                    </div>
+                                  </button>
+                                )
+                              })
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Celular: dias empilhados, cabeçalho fixo ao rolar e visitas em linhas */}
+                  <div className="md:hidden space-y-4">
+                    {weekDays.map((day) => {
+                      const dayVisits = visitsByDateKey[day.key] || []
+                      const dayParts = day.label.split(' ')
+                      const dayName = dayParts[0]
+                      const dayNum = dayParts[1] || ''
+
+                      return (
+                        <div key={day.key} className="space-y-1">
+                          {/* Cabeçalho fixo ao rolar */}
+                          <div className="sticky top-14 z-10 bg-background/95 backdrop-blur py-2 border-b border-border flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="eyebrow text-muted-foreground">{dayName}</span>
+                              {day.isToday ? (
+                                <span className="w-5 h-5 rounded-full bg-foreground text-background flex items-center justify-center text-[10px] tabular font-normal">
+                                  {dayNum.split('/')[0]}
+                                </span>
+                              ) : (
+                                <span className="text-xs font-normal tabular text-foreground">
+                                  {dayNum}
+                                </span>
+                              )}
+                            </div>
+                            <span className="eyebrow tabular text-muted-foreground text-[11px]">
+                              {dayVisits.length} visita(s)
+                            </span>
+                          </div>
+
                           {dayVisits.length === 0 ? (
-                            <p className="text-[11px] text-muted-foreground italic text-center py-4">
-                              Sem visitas
-                            </p>
+                            <p className="text-xs text-muted-foreground py-2">Nada por aqui.</p>
                           ) : (
-                            dayVisits.map((v) => {
-                              const isCancelled = v.status === 'cancelada'
-                              const propCode = v.expand?.property_id?.code || 'Imóvel'
-                              const personName =
-                                v.expand?.lead_id?.name || v.expand?.client_id?.name || 'Cliente'
-                              return (
-                                <button
-                                  key={v.id}
-                                  type="button"
-                                  onClick={() => handleOpenVisitDetail(v)}
-                                  className={`w-full text-left p-2 rounded-lg border text-xs transition-colors ${
-                                    isCancelled
-                                      ? 'opacity-40 bg-zinc-100 dark:bg-zinc-900 border-dashed'
-                                      : 'bg-background hover:border-primary/50'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between gap-1 mb-1">
-                                    <span className="font-semibold text-primary text-[11px] flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      {formatTimeBahia(v.start_at)}
-                                    </span>
-                                    {getVisitStatusBadge(v.status)}
+                            <div className="divide-y divide-border">
+                              {dayVisits.map((v) => {
+                                const isCancelled = v.status === 'cancelada'
+                                const propCode = v.expand?.property_id?.code || 'Imóvel'
+                                const personName =
+                                  v.expand?.lead_id?.name || v.expand?.client_id?.name || 'Cliente'
+                                return (
+                                  <div
+                                    key={v.id}
+                                    onClick={() => handleOpenVisitDetail(v)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault()
+                                        handleOpenVisitDetail(v)
+                                      }
+                                    }}
+                                    className={`min-h-[56px] py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-muted/40 transition-colors ${
+                                      isCancelled ? 'opacity-40' : ''
+                                    }`}
+                                  >
+                                    <div className="shrink-0">
+                                      <span className="tabular font-normal text-sm text-foreground">
+                                        {formatTimeBahia(v.start_at)}
+                                      </span>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-normal text-foreground truncate">
+                                        [{propCode}] {personName}
+                                      </p>
+                                    </div>
+                                    <div className="shrink-0">{getVisitStatusBadge(v.status)}</div>
                                   </div>
-                                  <div className="font-medium text-foreground truncate text-[11px]">
-                                    [{propCode}]
-                                  </div>
-                                  <div className="text-muted-foreground truncate text-[11px]">
-                                    {personName}
-                                  </div>
-                                </button>
-                              )
-                            })
+                                )
+                              })}
+                            </div>
                           )}
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })}
+                  </div>
+                </>
               )}
 
               {/* ────────────────────────────────────────────────────────── */}
-              {/* VISÃO DIA: visitas do dia em ordem de horário              */}
+              {/* VISÃO DIA: visitas do dia em linhas com hora à esquerda     */}
               {/* ────────────────────────────────────────────────────────── */}
               {visitView === 'dia' && (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {(() => {
                     const dayVisits = visitsByDateKey[currentDayKey] || []
                     if (dayVisits.length === 0) {
-                      return (
-                        <div className="p-12 text-center text-muted-foreground border rounded-lg bg-card">
-                          <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                          <p className="text-sm font-medium">
-                            Nenhuma visita agendada para este dia.
-                          </p>
-                        </div>
-                      )
+                      return <p className="text-xs text-muted-foreground py-4">Nada por aqui.</p>
                     }
 
                     return (
-                      <div className="divide-y rounded-lg border bg-card">
+                      <div className="divide-y divide-border">
                         {dayVisits.map((v) => {
                           const isCancelled = v.status === 'cancelada'
                           const prop = v.expand?.property_id
@@ -671,33 +750,39 @@ export default function Agenda() {
                             <div
                               key={v.id}
                               onClick={() => handleOpenVisitDetail(v)}
-                              className={`p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 cursor-pointer hover:bg-muted/40 transition-colors ${
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  handleOpenVisitDetail(v)
+                                }
+                              }}
+                              className={`min-h-[56px] py-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-muted/40 transition-colors ${
                                 isCancelled ? 'opacity-40' : ''
                               }`}
                             >
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-sm text-primary flex items-center gap-1">
-                                    <Clock className="h-4 w-4" />
-                                    {formatTimeBahia(v.start_at)}
-                                    {v.end_at && ` - ${formatTimeBahia(v.end_at)}`}
+                              <div className="shrink-0 text-left">
+                                <span className="tabular font-normal text-base text-foreground block">
+                                  {formatTimeBahia(v.start_at)}
+                                </span>
+                                {v.end_at && (
+                                  <span className="tabular text-[11px] text-muted-foreground">
+                                    até {formatTimeBahia(v.end_at)}
                                   </span>
-                                  {getVisitStatusBadge(v.status)}
-                                </div>
-                                <div className="text-sm font-semibold text-foreground">
-                                  [{prop?.code || 'Imóvel'}] {prop?.title || ''}
-                                </div>
-                                <div className="text-xs text-muted-foreground flex items-center gap-3">
-                                  <span>
-                                    Pessoa:{' '}
-                                    <strong className="text-foreground">{personName}</strong>
-                                  </span>
-                                  <span>
-                                    Corretor:{' '}
-                                    <strong className="text-foreground">{brokerName}</strong>
-                                  </span>
-                                </div>
+                                )}
                               </div>
+
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-normal text-foreground truncate">
+                                  [{prop?.code || 'Imóvel'}] {prop?.title || ''}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                  Pessoa: {personName} • Corretor: {brokerName}
+                                </p>
+                              </div>
+
+                              <div className="shrink-0">{getVisitStatusBadge(v.status)}</div>
                             </div>
                           )
                         })}
@@ -712,17 +797,21 @@ export default function Agenda() {
               {/* ────────────────────────────────────────────────────────── */}
               {visitView === 'lista' && (
                 <div className="space-y-6">
-                  {/* Seção Separada: Pendentes de agenda */}
+                  {/* Seção no topo: Pendentes de agenda */}
                   {pendingVisits.length > 0 && (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-bold flex items-center gap-1.5 text-amber-700">
-                          <AlertTriangle className="h-4 w-4" />
-                          <span>Pendentes de agenda ({pendingVisits.length})</span>
-                        </h2>
+                      <div className="flex items-baseline justify-between border-b border-border pb-2">
+                        <div className="flex items-baseline">
+                          <h2 className="text-xl font-normal text-foreground">
+                            Pendentes de agenda
+                          </h2>
+                          <span className="eyebrow tabular text-muted-foreground ml-2 text-xs">
+                            ({pendingVisits.length})
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="divide-y divide-border">
                         {pendingVisits.map((pv) => {
                           const prop = pv.expand?.property_id
                           const personName =
@@ -735,23 +824,27 @@ export default function Agenda() {
                             <div
                               key={pv.id}
                               onClick={() => handleOpenVisitDetail(pv)}
-                              className="p-3 rounded-lg border border-amber-200 bg-amber-50/50 hover:bg-amber-100/60 cursor-pointer flex items-center justify-between text-xs transition-colors"
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  handleOpenVisitDetail(pv)
+                                }
+                              }}
+                              className="min-h-[56px] py-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-muted/40 transition-colors"
                             >
-                              <div className="space-y-0.5">
-                                <p className="font-semibold text-foreground">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-normal text-foreground truncate">
                                   [{prop?.code || 'Imóvel'}] {prop?.title || ''}
                                 </p>
-                                <p className="text-muted-foreground">
-                                  Pessoa: <strong className="text-foreground">{personName}</strong>{' '}
-                                  | Corretor: {brokerName}
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                  Pessoa: {personName} • Corretor: {brokerName}
                                 </p>
                               </div>
-                              <Badge
-                                variant="outline"
-                                className="bg-amber-100 text-amber-800 border-amber-300"
-                              >
-                                Pendente
-                              </Badge>
+                              <div className="shrink-0">
+                                <Badge variant="attention">Pendente de agenda</Badge>
+                              </div>
                             </div>
                           )
                         })}
@@ -761,17 +854,14 @@ export default function Agenda() {
 
                   {/* Lista com paginação */}
                   <div className="space-y-2">
-                    <h2 className="text-sm font-bold text-foreground">
-                      Visitas agendadas e concluídas
-                    </h2>
+                    <div className="border-b border-border pb-2">
+                      <h2 className="text-xl font-normal text-foreground">Visitas</h2>
+                    </div>
+
                     {visitsList.length === 0 ? (
-                      <div className="p-8 text-center text-muted-foreground border rounded-lg bg-card">
-                        <p className="text-xs">
-                          Nenhuma visita encontrada para os filtros selecionados.
-                        </p>
-                      </div>
+                      <p className="text-xs text-muted-foreground py-4">Nada por aqui.</p>
                     ) : (
-                      <div className="divide-y rounded-lg border bg-card">
+                      <div className="divide-y divide-border">
                         {visitsList.map((v) => {
                           const prop = v.expand?.property_id
                           const personName =
@@ -785,24 +875,32 @@ export default function Agenda() {
                             <div
                               key={v.id}
                               onClick={() => handleOpenVisitDetail(v)}
-                              className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  handleOpenVisitDetail(v)
+                                }
+                              }}
+                              className="min-h-[56px] py-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-muted/40 transition-colors"
                             >
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-primary flex items-center gap-1">
-                                    <CalendarIcon className="h-3.5 w-3.5" />
-                                    {formatDateTimeBahia(v.start_at)}
-                                  </span>
-                                  {getVisitStatusBadge(v.status)}
-                                </div>
-                                <p className="font-semibold text-foreground text-sm">
+                              <div className="shrink-0 text-left">
+                                <span className="tabular font-normal text-sm text-foreground block">
+                                  {formatDateTimeBahia(v.start_at)}
+                                </span>
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-normal text-foreground truncate">
                                   [{prop?.code || 'Imóvel'}] {prop?.title || ''}
                                 </p>
-                                <p className="text-muted-foreground">
-                                  Pessoa: <strong className="text-foreground">{personName}</strong>{' '}
-                                  | Corretor: {brokerName}
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                  Pessoa: {personName} • Corretor: {brokerName}
                                 </p>
                               </div>
+
+                              <div className="shrink-0">{getVisitStatusBadge(v.status)}</div>
                             </div>
                           )
                         })}
@@ -811,17 +909,17 @@ export default function Agenda() {
 
                     {/* Paginação da lista de visitas */}
                     {visitsTotalPages > 1 && (
-                      <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center justify-between pt-4 border-t border-border">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setVisitsPage((p) => Math.max(1, p - 1))}
                           disabled={visitsPage <= 1}
-                          className="h-8 text-xs"
+                          className="h-8 text-xs rounded-full font-normal"
                         >
                           Anterior
                         </Button>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs tabular text-muted-foreground">
                           Página {visitsPage} de {visitsTotalPages}
                         </span>
                         <Button
@@ -829,7 +927,7 @@ export default function Agenda() {
                           size="sm"
                           onClick={() => setVisitsPage((p) => Math.min(visitsTotalPages, p + 1))}
                           disabled={visitsPage >= visitsTotalPages}
-                          className="h-8 text-xs"
+                          className="h-8 text-xs rounded-full font-normal"
                         >
                           Próxima
                         </Button>
@@ -845,9 +943,9 @@ export default function Agenda() {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* ABA 2: TAREFAS */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <TabsContent value="tarefas" className="space-y-4 pt-4">
-          {/* Barra de Filtros de Tarefas */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 rounded-lg bg-card border">
+        <TabsContent value="tarefas" className="space-y-6 pt-4">
+          {/* Barra de Filtros de Tarefas em pílulas */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 py-3 border-y border-border">
             <div className="flex flex-wrap items-center gap-2">
               {/* Filtro por Situação (padrão "Abertas") */}
               <div className="w-36">
@@ -858,7 +956,7 @@ export default function Agenda() {
                     setTasksPage(1)
                   }}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-8 text-xs rounded-full">
                     <SelectValue placeholder="Situação" />
                   </SelectTrigger>
                   <SelectContent>
@@ -880,7 +978,7 @@ export default function Agenda() {
                       setTasksPage(1)
                     }}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 text-xs rounded-full">
                       <SelectValue placeholder="Responsável" />
                     </SelectTrigger>
                     <SelectContent>
@@ -896,7 +994,7 @@ export default function Agenda() {
               )}
 
               {/* Filtro: Atrasadas */}
-              <div className="flex items-center space-x-2 pl-2">
+              <label className="flex items-center gap-2 pl-2 cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                 <Checkbox
                   id="overdue-only"
                   checked={tasksOverdueOnly}
@@ -905,18 +1003,13 @@ export default function Agenda() {
                     setTasksPage(1)
                   }}
                 />
-                <Label
-                  htmlFor="overdue-only"
-                  className="text-xs cursor-pointer text-muted-foreground font-normal"
-                >
-                  Atrasadas
-                </Label>
-              </div>
+                <span>Atrasadas</span>
+              </label>
             </div>
 
             {/* Busca por título */}
             <div className="relative w-full md:w-60">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por título..."
                 value={tasksSearch}
@@ -924,192 +1017,91 @@ export default function Agenda() {
                   setTasksSearch(e.target.value)
                   setTasksPage(1)
                 }}
-                className="pl-8 h-8 text-xs"
+                className="pl-8 h-8 text-xs rounded-full"
               />
             </div>
           </div>
 
           {loadingTasks ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-              <Loader2 className="h-7 w-7 animate-spin text-primary" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <p className="text-xs">Carregando tarefas...</p>
             </div>
           ) : tasksList.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground border rounded-lg bg-card">
-              <ListTodo className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm font-medium">Nenhuma tarefa encontrada.</p>
-            </div>
+            <p className="text-xs text-muted-foreground py-4">Nada por aqui.</p>
           ) : (
             <>
-              {/* Tabela no desktop */}
-              <div className="hidden md:block rounded-lg border bg-card overflow-hidden">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-muted/50 border-b text-muted-foreground font-semibold">
-                    <tr>
-                      <th className="p-3">Título</th>
-                      <th className="p-3">Prazo</th>
-                      <th className="p-3">Responsável</th>
-                      <th className="p-3">Vínculo</th>
-                      <th className="p-3">Situação</th>
-                      <th className="p-3 text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {tasksList.map((t) => {
-                      const assigneeName =
-                        t.expand?.assigned_to?.name ||
-                        t.expand?.assigned_to?.email ||
-                        'Sem responsável'
-                      const lead = t.expand?.lead_id
-                      const client = t.expand?.client_id
-                      const property = t.expand?.property_id
-                      const overdue = isTaskOverdue(t)
-
-                      return (
-                        <tr
-                          key={t.id}
-                          className="hover:bg-muted/40 cursor-pointer transition-colors"
-                          onClick={() => handleOpenTaskDetail(t)}
-                        >
-                          <td className="p-3 font-semibold text-foreground max-w-xs truncate">
-                            {t.title}
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            <span className={overdue ? 'text-destructive font-bold' : ''}>
-                              {formatTaskDateTimeBahia(t.due_at)}
-                            </span>
-                          </td>
-                          <td className="p-3 whitespace-nowrap text-muted-foreground">
-                            {assigneeName}
-                          </td>
-                          <td className="p-3">
-                            {lead && (
-                              <Link
-                                to={`/leads/${lead.id}`}
-                                className="text-primary hover:underline inline-flex items-center gap-1"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <span>{lead.name}</span>
-                                <ExternalLink className="h-3 w-3" />
-                              </Link>
-                            )}
-                            {client && (
-                              <Link
-                                to={`/clientes/${client.id}`}
-                                className="text-primary hover:underline inline-flex items-center gap-1"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <span>{client.name}</span>
-                                <ExternalLink className="h-3 w-3" />
-                              </Link>
-                            )}
-                            {property && (
-                              <Link
-                                to={`/imoveis/${property.id}`}
-                                className="text-primary hover:underline inline-flex items-center gap-1"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <span>[{property.code}]</span>
-                                <ExternalLink className="h-3 w-3" />
-                              </Link>
-                            )}
-                            {!lead && !client && !property && '-'}
-                          </td>
-                          <td className="p-3 whitespace-nowrap">{getTaskStatusBadge(t)}</td>
-                          <td
-                            className="p-3 text-right whitespace-nowrap"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {t.status === 'aberta' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                                onClick={async () => {
-                                  try {
-                                    await completeTask(t.id)
-                                    loadTasksData()
-                                  } catch (err) {
-                                    alert(extractTaskErrorMessage(err))
-                                  }
-                                }}
-                              >
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                <span>Concluir</span>
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Cartões no celular */}
-              <div className="grid grid-cols-1 gap-2 md:hidden">
+              {/* Tarefas: lista em linhas com caixa de conclusão à esquerda (alvo de 44px), título, prazo e responsável */}
+              <div className="divide-y divide-border">
                 {tasksList.map((t) => {
                   const assigneeName =
                     t.expand?.assigned_to?.name || t.expand?.assigned_to?.email || 'Sem responsável'
-                  const lead = t.expand?.lead_id
-                  const client = t.expand?.client_id
-                  const property = t.expand?.property_id
                   const overdue = isTaskOverdue(t)
+                  const isDone = t.status === 'concluida'
 
                   return (
                     <div
                       key={t.id}
                       onClick={() => handleOpenTaskDetail(t)}
-                      className="p-3.5 rounded-lg border bg-card space-y-2 cursor-pointer text-xs"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleOpenTaskDetail(t)
+                        }
+                      }}
+                      className="min-h-[56px] py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-muted/40 transition-colors"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold text-foreground text-sm leading-snug">
+                      {/* Caixa de conclusão à esquerda com alvo mínimo de 44px */}
+                      <div
+                        className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px]"
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          if (t.status === 'aberta') {
+                            try {
+                              await completeTask(t.id)
+                              loadTasksData()
+                            } catch (err) {
+                              alert(extractTaskErrorMessage(err))
+                            }
+                          }
+                        }}
+                      >
+                        <Checkbox
+                          checked={isDone}
+                          disabled={t.status !== 'aberta'}
+                          className="h-4 w-4 rounded"
+                          aria-label={`Concluir tarefa: ${t.title}`}
+                        />
+                      </div>
+
+                      {/* Título, prazo e responsável */}
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`text-sm font-normal truncate ${
+                            isDone ? 'line-through text-muted-foreground' : 'text-foreground'
+                          }`}
+                        >
                           {t.title}
-                        </h3>
-                        {getTaskStatusBadge(t)}
-                      </div>
-
-                      <div className="space-y-0.5 text-muted-foreground">
-                        <p>
-                          Prazo:{' '}
-                          <span
-                            className={overdue ? 'text-destructive font-bold' : 'text-foreground'}
-                          >
-                            {formatTaskDateTimeBahia(t.due_at)}
-                          </span>
                         </p>
-                        <p>
-                          Responsável: <span className="text-foreground">{assigneeName}</span>
-                        </p>
-                        {(lead || client || property) && (
-                          <p>
-                            Vínculo: {lead && <strong>Lead {lead.name}</strong>}
-                            {client && <strong>Cliente {client.name}</strong>}
-                            {property && <strong>Imóvel [{property.code}]</strong>}
-                          </p>
-                        )}
-                      </div>
-
-                      {t.status === 'aberta' && (
-                        <div className="pt-2 flex justify-end" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs gap-1 border-emerald-300 text-emerald-700"
-                            onClick={async () => {
-                              try {
-                                await completeTask(t.id)
-                                loadTasksData()
-                              } catch (err) {
-                                alert(extractTaskErrorMessage(err))
-                              }
-                            }}
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Concluir</span>
-                          </Button>
+                        <div className="text-xs text-muted-foreground truncate mt-0.5">
+                          {t.due_at && (
+                            <span
+                              className={`tabular mr-2 ${
+                                overdue ? 'text-attention font-normal' : ''
+                              }`}
+                            >
+                              {overdue ? 'Atrasado: ' : 'Prazo: '}
+                              {formatTaskDateTimeBahia(t.due_at)}
+                            </span>
+                          )}
+                          <span>• Resp.: {assigneeName}</span>
                         </div>
-                      )}
+                      </div>
+
+                      {/* Situação em pílula Badge */}
+                      <div className="shrink-0">{getTaskStatusBadge(t)}</div>
                     </div>
                   )
                 })}
@@ -1117,17 +1109,17 @@ export default function Agenda() {
 
               {/* Paginação de Tarefas */}
               {tasksTotalPages > 1 && (
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center justify-between pt-4 border-t border-border">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setTasksPage((p) => Math.max(1, p - 1))}
                     disabled={tasksPage <= 1}
-                    className="h-8 text-xs"
+                    className="h-8 text-xs rounded-full font-normal"
                   >
                     Anterior
                   </Button>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs tabular text-muted-foreground">
                     Página {tasksPage} de {tasksTotalPages}
                   </span>
                   <Button
@@ -1135,7 +1127,7 @@ export default function Agenda() {
                     size="sm"
                     onClick={() => setTasksPage((p) => Math.min(tasksTotalPages, p + 1))}
                     disabled={tasksPage >= tasksTotalPages}
-                    className="h-8 text-xs"
+                    className="h-8 text-xs rounded-full font-normal"
                   >
                     Próxima
                   </Button>

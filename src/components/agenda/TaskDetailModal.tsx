@@ -53,34 +53,18 @@ import {
 
 export function getTaskStatusBadge(task: TaskRecord) {
   if (isTaskOverdue(task)) {
-    return (
-      <Badge variant="destructive" className="bg-rose-100 text-rose-800 border-rose-300">
-        Atrasada
-      </Badge>
-    )
+    return <Badge variant="attention">Atrasada</Badge>
   }
 
   switch (task.status) {
     case 'aberta':
-      return (
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
-          Aberta
-        </Badge>
-      )
+      return <Badge variant="default">Aberta</Badge>
     case 'concluida':
-      return (
-        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
-          Concluída
-        </Badge>
-      )
+      return <Badge variant="success">Concluída</Badge>
     case 'cancelada':
-      return (
-        <Badge variant="outline" className="bg-zinc-100 text-zinc-600 border-zinc-200">
-          Cancelada
-        </Badge>
-      )
+      return <Badge variant="destructive">Cancelada</Badge>
     default:
-      return <Badge variant="outline">{task.status}</Badge>
+      return <Badge variant="default">{task.status}</Badge>
   }
 }
 
@@ -236,10 +220,12 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2 pr-4">
-            <DialogTitle className="text-lg font-bold">Detalhe da Tarefa</DialogTitle>
+      <DialogContent className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 sm:rounded-lg rounded-t-2xl rounded-b-none border border-border bg-popover text-popover-foreground shadow-none fixed bottom-0 top-auto sm:top-[50%] sm:bottom-auto translate-y-0 sm:translate-y-[-50%]">
+        <DialogHeader className="pb-3 border-b border-border">
+          <div className="flex items-center justify-between gap-2 pr-8">
+            <DialogTitle className="text-lg font-normal text-foreground">
+              Detalhe da Tarefa
+            </DialogTitle>
             {getTaskStatusBadge(task)}
           </div>
           <DialogDescription className="sr-only">
@@ -248,51 +234,57 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
         </DialogHeader>
 
         {errorMessage && (
-          <Alert variant="destructive" className="my-1">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-xs">{errorMessage}</AlertDescription>
-          </Alert>
+          <div className="rounded-lg border border-destructive p-3 text-xs text-destructive flex items-center gap-2 my-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
         )}
 
         {isEditing ? (
           /* Modo Edição */
           <div className="space-y-4 py-2 text-sm">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">
+              <Label className="text-xs eyebrow text-muted-foreground">
                 Título <span className="text-destructive">*</span>
               </Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm" />
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="h-12 min-h-[48px] rounded-lg text-sm"
+              />
             </div>
 
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <Label className="text-xs font-semibold">Descrição</Label>
-                <span className="text-[10px] text-muted-foreground">{description.length}/500</span>
+                <Label className="text-xs eyebrow text-muted-foreground">Descrição</Label>
+                <span className="text-[10px] tabular text-muted-foreground">
+                  {description.length}/500
+                </span>
               </div>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value.slice(0, 500))}
                 rows={3}
-                className="text-sm"
+                className="text-sm rounded-lg"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Prazo</Label>
+              <Label className="text-xs eyebrow text-muted-foreground">Prazo</Label>
               <Input
                 type="datetime-local"
                 value={dueLocal}
                 onChange={(e) => setDueLocal(e.target.value)}
-                className="text-sm"
+                className="h-12 min-h-[48px] rounded-lg text-sm"
               />
             </div>
 
             {/* Responsável (só admin, ou o SDR que criou a tarefa) */}
             {canReassign && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Responsável</Label>
+                <Label className="text-xs eyebrow text-muted-foreground">Responsável</Label>
                 <Select value={assignedTo} onValueChange={(val) => setAssignedTo(val)}>
-                  <SelectTrigger className="w-full text-sm">
+                  <SelectTrigger className="w-full h-12 min-h-[48px] rounded-lg text-sm">
                     <SelectValue placeholder="Selecione o responsável..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -306,16 +298,22 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(false)}
                 disabled={submitting}
+                className="rounded-full font-normal"
               >
                 Cancelar
               </Button>
-              <Button size="sm" onClick={handleSaveEdit} disabled={submitting}>
+              <Button
+                size="sm"
+                onClick={handleSaveEdit}
+                disabled={submitting}
+                className="rounded-full font-normal"
+              >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 Salvar alterações
               </Button>
@@ -326,34 +324,31 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
           <div className="space-y-4 py-2 text-sm">
             {/* Título e Descrição */}
             <div className="space-y-1">
-              <h3 className="font-semibold text-base text-foreground leading-snug">{task.title}</h3>
+              <h3 className="font-normal text-base text-foreground leading-snug">{task.title}</h3>
               {task.description && (
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                <p className="text-sm text-foreground whitespace-pre-wrap p-3 rounded-lg border border-border bg-secondary/20">
                   {task.description}
                 </p>
               )}
             </div>
 
             {/* Informações detalhadas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <div className="p-2.5 rounded-md bg-muted/40 border">
-                <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">
-                  Prazo
-                </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div className="space-y-1">
+                <span className="text-xs eyebrow text-muted-foreground">Prazo</span>
                 <p
-                  className={`text-xs font-semibold ${
-                    isTaskOverdue(task) ? 'text-destructive font-bold' : 'text-foreground'
+                  className={`text-sm tabular font-normal ${
+                    isTaskOverdue(task) ? 'text-attention' : 'text-foreground'
                   }`}
                 >
+                  {isTaskOverdue(task) ? 'Atrasado: ' : ''}
                   {formatTaskDateTimeBahia(task.due_at)}
                 </p>
               </div>
 
-              <div className="p-2.5 rounded-md bg-muted/40 border">
-                <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">
-                  Responsável
-                </span>
-                <p className="text-xs font-medium text-foreground">
+              <div className="space-y-1">
+                <span className="text-xs eyebrow text-muted-foreground">Responsável</span>
+                <p className="text-sm font-normal text-foreground">
                   {assignee?.name || assignee?.email || 'Não atribuído'}
                 </p>
               </div>
@@ -361,45 +356,51 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
 
             {/* Vínculo (Lead, Cliente ou Imóvel) */}
             {(lead || client || property) && (
-              <div className="p-2.5 rounded-md bg-muted/40 border space-y-1">
-                <span className="text-[11px] font-medium text-muted-foreground block">Vínculo</span>
+              <div className="space-y-1 pt-1">
+                <span className="text-xs eyebrow text-muted-foreground">Vínculo</span>
                 {lead && (
-                  <Link
-                    to={`/leads/${lead.id}`}
-                    className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    <span>Lead: {lead.name}</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </Link>
+                  <div>
+                    <Link
+                      to={`/leads/${lead.id}`}
+                      className="text-foreground hover:underline inline-flex items-center gap-1 font-normal"
+                      onClick={() => onOpenChange(false)}
+                    >
+                      <span>Lead: {lead.name}</span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </Link>
+                  </div>
                 )}
                 {client && (
-                  <Link
-                    to={`/clientes/${client.id}`}
-                    className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    <span>Cliente: {client.name}</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </Link>
+                  <div>
+                    <Link
+                      to={`/clientes/${client.id}`}
+                      className="text-foreground hover:underline inline-flex items-center gap-1 font-normal"
+                      onClick={() => onOpenChange(false)}
+                    >
+                      <span>Cliente: {client.name}</span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </Link>
+                  </div>
                 )}
                 {property && (
-                  <Link
-                    to={`/imoveis/${property.id}`}
-                    className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    <span>
-                      Imóvel: [{property.code}] {property.title}
-                    </span>
-                    <ExternalLink className="h-3 w-3" />
-                  </Link>
+                  <div>
+                    <Link
+                      to={`/imoveis/${property.id}`}
+                      className="text-foreground hover:underline inline-flex items-center gap-1 font-normal"
+                      onClick={() => onOpenChange(false)}
+                    >
+                      <span>
+                        Imóvel: [{property.code}] {property.title}
+                      </span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </Link>
+                  </div>
                 )}
               </div>
             )}
 
             {/* Histórico: quem criou, quem encerrou */}
-            <div className="text-[11px] text-muted-foreground space-y-0.5 pt-1 border-t">
+            <div className="text-xs text-muted-foreground space-y-0.5 pt-2 border-t border-border tabular">
               {createdBy && (
                 <p>
                   Criada por: {createdBy.name || createdBy.email} em{' '}
@@ -416,8 +417,8 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
 
             {/* Confirmação de cancelamento */}
             {confirmCancelOpen ? (
-              <div className="p-3 border rounded-md bg-destructive/10 space-y-2">
-                <p className="text-xs font-semibold text-destructive">
+              <div className="p-4 border border-destructive/40 rounded-lg bg-destructive/5 space-y-2">
+                <p className="text-xs font-normal text-destructive">
                   Deseja realmente cancelar esta tarefa?
                 </p>
                 <div className="flex justify-end gap-2">
@@ -426,7 +427,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
                     size="sm"
                     onClick={() => setConfirmCancelOpen(false)}
                     disabled={submitting}
-                    className="h-7 text-xs"
+                    className="rounded-full text-xs font-normal"
                   >
                     Não
                   </Button>
@@ -435,7 +436,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
                     size="sm"
                     onClick={handleCancelConfirm}
                     disabled={submitting}
-                    className="h-7 text-xs"
+                    className="rounded-full text-xs font-normal"
                   >
                     Sim, cancelar tarefa
                   </Button>
@@ -445,15 +446,15 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
           </div>
         )}
 
-        {/* Rodapé de Ações */}
+        {/* Rodapé de Ações: pílulas com apenas uma preenchida */}
         {!isEditing && !confirmCancelOpen && (
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between items-stretch sm:items-center pt-2 border-t">
-            <div className="flex gap-1.5">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between items-stretch sm:items-center pt-3 border-t border-border">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="gap-1 text-xs"
+                className="gap-1 text-xs rounded-full font-normal"
               >
                 <Edit2 className="h-3.5 w-3.5" />
                 <span>Editar</span>
@@ -464,18 +465,19 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
               {task.status === 'aberta' && (
                 <>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="text-destructive hover:bg-destructive/10 text-xs"
+                    className="text-destructive border-destructive hover:bg-destructive/10 text-xs rounded-full font-normal"
                     onClick={() => setConfirmCancelOpen(true)}
                   >
                     Cancelar tarefa
                   </Button>
                   <Button
+                    variant="default"
                     size="sm"
                     onClick={handleComplete}
                     disabled={submitting}
-                    className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="gap-1 text-xs rounded-full font-normal"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     <span>Concluir</span>
@@ -489,7 +491,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onUpdated }: TaskDet
                   size="sm"
                   onClick={handleReopen}
                   disabled={submitting}
-                  className="gap-1 text-xs"
+                  className="gap-1 text-xs rounded-full font-normal"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   <span>Reabrir</span>

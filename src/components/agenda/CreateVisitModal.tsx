@@ -312,59 +312,65 @@ export function CreateVisitModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Agendar visita</DialogTitle>
+      <DialogContent className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 sm:rounded-lg rounded-t-2xl rounded-b-none border border-border bg-popover text-popover-foreground shadow-none fixed bottom-0 top-auto sm:top-[50%] sm:bottom-auto translate-y-0 sm:translate-y-[-50%]">
+        <DialogHeader className="pb-3 border-b border-border">
+          <DialogTitle className="text-lg font-normal text-foreground">Agendar visita</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             Sem corretor ou sem horário, a visita fica como Pendente de agenda.
           </DialogDescription>
         </DialogHeader>
 
+        {/* Aviso de erro ou conflito no topo com borda destructive */}
         {errorMessage && (
-          <Alert variant="destructive" className="my-1">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-xs">{errorMessage}</AlertDescription>
-          </Alert>
+          <div className="rounded-lg border border-destructive p-3 text-xs text-destructive flex items-start gap-2 my-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-normal">{errorMessage}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Escolha outro horário ou selecione outro corretor para esta visita.
+              </p>
+            </div>
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           {/* Para quem: Lead ou Cliente */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">
+            <Label className="text-xs eyebrow text-muted-foreground">
               Para quem <span className="text-destructive">*</span>
             </Label>
 
             {isFixed && selectedPerson ? (
-              <div className="p-2.5 rounded-md bg-muted/60 border flex items-center justify-between text-sm">
+              <div className="p-3 rounded-lg border border-border flex items-center justify-between text-sm">
                 <div>
-                  <span className="font-semibold">{selectedPerson.name}</span>
-                  <Badge variant="secondary" className="ml-2 text-xs">
+                  <span className="font-normal text-foreground">{selectedPerson.name}</span>
+                  <Badge variant="default" className="ml-2 text-xs">
                     {selectedPerson.kind === 'lead' ? 'Lead' : 'Cliente'}
                   </Badge>
                 </div>
               </div>
             ) : selectedPerson ? (
-              <div className="p-2.5 rounded-md bg-muted/60 border flex items-center justify-between text-sm">
+              <div className="p-3 rounded-lg border border-border flex items-center justify-between text-sm bg-secondary/30">
                 <div>
-                  <span className="font-semibold">{selectedPerson.name}</span>
+                  <span className="font-normal text-foreground">{selectedPerson.name}</span>
                   {selectedPerson.phone && (
-                    <span className="text-xs text-muted-foreground ml-2">
+                    <span className="text-xs text-muted-foreground tabular ml-2">
                       ({selectedPerson.phone})
                     </span>
                   )}
-                  <Badge variant="secondary" className="ml-2 text-xs">
+                  <Badge variant="default" className="ml-2 text-xs">
                     {selectedPerson.kind === 'lead' ? 'Lead' : 'Cliente'}
                   </Badge>
                 </div>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     setSelectedPerson(null)
                     setPersonQuery('')
                   }}
-                  className="h-7 text-xs"
+                  className="h-7 text-[11px] rounded-full font-normal"
                 >
                   Trocar
                 </Button>
@@ -372,20 +378,20 @@ export function CreateVisitModal({
             ) : (
               <div className="space-y-2">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Buscar lead ou cliente por nome ou telefone..."
-                    className="pl-9 text-sm"
+                    className="pl-9 h-12 min-h-[48px] rounded-lg text-sm"
                     value={personQuery}
                     onChange={(e) => setPersonQuery(e.target.value)}
                   />
                   {searchingPerson && (
-                    <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
 
                 {personResults.length > 0 && (
-                  <div className="border rounded-md divide-y max-h-40 overflow-y-auto bg-popover shadow-sm">
+                  <div className="border border-border rounded-lg divide-y divide-border max-h-40 overflow-y-auto bg-popover">
                     {personResults.map((p) => (
                       <button
                         key={`${p.kind}-${p.id}`}
@@ -394,13 +400,13 @@ export function CreateVisitModal({
                           setSelectedPerson(p)
                           setPersonResults([])
                         }}
-                        className="w-full text-left p-2 hover:bg-muted/50 flex items-center justify-between text-xs"
+                        className="w-full text-left p-2.5 hover:bg-muted/50 flex items-center justify-between text-xs"
                       >
                         <div>
-                          <p className="font-medium text-foreground">{p.name}</p>
-                          {p.phone && <p className="text-muted-foreground">{p.phone}</p>}
+                          <p className="font-normal text-foreground">{p.name}</p>
+                          {p.phone && <p className="text-muted-foreground tabular">{p.phone}</p>}
                         </div>
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="default" className="text-[10px]">
                           {p.kind === 'lead' ? 'Lead' : 'Cliente'}
                         </Badge>
                       </button>
@@ -413,14 +419,14 @@ export function CreateVisitModal({
 
           {/* Imóvel (obrigatório) */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">
+            <Label className="text-xs eyebrow text-muted-foreground">
               Imóvel <span className="text-destructive">*</span>
             </Label>
 
             {selectedProperty ? (
-              <div className="p-2.5 rounded-md bg-muted/60 border flex items-center justify-between text-sm">
+              <div className="p-3 rounded-lg border border-border flex items-center justify-between text-sm bg-secondary/30">
                 <div>
-                  <p className="font-semibold">
+                  <p className="font-normal text-foreground">
                     [{selectedProperty.code}] {selectedProperty.title}
                   </p>
                   {selectedProperty.neighborhood && (
@@ -431,13 +437,13 @@ export function CreateVisitModal({
                 </div>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     setSelectedProperty(null)
                     setPropertyQuery('')
                   }}
-                  className="h-7 text-xs"
+                  className="h-7 text-[11px] rounded-full font-normal"
                 >
                   Trocar
                 </Button>
@@ -445,20 +451,20 @@ export function CreateVisitModal({
             ) : (
               <div className="space-y-2">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Buscar imóvel por código ou título..."
-                    className="pl-9 text-sm"
+                    className="pl-9 h-12 min-h-[48px] rounded-lg text-sm"
                     value={propertyQuery}
                     onChange={(e) => setPropertyQuery(e.target.value)}
                   />
                   {searchingProperty && (
-                    <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
 
                 {propertyResults.length > 0 && (
-                  <div className="border rounded-md divide-y max-h-40 overflow-y-auto bg-popover shadow-sm">
+                  <div className="border border-border rounded-lg divide-y divide-border max-h-40 overflow-y-auto bg-popover">
                     {propertyResults.map((pr) => (
                       <button
                         key={pr.id}
@@ -467,17 +473,17 @@ export function CreateVisitModal({
                           setSelectedProperty(pr)
                           setPropertyResults([])
                         }}
-                        className="w-full text-left p-2 hover:bg-muted/50 flex items-center justify-between text-xs"
+                        className="w-full text-left p-2.5 hover:bg-muted/50 flex items-center justify-between text-xs"
                       >
                         <div>
-                          <p className="font-medium text-foreground">
+                          <p className="font-normal text-foreground">
                             [{pr.code}] {pr.title}
                           </p>
                           {pr.neighborhood && (
                             <p className="text-muted-foreground">Bairro: {pr.neighborhood}</p>
                           )}
                         </div>
-                        <Badge variant="outline" className="text-[10px] uppercase">
+                        <Badge variant="default" className="text-[10px]">
                           {pr.status}
                         </Badge>
                       </button>
@@ -490,12 +496,12 @@ export function CreateVisitModal({
 
           {/* Corretor (opcional) */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Corretor (opcional)</Label>
+            <Label className="text-xs eyebrow text-muted-foreground">Corretor (opcional)</Label>
             <Select
               value={selectedBrokerId || 'unassigned'}
               onValueChange={(val) => setSelectedBrokerId(val === 'unassigned' ? '' : val)}
             >
-              <SelectTrigger className="w-full text-sm">
+              <SelectTrigger className="w-full h-12 min-h-[48px] rounded-lg text-sm">
                 <SelectValue placeholder="Ainda sem corretor" />
               </SelectTrigger>
               <SelectContent>
@@ -510,37 +516,44 @@ export function CreateVisitModal({
           </div>
 
           {/* Data e hora de início e fim (opcionais, fuso Bahia UTC-3) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Início (opcional)</Label>
+              <Label className="text-xs eyebrow text-muted-foreground">Início (opcional)</Label>
               <Input
                 type="datetime-local"
                 value={startLocal}
                 onChange={(e) => handleStartChange(e.target.value)}
-                className="text-sm"
+                className="h-12 min-h-[48px] rounded-lg text-sm"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Fim (sugestão +1h)</Label>
+              <Label className="text-xs eyebrow text-muted-foreground">Fim (sugestão +1h)</Label>
               <Input
                 type="datetime-local"
                 value={endLocal}
                 onChange={(e) => setEndLocal(e.target.value)}
-                className="text-sm"
+                className="h-12 min-h-[48px] rounded-lg text-sm"
               />
             </div>
           </div>
 
-          <DialogFooter className="pt-3">
+          <DialogFooter className="pt-3 border-t border-border flex flex-col sm:flex-row gap-2 justify-end">
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => onOpenChange(false)}
               disabled={submitting}
+              className="rounded-full font-normal"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting || !selectedPerson || !selectedProperty}>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={submitting || !selectedPerson || !selectedProperty}
+              className="rounded-full font-normal"
+            >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Salvar visita
             </Button>

@@ -98,84 +98,90 @@ export default function Login() {
       </div>
 
       <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-normal text-2xl">
-            I
-          </div>
-          <h1 className="text-2xl font-normal tracking-tight text-foreground">Imobdigital</h1>
-          <p className="text-sm text-muted-foreground mt-1">Sistema de gestão para imobiliárias</p>
+        <div className="mb-8 text-center">
+          <h1 className="display-sm text-foreground">Imobdigital</h1>
+          <p className="text-xs eyebrow text-muted-foreground mt-2">Sistema de gestão</p>
         </div>
 
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-xl">Acessar conta</CardTitle>
-            <CardDescription>Informe seu e-mail e senha para entrar no sistema.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {errorMessage && (
-                <Alert variant="destructive" className="py-2.5">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-sm font-medium">
-                    {errorMessage}
-                  </AlertDescription>
-                </Alert>
+        <div className="rounded-lg border border-border bg-card p-6">
+          <div className="space-y-1 mb-6">
+            <h2 className="text-lg font-normal text-foreground">Acessar conta</h2>
+            <p className="text-xs text-muted-foreground">
+              Informe seu e-mail e senha para entrar no sistema.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {errorMessage && (
+              <div className="rounded-md border border-destructive px-3 py-2 text-xs text-destructive flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs eyebrow text-muted-foreground">
+                E-mail
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isSubmitting}
+                className="h-12 min-h-[48px] rounded-lg"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-xs eyebrow text-muted-foreground">
+                  Senha
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotEmail(email)
+                    setForgotSuccessMessage(null)
+                    setForgotModalOpen(true)
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmitting}
+                className="h-12 min-h-[48px] rounded-lg"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full min-h-[48px] h-12 rounded-full font-normal"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                'Entrar'
               )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Senha</Label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotEmail(email)
-                      setForgotSuccessMessage(null)
-                      setForgotModalOpen(true)
-                    }}
-                    className="text-xs text-primary hover:underline font-medium"
-                  >
-                    Esqueci minha senha
-                  </button>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  'Entrar'
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+            </Button>
+          </form>
+        </div>
       </div>
 
       {/* Modal Esqueci minha senha */}

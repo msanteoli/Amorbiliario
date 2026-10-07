@@ -53,43 +53,19 @@ import {
 export function getVisitStatusBadge(status: VisitStatus) {
   switch (status) {
     case 'pendente_agenda':
-      return (
-        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
-          Pendente de agenda
-        </Badge>
-      )
+      return <Badge variant="attention">Pendente de agenda</Badge>
     case 'agendada':
-      return (
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
-          Agendada
-        </Badge>
-      )
+      return <Badge variant="default">Agendada</Badge>
     case 'confirmada':
-      return (
-        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
-          Confirmada
-        </Badge>
-      )
+      return <Badge variant="success">Confirmada</Badge>
     case 'realizada':
-      return (
-        <Badge variant="outline" className="bg-teal-50 text-teal-800 border-teal-300">
-          Realizada
-        </Badge>
-      )
+      return <Badge variant="default">Realizada</Badge>
     case 'cancelada':
-      return (
-        <Badge variant="outline" className="bg-zinc-100 text-zinc-600 border-zinc-200">
-          Cancelada
-        </Badge>
-      )
+      return <Badge variant="destructive">Cancelada</Badge>
     case 'nao_compareceu':
-      return (
-        <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">
-          Não compareceu
-        </Badge>
-      )
+      return <Badge variant="destructive">Não compareceu</Badge>
     default:
-      return <Badge variant="outline">{status}</Badge>
+      return <Badge variant="default">{status}</Badge>
   }
 }
 
@@ -301,12 +277,21 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
     }
   }
 
+  // Determina qual é a ação principal sugerida conforme a situação da visita
+  // - Agendada: ação mais provável é Confirmar (preenchida)
+  // - Confirmada: ação mais provável é Realizada (preenchida)
+  // - Pendente: ação mais provável é Agendar (preenchida)
+  const isAgendada = visit.status === 'agendada'
+  const isConfirmada = visit.status === 'confirmada'
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2 pr-4">
-            <DialogTitle className="text-lg font-bold">Detalhe da Visita</DialogTitle>
+      <DialogContent className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 sm:rounded-lg rounded-t-2xl rounded-b-none border border-border bg-popover text-popover-foreground shadow-none fixed bottom-0 top-auto sm:top-[50%] sm:bottom-auto translate-y-0 sm:translate-y-[-50%]">
+        <DialogHeader className="pb-3 border-b border-border">
+          <div className="flex items-center justify-between gap-2 pr-8">
+            <DialogTitle className="text-lg font-normal text-foreground">
+              Detalhe da Visita
+            </DialogTitle>
             {getVisitStatusBadge(visit.status)}
           </div>
           <DialogDescription className="sr-only">
@@ -314,139 +299,137 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
           </DialogDescription>
         </DialogHeader>
 
-        {errorMessage && (
-          <Alert variant="destructive" className="my-2">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
+        {/* Aviso de conflito de agenda no topo da janela: borda destructive, texto simples dizendo o que fazer */}
+        {conflictMessage && (
+          <div className="rounded-lg border border-destructive p-3 text-xs text-destructive flex items-start gap-2 mt-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-normal text-destructive">{conflictMessage}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Escolha outro horário ou selecione outro corretor para esta visita.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {errorMessage && !conflictMessage && (
+          <div className="rounded-lg border border-destructive p-3 text-xs text-destructive flex items-center gap-2 mt-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
         )}
 
         {/* Informações da visita */}
-        <div className="space-y-4 py-2 text-sm">
+        <div className="space-y-4 py-3 text-sm">
           {/* Imóvel */}
-          <div className="flex items-start gap-3 p-3 rounded-md bg-muted/40 border">
-            <Building2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <span className="text-xs font-medium text-muted-foreground">Imóvel</span>
-              {property ? (
-                <div className="font-semibold text-foreground">
-                  <Link
-                    to={`/imoveis/${property.id}`}
-                    className="hover:underline text-primary inline-flex items-center gap-1"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    <span>
-                      [{property.code}] {property.title}
-                    </span>
-                    <ExternalLink className="h-3.5 w-3.5 inline" />
-                  </Link>
-                  {property.neighborhood && (
-                    <p className="text-xs text-muted-foreground font-normal">
-                      Bairro: {property.neighborhood}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-muted-foreground">Imóvel não identificado</p>
-              )}
-            </div>
+          <div className="space-y-1">
+            <span className="text-xs eyebrow text-muted-foreground">Imóvel</span>
+            {property ? (
+              <div>
+                <Link
+                  to={`/imoveis/${property.id}`}
+                  className="text-foreground hover:underline inline-flex items-center gap-1 font-normal"
+                  onClick={() => onOpenChange(false)}
+                >
+                  <span>
+                    [{property.code}] {property.title}
+                  </span>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                </Link>
+                {property.neighborhood && (
+                  <p className="text-xs text-muted-foreground">Bairro: {property.neighborhood}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Imóvel não identificado</p>
+            )}
           </div>
 
           {/* Lead ou Cliente */}
-          <div className="flex items-start gap-3 p-3 rounded-md bg-muted/40 border">
-            <User className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <span className="text-xs font-medium text-muted-foreground">
-                {lead ? 'Lead' : 'Cliente'}
-              </span>
-              {lead ? (
-                <div>
-                  <Link
-                    to={`/leads/${lead.id}`}
-                    className="font-semibold hover:underline text-primary inline-flex items-center gap-1"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    <span>{lead.name}</span>
-                    <ExternalLink className="h-3.5 w-3.5 inline" />
-                  </Link>
-                  {lead.phone && <p className="text-xs text-muted-foreground">{lead.phone}</p>}
-                </div>
-              ) : client ? (
-                <div>
-                  <Link
-                    to={`/clientes/${client.id}`}
-                    className="font-semibold hover:underline text-primary inline-flex items-center gap-1"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    <span>{client.name}</span>
-                    <ExternalLink className="h-3.5 w-3.5 inline" />
-                  </Link>
-                  {client.phone && <p className="text-xs text-muted-foreground">{client.phone}</p>}
-                </div>
-              ) : (
-                <p className="text-muted-foreground">Não vinculado</p>
-              )}
-            </div>
+          <div className="space-y-1">
+            <span className="text-xs eyebrow text-muted-foreground">
+              {lead ? 'Lead' : 'Cliente'}
+            </span>
+            {lead ? (
+              <div>
+                <Link
+                  to={`/leads/${lead.id}`}
+                  className="text-foreground hover:underline inline-flex items-center gap-1 font-normal"
+                  onClick={() => onOpenChange(false)}
+                >
+                  <span>{lead.name}</span>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                </Link>
+                {lead.phone && (
+                  <p className="text-xs text-muted-foreground tabular">{lead.phone}</p>
+                )}
+              </div>
+            ) : client ? (
+              <div>
+                <Link
+                  to={`/clientes/${client.id}`}
+                  className="text-foreground hover:underline inline-flex items-center gap-1 font-normal"
+                  onClick={() => onOpenChange(false)}
+                >
+                  <span>{client.name}</span>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                </Link>
+                {client.phone && (
+                  <p className="text-xs text-muted-foreground tabular">{client.phone}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Não vinculado</p>
+            )}
           </div>
 
-          {/* Corretor */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-3 rounded-md bg-muted/40 border">
-              <span className="text-xs font-medium text-muted-foreground block mb-1">
-                Corretor responsável
-              </span>
-              <p className="font-medium text-foreground">
+          {/* Corretor e Horário */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            <div className="space-y-1">
+              <span className="text-xs eyebrow text-muted-foreground">Corretor</span>
+              <p className="text-sm font-normal text-foreground">
                 {broker?.name || broker?.email || 'Ainda sem corretor'}
               </p>
             </div>
 
-            {/* Início e Fim */}
-            <div className="p-3 rounded-md bg-muted/40 border">
-              <span className="text-xs font-medium text-muted-foreground block mb-1">
-                Horário da visita
-              </span>
+            <div className="space-y-1">
+              <span className="text-xs eyebrow text-muted-foreground">Horário</span>
               {visit.start_at ? (
                 <div>
-                  <p className="font-semibold text-foreground">
+                  <p className="text-sm font-normal tabular text-foreground">
                     {formatDateTimeBahia(visit.start_at)}
                   </p>
                   {visit.end_at && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground tabular">
                       Até {formatDateTimeBahia(visit.end_at)}
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-amber-600 font-medium">Horário pendente</p>
+                <p className="text-xs text-attention">Horário pendente</p>
               )}
             </div>
           </div>
 
           {/* Resultado (se houver) */}
           {visit.result_text && (
-            <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-              <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 block mb-1">
-                Resultado da visita:
-              </span>
-              <p className="text-sm text-emerald-900 dark:text-emerald-100 whitespace-pre-wrap">
-                {visit.result_text}
-              </p>
+            <div className="space-y-1 pt-2 border-t border-border">
+              <span className="text-xs eyebrow text-muted-foreground">Resultado da visita</span>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{visit.result_text}</p>
             </div>
           )}
 
           {/* Cancelamento (se houver) */}
           {visit.status === 'cancelada' && (
-            <div className="p-3 rounded-md bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 space-y-1">
-              <span className="text-xs font-semibold text-rose-800 dark:text-rose-300 block">
-                Visita cancelada
-              </span>
+            <div className="space-y-1 pt-2 border-t border-border">
+              <span className="text-xs eyebrow text-destructive">Visita cancelada</span>
               {visit.cancel_reason && (
-                <p className="text-sm text-rose-900 dark:text-rose-100">
-                  <span className="font-medium">Motivo:</span> {visit.cancel_reason}
+                <p className="text-sm text-foreground">
+                  <span className="text-muted-foreground">Motivo:</span> {visit.cancel_reason}
                 </p>
               )}
               {cancelledBy && (
-                <p className="text-xs text-rose-700 dark:text-rose-300">
+                <p className="text-xs text-muted-foreground tabular">
                   Cancelada por: {cancelledBy.name || cancelledBy.email} em{' '}
                   {formatDateTimeBahia(visit.cancelled_at)}
                 </p>
@@ -456,8 +439,8 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
 
           {/* Formulário inline para Ação: Realizada */}
           {activeAction === 'realizada' && (
-            <div className="p-4 border rounded-md bg-background space-y-3 shadow-sm">
-              <Label className="text-sm font-semibold">
+            <div className="p-4 border border-border rounded-lg space-y-3 bg-secondary/30">
+              <Label className="text-xs eyebrow text-foreground">
                 Resultado da visita <span className="text-destructive">*</span>
               </Label>
               <Textarea
@@ -465,6 +448,7 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
                 value={resultText}
                 onChange={(e) => setResultText(e.target.value)}
                 rows={3}
+                className="text-sm"
               />
               <div className="flex justify-end gap-2">
                 <Button
@@ -472,6 +456,7 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
                   size="sm"
                   onClick={() => setActiveAction(null)}
                   disabled={submitting}
+                  className="rounded-full font-normal"
                 >
                   Cancelar
                 </Button>
@@ -479,6 +464,7 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
                   size="sm"
                   onClick={handleRealizadaSubmit}
                   disabled={submitting || resultText.trim().length < 3}
+                  className="rounded-full font-normal"
                 >
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                   Confirmar realização
@@ -489,8 +475,8 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
 
           {/* Formulário inline para Ação: Cancelar */}
           {activeAction === 'cancelar' && (
-            <div className="p-4 border rounded-md bg-destructive/5 space-y-3">
-              <Label className="text-sm font-semibold text-destructive">
+            <div className="p-4 border border-destructive/40 rounded-lg space-y-3 bg-destructive/5">
+              <Label className="text-xs eyebrow text-destructive">
                 Motivo do cancelamento <span className="text-destructive">*</span>
               </Label>
               <Textarea
@@ -498,6 +484,7 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 rows={3}
+                className="text-sm"
               />
               <div className="flex justify-end gap-2">
                 <Button
@@ -505,6 +492,7 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
                   size="sm"
                   onClick={() => setActiveAction(null)}
                   disabled={submitting}
+                  className="rounded-full font-normal"
                 >
                   Voltar
                 </Button>
@@ -513,6 +501,7 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
                   size="sm"
                   onClick={handleCancelSubmit}
                   disabled={submitting || cancelReason.trim().length < 3}
+                  className="rounded-full font-normal"
                 >
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                   Confirmar cancelamento
@@ -523,27 +512,18 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
 
           {/* Formulário inline para Ação: Remarcar / Agendar */}
           {activeAction === 'remarcar' && (
-            <div className="p-4 border rounded-md bg-muted/30 space-y-3">
-              <div className="font-semibold text-sm">
+            <div className="p-4 border border-border rounded-lg space-y-3 bg-secondary/30">
+              <div className="text-sm font-normal text-foreground">
                 {isPending ? 'Agendar visita' : 'Remarcar visita'}
               </div>
 
-              {conflictMessage && (
-                <Alert variant="destructive" className="py-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-xs font-medium">
-                    {conflictMessage}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-1">
-                <Label className="text-xs">Corretor</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs eyebrow text-muted-foreground">Corretor</Label>
                 <Select
                   value={rescheduleBrokerId || 'unassigned'}
                   onValueChange={(val) => setRescheduleBrokerId(val === 'unassigned' ? '' : val)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full h-12 min-h-[48px] rounded-lg">
                     <SelectValue placeholder="Selecione o corretor..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -557,21 +537,25 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
                 </Select>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Início</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs eyebrow text-muted-foreground">Início</Label>
                   <Input
                     type="datetime-local"
                     value={rescheduleStart}
                     onChange={(e) => handleStartChange(e.target.value)}
+                    className="h-12 min-h-[48px] rounded-lg"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Fim (sugestão +1h)</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs eyebrow text-muted-foreground">
+                    Fim (sugestão +1h)
+                  </Label>
                   <Input
                     type="datetime-local"
                     value={rescheduleEnd}
                     onChange={(e) => setRescheduleEnd(e.target.value)}
+                    className="h-12 min-h-[48px] rounded-lg"
                   />
                 </div>
               </div>
@@ -582,10 +566,16 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
                   size="sm"
                   onClick={() => setActiveAction(null)}
                   disabled={submitting}
+                  className="rounded-full font-normal"
                 >
                   Voltar
                 </Button>
-                <Button size="sm" onClick={handleRescheduleSubmit} disabled={submitting}>
+                <Button
+                  size="sm"
+                  onClick={handleRescheduleSubmit}
+                  disabled={submitting}
+                  className="rounded-full font-normal"
+                >
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                   Salvar
                 </Button>
@@ -595,15 +585,15 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
         </div>
 
         {/* Botões de Ação na barra inferior se nenhuma ação inline estiver aberta */}
+        {/* Pílulas com uma só ação principal preenchida por tela; o resto de contorno */}
         {!activeAction && (
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between items-stretch sm:items-center pt-2 border-t">
-            <div className="flex flex-wrap gap-1.5">
-              {/* Cancelar */}
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between items-stretch sm:items-center pt-3 border-t border-border">
+            <div className="flex flex-wrap gap-2">
               {canCancel && (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="text-destructive hover:bg-destructive/10"
+                  className="rounded-full text-xs font-normal border-destructive text-destructive hover:bg-destructive/10"
                   onClick={() => setActiveAction('cancelar')}
                 >
                   Cancelar visita
@@ -612,57 +602,49 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
             </div>
 
             <div className="flex flex-wrap gap-2 justify-end">
-              {/* Remarcar / Agendar */}
               {canReschedule && (
                 <Button
-                  variant="outline"
+                  variant={isPending ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setActiveAction('remarcar')}
-                  className="gap-1.5"
+                  className="rounded-full text-xs font-normal"
                 >
-                  <CalendarDays className="h-3.5 w-3.5" />
                   <span>{isPending ? 'Agendar' : 'Remarcar'}</span>
                 </Button>
               )}
 
-              {/* Não compareceu */}
               {canMarkNaoCompareceu && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleNaoCompareceu}
                   disabled={submitting}
-                  className="gap-1.5"
+                  className="rounded-full text-xs font-normal"
                 >
-                  <UserX className="h-3.5 w-3.5" />
-                  <span>Cliente não compareceu</span>
+                  <span>Não compareceu</span>
                 </Button>
               )}
 
-              {/* Confirmar */}
               {canConfirm && (
                 <Button
-                  variant="default"
+                  variant={isAgendada ? 'default' : 'outline'}
                   size="sm"
                   onClick={handleConfirm}
                   disabled={submitting}
-                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="rounded-full text-xs font-normal"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
                   <span>Confirmar</span>
                 </Button>
               )}
 
-              {/* Marcar como realizada */}
               {canMarkRealizada && (
                 <Button
-                  variant="default"
+                  variant={isConfirmada ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setActiveAction('realizada')}
-                  className="gap-1.5"
+                  className="rounded-full text-xs font-normal"
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>Marcar como realizada</span>
+                  <span>Realizada</span>
                 </Button>
               )}
             </div>

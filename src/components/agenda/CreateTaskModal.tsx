@@ -144,9 +144,9 @@ export function CreateTaskModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold">Nova tarefa</DialogTitle>
+      <DialogContent className="w-full max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6 sm:rounded-lg rounded-t-2xl rounded-b-none border border-border bg-popover text-popover-foreground shadow-none fixed bottom-0 top-auto sm:top-[50%] sm:bottom-auto translate-y-0 sm:translate-y-[-50%]">
+        <DialogHeader className="pb-3 border-b border-border">
+          <DialogTitle className="text-lg font-normal text-foreground">Nova tarefa</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             {fixedBinding?.lead && `Vinculada ao lead: ${fixedBinding.lead.name}`}
             {fixedBinding?.client && `Vinculada ao cliente: ${fixedBinding.client.name}`}
@@ -157,23 +157,23 @@ export function CreateTaskModal({
         </DialogHeader>
 
         {errorMessage && (
-          <Alert variant="destructive" className="my-1">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-xs">{errorMessage}</AlertDescription>
-          </Alert>
+          <div className="rounded-lg border border-destructive p-3 text-xs text-destructive flex items-center gap-2 my-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2 text-sm">
           {/* Título */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">
+            <Label className="text-xs eyebrow text-muted-foreground">
               Título <span className="text-destructive">*</span>
             </Label>
             <Input
               placeholder="Ex.: Ligar para o cliente para confirmar visita..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-sm"
+              className="h-12 min-h-[48px] rounded-lg text-sm"
               required
             />
           </div>
@@ -181,41 +181,45 @@ export function CreateTaskModal({
           {/* Descrição curta */}
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
-              <Label className="text-xs font-semibold">Descrição</Label>
-              <span className="text-[10px] text-muted-foreground">{description.length}/500</span>
+              <Label className="text-xs eyebrow text-muted-foreground">Descrição</Label>
+              <span className="text-[10px] tabular text-muted-foreground">
+                {description.length}/500
+              </span>
             </div>
             <Textarea
               placeholder="Detalhes ou observações da tarefa..."
               value={description}
               onChange={(e) => setDescription(e.target.value.slice(0, 500))}
               rows={3}
-              className="text-sm"
+              className="text-sm rounded-lg"
             />
           </div>
 
           {/* Prazo */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Prazo (data e hora, opcional)</Label>
+            <Label className="text-xs eyebrow text-muted-foreground">
+              Prazo (data e hora, opcional)
+            </Label>
             <Input
               type="datetime-local"
               value={dueLocal}
               onChange={(e) => setDueLocal(e.target.value)}
-              className="text-sm"
+              className="h-12 min-h-[48px] rounded-lg text-sm"
             />
           </div>
 
           {/* Responsável */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Responsável</Label>
+            <Label className="text-xs eyebrow text-muted-foreground">Responsável</Label>
             {isCorretor ? (
-              <Input
-                value={user?.name || user?.email || 'Você'}
-                disabled
-                className="text-sm bg-muted/50 cursor-not-allowed"
-              />
+              <div className="p-3 rounded-lg border border-border text-xs">
+                <span className="font-normal text-foreground">
+                  {user?.name || user?.email || 'Você'}
+                </span>
+              </div>
             ) : (
               <Select value={assignedTo || user?.id} onValueChange={(val) => setAssignedTo(val)}>
-                <SelectTrigger className="w-full text-sm">
+                <SelectTrigger className="w-full h-12 min-h-[48px] rounded-lg text-sm">
                   <SelectValue placeholder="Selecione o responsável..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -229,16 +233,21 @@ export function CreateTaskModal({
             )}
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-3 border-t border-border flex flex-col sm:flex-row gap-2 justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={submitting}
+              className="rounded-full font-normal"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting || title.trim().length < 2}>
+            <Button
+              type="submit"
+              disabled={submitting || title.trim().length < 2}
+              className="rounded-full font-normal"
+            >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Salvar tarefa
             </Button>
