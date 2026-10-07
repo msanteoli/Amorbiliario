@@ -8,7 +8,11 @@ onRecordsListRequest(
     if (e.hasSuperuserAuth()) return e.next()
     if (!e.auth) throw new UnauthorizedError('Autenticação necessária.')
 
-    const allowedByCollection = { audit_log: ['admin'], client_private: ['admin', 'corretor'] }
+    const allowedByCollection = {
+      audit_log: ['admin'],
+      client_private: ['admin', 'corretor'],
+      import_batches: ['admin'],
+    }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
     const allowed = allowedByCollection[collectionName] || defaultAllowed
@@ -49,4 +53,7 @@ onRecordsListRequest(
   'visits',
   'tasks',
   'property_visit_slots',
+  'condominiums',
+  'condominium_photos',
+  'import_batches',
 )
