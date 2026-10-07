@@ -36,7 +36,10 @@ routerAdd(
     }
     const text = (v) => String(v === undefined || v === null ? '' : v).trim()
     const money = (v) => {
-      const n = Number(typeof v === 'string' ? v.replace(/\./g, '').replace(',', '.') : v)
+      let t = v
+      if (typeof t === 'string')
+        t = t.indexOf(',') >= 0 ? t.replace(/\./g, '').replace(',', '.') : t
+      const n = Number(t)
       return isNaN(n) || n <= 0 ? 0 : n
     }
     const intOrZero = (v) => {
@@ -72,14 +75,32 @@ routerAdd(
       temporada: 'temporada',
     }
 
-    // endereço padrão: "Rua X, nº 271" ou "Av Y, 100"; sem número => S/N
+    // endereço padrão: "Rua X, nº 271", "Av Y, 100", "Rua Z 10" ou "Rua W, 271, Apto 3"; sem número => S/N.
+    // O que vier depois do número volta como "extra" (vai para o complemento).
     const parseAddress = (full) => {
       const s = text(full)
-      let m = /^(.*?),?\s*n[º°o]\.?\s*([^\s,]+)\s*$/i.exec(s)
-      if (!m) m = /^(.*?),\s*(\d+[A-Za-z]?)\s*$/.exec(s)
-      if (m && m[1].trim()) return { street: m[1].trim(), number: m[2].trim(), sn: false }
+      const parts = s
+        .split(',')
+        .map((x) => x.trim())
+        .filter((x) => x)
+      for (let i = 1; i < parts.length; i++) {
+        const num = /^(?:n(?:º|°|o\.?)\s*)?(\d+[A-Za-z]?)$/i.exec(parts[i])
+        const sn = /^(?:n(?:º|°)\s*)?s\/?n$/i.exec(parts[i])
+        if (num || sn) {
+          return {
+            street: parts.slice(0, i).join(', '),
+            number: num ? num[1] : 'S/N',
+            sn: !num,
+            extra: parts.slice(i + 1).join(', '),
+          }
+        }
+      }
+      // sem vírgula: número no fim, só quando a rua tem pelo menos duas palavras ("Rua 15" fica S/N)
+      const tail = /^(\S+\s+\S.*?)\s+(?:n(?:º|°)\s*)?(\d+[A-Za-z]?)$/i.exec(s)
+      if (tail && parts.length === 1)
+        return { street: tail[1].trim(), number: tail[2], sn: false, extra: '' }
       const noNumber = s.replace(/,?\s*s\/?n\s*$/i, '').trim()
-      return { street: noNumber, number: 'S/N', sn: true }
+      return { street: noNumber, number: 'S/N', sn: true, extra: '' }
     }
 
     const users = $app.findRecordsByFilter(
@@ -132,6 +153,7 @@ routerAdd(
         block = parts.slice(1).join(' / ').trim()
       }
       let complement = text(r['Compl.'])
+      if (addr.extra) complement = complement ? complement + ' - ' + addr.extra : addr.extra
       if (block) complement = complement ? complement + ' - ' + block : block
 
       const rawType = key(r['Tipo'])
@@ -228,26 +250,27 @@ routerAdd(
         items.push(out)
         return
       }
+      const compact = (x) => key(x).replace(/ /g, '')
       const addrKey = [
         key(prop.street),
-        key(prop.street_number),
+        compact(prop.street_number),
         key(prop.complement),
         key(prop.neighborhood),
       ].join('|')
       const sameAddr = $app
         .findRecordsByFilter(
           'properties',
-          'organization_id = {:o} && neighborhood = {:b} && street_number = {:n}',
+          'organization_id = {:o} && street_number ~ {:n}',
           '',
-          200,
+          1000,
           0,
-          { o: orgId, b: prop.neighborhood, n: prop.street_number },
+          { o: orgId, n: prop.street_number === 'S/N' ? 'S' : prop.street_number },
         )
         .filter(
           (p) =>
             [
               key(p.getString('street')),
-              key(p.getString('street_number')),
+              compact(p.getString('street_number')),
               key(p.getString('complement')),
               key(p.getString('neighborhood')),
             ].join('|') === addrKey,
