@@ -27,7 +27,8 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
       .slice(0, max)
 
   // campo isca: robôs preenchem; fingimos sucesso e não gravamos nada
-  if (clean(body.website, 200) !== '') return e.json(200, { ok: true, whatsapp_url: null })
+  if (clean(body.website, 200) !== '')
+    return e.json(200, { ok: true, whatsapp_url: null, visit: 'none' })
 
   const slug = clean(body.org, 60)
   const orgs = slug
@@ -73,16 +74,29 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
     if (prows.length) property = prows[0]
   }
 
-  // link do WhatsApp (o número vem da organização)
+  // horário de visita pedido (início exato de um horário oferecido pelo site)
+  const visitStartRaw = clean(body.visit_start, 40)
+
+  // link do WhatsApp (o número vem da organização); leva o horário quando a visita foi pedida
   const waNumber = String(org.getString('whatsapp_number') || '').replace(/\D/g, '')
-  let waUrl = null
-  if (waNumber) {
-    const msg = property
-      ? 'Olá! Vi o imóvel ' +
+  const makeWa = (visitInfo) => {
+    if (!waNumber) return null
+    let msg = 'Olá! Fiz uma busca no site e gostaria de ajuda.'
+    if (property) {
+      msg =
+        'Olá! Vi o imóvel ' +
         property.getString('code') +
         ' no site e gostaria de mais informações.'
-      : 'Olá! Fiz uma busca no site e gostaria de ajuda.'
-    waUrl = 'https://wa.me/' + waNumber + '?text=' + encodeURIComponent(msg)
+      if (visitInfo && visitInfo.result === 'requested') {
+        msg =
+          'Olá! Pedi uma visita ao imóvel ' +
+          property.getString('code') +
+          ' para ' +
+          visitInfo.label +
+          '.'
+      }
+    }
+    return 'https://wa.me/' + waNumber + '?text=' + encodeURIComponent(msg)
   }
 
   // o mesmo envio repetido (clique duplo, reenvio) não cria nada de novo
@@ -94,7 +108,7 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
     0,
     { o: orgId, k: intentKey },
   )
-  if (replay.length) return e.json(200, { ok: true, whatsapp_url: waUrl })
+  if (replay.length) return e.json(200, { ok: true, whatsapp_url: makeWa(null), visit: 'none' })
 
   // histórico da busca desta visita (tudo é texto não confiável: limpo e cortado)
   const search = body.search && typeof body.search === 'object' ? body.search : {}
@@ -168,6 +182,132 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
     }
   }
 
+  // pedido de visita: valida o horário, aplica os limites do telefone e segura o horário com a
+  // chave única; devolve { result, label }. O lead já existe quando esta função roda.
+  const requestVisit = (leadRec) => {
+    const none = { result: 'none', label: '' }
+    if (!visitStartRaw || !property) return none
+    const startMs = new Date(visitStartRaw).getTime()
+    if (isNaN(startMs) || !/(Z|[+-][0-9]{2}:?[0-9]{2})$/.test(visitStartRaw)) {
+      return { result: 'invalid', label: '' }
+    }
+
+    // o horário precisa ser exatamente um dos oferecidos pela disponibilidade do imóvel
+    const OFFSET = 3 * 3600000
+    const nowMs = Date.now()
+    const toMin = (s) => {
+      const m = /^([01][0-9]|2[0-3]):([0-5][0-9])$/.exec(String(s || ''))
+      return m ? Number(m[1]) * 60 + Number(m[2]) : -1
+    }
+    const wins = $app.findRecordsByFilter(
+      'property_visit_slots',
+      'property_id = {:p} && is_active = true',
+      '',
+      200,
+      0,
+      { p: property.id },
+    )
+    const local = new Date(nowMs - OFFSET)
+    let endMs = 0
+    for (let off = 0; off <= 15 && !endMs; off++) {
+      const dayStart = Date.UTC(
+        local.getUTCFullYear(),
+        local.getUTCMonth(),
+        local.getUTCDate() + off,
+      )
+      const wd = new Date(dayStart).getUTCDay()
+      wins.forEach((w) => {
+        if (Number(w.get('weekday') || 0) !== wd) return
+        const st = toMin(w.getString('start_time'))
+        const en = toMin(w.getString('end_time'))
+        const du = Number(w.get('duration_minutes') || 0)
+        if (st < 0 || en < 0 || du < 15) return
+        for (let t = st; t + du <= en; t += du) {
+          const s = dayStart + t * 60000 + OFFSET
+          if (s === startMs && s >= nowMs + 3 * 3600000 && s <= nowMs + 14 * 86400000)
+            endMs = s + du * 60000
+        }
+      })
+    }
+    if (!endMs) return { result: 'invalid', label: '' }
+
+    // limites do telefone: um pedido pendente por imóvel e no máximo 3 no total
+    const pend = $app.findRecordsByFilter(
+      'visits',
+      "organization_id = {:o} && status = 'pendente_agenda' && lead_id.phone = {:ph}",
+      '',
+      20,
+      0,
+      { o: orgId, ph: phone },
+    )
+    if (pend.length >= 3) return { result: 'limit', label: '' }
+    if (pend.some((v) => v.getString('property_id') === property.id))
+      return { result: 'limit', label: '' }
+
+    // horário já segurado: só se solta o de um pedido sem corretor há mais de 12 horas
+    const slotKey = property.id + '|' + new Date(startMs).toISOString()
+    const holder = $app.findRecordsByFilter('visits', 'slot_key = {:k}', '', 1, 0, { k: slotKey })
+    if (holder.length) {
+      const h = holder[0]
+      const requestedMs = new Date(h.getString('requested_at').replace(' ', 'T')).getTime()
+      const expired =
+        h.getString('status') === 'pendente_agenda' &&
+        h.getString('broker_id') === '' &&
+        nowMs - requestedMs > 12 * 3600000
+      if (!expired) return { result: 'slot_taken', label: '' }
+      h.set('slot_key', '')
+      h.set('slot_released_at', nowIso)
+      $app.save(h)
+      if (h.getString('lead_id')) {
+        addEvent(
+          h.getString('lead_id'),
+          'visita',
+          'Horário liberado: pedido sem corretor há mais de 12 horas.',
+          '',
+        )
+      }
+    }
+
+    const days = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+    const lt = new Date(startMs - OFFSET)
+    const pad = (n) => (n < 10 ? '0' + n : String(n))
+    const label =
+      days[lt.getUTCDay()] +
+      ' (' +
+      pad(lt.getUTCDate()) +
+      '/' +
+      pad(lt.getUTCMonth() + 1) +
+      ') às ' +
+      pad(lt.getUTCHours()) +
+      'h' +
+      pad(lt.getUTCMinutes())
+
+    try {
+      const v = new Record($app.findCollectionByNameOrId('visits'))
+      v.set('organization_id', orgId)
+      v.set('lead_id', leadRec.id)
+      if (leadRec.getString('client_id')) v.set('client_id', leadRec.getString('client_id'))
+      v.set('property_id', property.id)
+      v.set('start_at', new Date(startMs).toISOString())
+      v.set('end_at', new Date(endMs).toISOString())
+      v.set('status', 'pendente_agenda')
+      v.set('source', 'site')
+      v.set('requested_at', nowIso)
+      v.set('slot_key', slotKey)
+      $app.save(v)
+    } catch (err) {
+      // dois pedidos simultâneos: o índice único barrou o segundo
+      return { result: 'slot_taken', label: '' }
+    }
+    addEvent(
+      leadRec.id,
+      'visita',
+      'Visita solicitada pelo site: imóvel ' + property.getString('code') + ', ' + label + '.',
+      '',
+    )
+    return { result: 'requested', label: label }
+  }
+
   // deduplicação contra os leads existentes (mesma regra do cadastro manual)
   const parts = ['phone = {:p}']
   const params = { o: orgId, p: phone }
@@ -230,7 +370,8 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
     }
     $app.save(consistent)
     audit('lead_interesse_site', consistent.id)
-    return e.json(200, { ok: true, whatsapp_url: waUrl })
+    const visitC = requestVisit(consistent)
+    return e.json(200, { ok: true, whatsapp_url: makeWa(visitC), visit: visitC.result })
   }
 
   // cliente já cadastrado com o mesmo telefone ou e-mail
@@ -325,6 +466,7 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
     )
   }
   audit('lead_criado_site', lead.id)
+  const visitN = requestVisit(lead)
 
-  return e.json(200, { ok: true, whatsapp_url: waUrl })
+  return e.json(200, { ok: true, whatsapp_url: makeWa(visitN), visit: visitN.result })
 })
