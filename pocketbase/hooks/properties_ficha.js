@@ -81,6 +81,15 @@ routerAdd(
     if (num('iptu') > 0) extras.push('IPTU: ' + money(num('iptu')))
     if (extras.length) lines.push(extras.join(' | '))
 
+    if (p.get('in_condominium') === true && p.getString('condominium_id')) {
+      try {
+        const condo = $app.findRecordById('condominiums', p.getString('condominium_id'))
+        lines.push('Condomínio: ' + condo.getString('name'))
+        if (condo.getString('amenities')) lines.push('Lazer: ' + condo.getString('amenities'))
+        if (condo.getString('rules')) lines.push('Regras: ' + condo.getString('rules'))
+      } catch (_) {}
+    }
+
     if (p.getString('description')) {
       lines.push('')
       lines.push(p.getString('description'))

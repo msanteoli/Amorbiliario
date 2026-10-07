@@ -71,8 +71,23 @@ onRecordCreateRequest((e) => {
     }
   }
 
-  rec.set('status', 'rascunho')
-  rec.set('last_reviewed_at', new Date().toISOString())
+  // condomínio: com "em condomínio" marcado, o condomínio é obrigatório e da mesma organização
+  if (rec.get('in_condominium') === true) {
+    let condo = null
+    try {
+      condo = $app.findRecordById('condominiums', rec.getString('condominium_id'))
+    } catch (_) {}
+    if (!condo || condo.get('organization_id') !== rec.get('organization_id')) {
+      throw new BadRequestError('Escolha o condomínio.')
+    }
+  } else {
+    rec.set('condominium_id', '')
+  }
+  // origem: só a importação grava estes campos
+  rec.set('source', 'manual')
+  rec.set('import_batch_id', '')
+
+  rec.set('status', 'rascunho')  rec.set('last_reviewed_at', new Date().toISOString())
 
   const res = e.next()
   try {

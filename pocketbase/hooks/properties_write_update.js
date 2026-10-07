@@ -65,8 +65,22 @@ onRecordUpdateRequest((e) => {
     }
   }
 
-  const missingItems = (r, photoCount) => {
-    const m = []
+  if (rec.get('in_condominium') === true) {
+    let condo = null
+    try {
+      condo = $app.findRecordById('condominiums', rec.getString('condominium_id'))
+    } catch (_) {}
+    if (!condo || condo.get('organization_id') !== rec.get('organization_id')) {
+      throw new BadRequestError('Escolha o condomínio.')
+    }
+  } else {
+    rec.set('condominium_id', '')
+  }
+  // a origem do cadastro não muda por edição
+  rec.set('source', orig.getString('source'))
+  rec.set('import_batch_id', orig.getString('import_batch_id'))
+
+  const missingItems = (r, photoCount) => {    const m = []
     const num = (k) => Number(r.get(k) || 0)
     if (!r.getString('code')) m.push('código')
     if (!r.getString('title')) m.push('título')
@@ -89,8 +103,8 @@ onRecordUpdateRequest((e) => {
     if (residential && !(num('bathrooms') >= 1)) m.push('banheiros')
     if (!r.getString('description')) m.push('descrição')
     if (!r.getString('owner_id')) m.push('proprietário')
-    if (photoCount < 5) m.push('pelo menos 5 fotos')
-    return m
+    if (r.get('in_condominium') === true && !r.getString('condominium_id')) m.push('condomínio')
+    if (photoCount < 5) m.push('pelo menos 5 fotos')    return m
   }
 
   let autoDraft = false
@@ -137,8 +151,10 @@ onRecordUpdateRequest((e) => {
     'description',
     'owner_id',
     'captured_by',
-  ]
-  const changed = watched.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
+    'use_type',
+    'in_condominium',
+    'condominium_id',
+  ]  const changed = watched.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
   // só uma edição de verdade renova a data; o valor enviado pelo cliente nunca vale
   rec.set(
     'last_reviewed_at',

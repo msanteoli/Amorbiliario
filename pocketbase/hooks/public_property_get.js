@@ -60,6 +60,18 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
     return v > 0 ? { state: 'informado', value: v } : { state: 'nao_informado', value: null }
   }
 
+  let condominium = null
+  if (p.get('in_condominium') === true && p.getString('condominium_id')) {
+    try {
+      const condo = $app.findRecordById('condominiums', p.getString('condominium_id'))
+      condominium = {
+        name: condo.getString('name'),
+        amenities: condo.getString('amenities'),
+        rules: condo.getString('rules'),
+      }
+    } catch (_) {}
+  }
+
   return e.json(200, {
     code: p.getString('code'),
     title: p.getString('title'),
@@ -76,6 +88,7 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
     sale: price('sale_price', pu === 'venda' || pu === 'ambos'),
     rent: price('rent_price', pu === 'locacao' || pu === 'ambos'),
     description: p.getString('description'),
+    condominium: condominium,
     photos: photos,
     cover: photos.length ? photos[0] : null,
   })
