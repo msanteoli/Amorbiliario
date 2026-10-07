@@ -19,12 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  ArrowLeft,
-  Loader2,
-  Search,
-  ExternalLink,
-} from 'lucide-react'
+import { ArrowLeft, Loader2, Search, ExternalLink } from 'lucide-react'
 
 export default function NovoLead() {
   const navigate = useNavigate()

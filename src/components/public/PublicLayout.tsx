@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, MessageSquare } from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PublicContactModal } from './PublicContactModal'
 import { CookieBanner } from './CookieBanner'
@@ -33,12 +33,12 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
       {/* Cabeçalho estilo Airbnb: barra fixa no topo com divisor de 1 px */}
       <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="h-20 flex items-center justify-between gap-4">
+          <div className="h-20 flex items-center justify-between gap-3 sm:gap-4">
             {/* À esquerda: nome da imobiliária em texto (peso 600, sem ícone nem quadro colorido) */}
-            <div className="shrink-0 flex items-center min-w-0">
+            <div className="flex-1 min-w-0 flex items-center">
               <Link
                 to="/buscar"
-                className="text-lg sm:text-xl font-semibold tracking-tight text-foreground hover:opacity-90 transition-opacity truncate max-w-[180px] sm:max-w-xs md:max-w-sm"
+                className="text-lg sm:text-xl font-semibold tracking-tight text-foreground hover:opacity-90 transition-opacity truncate"
               >
                 {orgName}
               </Link>
@@ -52,15 +52,17 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
             )}
 
             {/* À direita: botão "Falar com a imobiliária" (de contorno, raio 8 px) */}
-            <div className="shrink-0 flex items-center gap-3">
+            <div className="shrink-0 flex items-center">
               {showContactButton && (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setContactOpen(true)}
-                  className="font-medium text-sm rounded-[8px] border-border hover:bg-muted text-foreground h-11 px-4 min-h-[44px] transition-colors"
+                  aria-label="Falar com a imobiliária"
+                  className="font-medium text-sm rounded-[8px] border-border hover:bg-muted text-foreground h-11 px-3 sm:px-4 min-h-[44px] min-w-[44px] inline-flex items-center justify-center transition-colors shrink-0"
                 >
-                  Falar com a imobiliária
+                  <MessageSquare className="h-4 w-4 sm:hidden shrink-0" aria-hidden="true" />
+                  <span className="hidden sm:inline">Falar com a imobiliária</span>
                 </Button>
               )}
             </div>

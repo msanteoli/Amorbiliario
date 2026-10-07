@@ -30,11 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  ArrowLeft,
-  ArrowRight,
-  Loader2,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 
 export default function NovoCliente() {
   const navigate = useNavigate()
