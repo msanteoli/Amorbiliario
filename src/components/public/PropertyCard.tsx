@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Home } from 'lucide-react'
 import { PublicPropertyListItem } from '@/services/publicSite'
 import {
@@ -8,14 +8,13 @@ import {
   buildSpecsSummary,
   PUBLIC_PROPERTY_TYPE_LABELS,
 } from '@/lib/publicSiteUtils'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 
 interface PropertyCardProps {
   property: PublicPropertyListItem
 }
 
 export const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
+  const navigate = useNavigate()
   const coverUrl = getFullPhotoUrl(property.cover)
   const specsText = buildSpecsSummary({
     bedrooms: property.bedrooms,
@@ -30,77 +29,96 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
   const salePriceStr = property.sale ? formatPrice(property.sale, 'sale') : null
   const rentPriceStr = property.rent ? formatPrice(property.rent, 'rent') : null
 
+  // Identificador de transição único por imóvel
+  const transitionName = `property-hero-${property.code.replace(/[^a-zA-Z0-9_-]/g, '_')}`
+  const targetUrl = `/buscar/${encodeURIComponent(property.code)}`
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Se o usuário clicou com cmd/ctrl ou botão do meio, deixa o navegador abrir normalmente
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+      return
+    }
+
+    // Se o navegador suporta document.startViewTransition e o usuário não pediu redução de movimento
+    const prefersReducedMotion =
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (
+      !prefersReducedMotion &&
+      typeof document !== 'undefined' &&
+      'startViewTransition' in document &&
+      typeof (document as unknown as { startViewTransition: (cb: () => void) => void })
+        .startViewTransition === 'function'
+    ) {
+      e.preventDefault()
+      ;(
+        document as unknown as { startViewTransition: (cb: () => void) => void }
+      ).startViewTransition(() => {
+        navigate(targetUrl)
+      })
+    }
+    // Caso contrário, o Link nativo do react-router-dom faz a transição normal
+  }
+
   return (
     <Link
-      to={`/buscar/${encodeURIComponent(property.code)}`}
-      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+      to={targetUrl}
+      onClick={handleClick}
+      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-[12px] p-2 -m-2 transition-[box-shadow,border-color] duration-150 hover:shadow-[0_6px_16px_rgba(0,0,0,0.12)] dark:hover:shadow-none dark:hover:ring-1 dark:hover:ring-border bg-transparent hover:bg-card"
     >
-      <Card className="h-full overflow-hidden border border-border hover:border-primary/50 transition-colors duration-200 shadow-none flex flex-col bg-card rounded-lg">
-        {/* Foto de Capa (Proporção 4:3) */}
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
-          {coverUrl ? (
-            <img
-              src={coverUrl}
-              alt={property.title}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center text-muted-foreground/60 p-4">
-              <Home className="h-10 w-10 stroke-[1.5]" />
-              <span className="text-xs mt-1.5 font-medium">Sem foto</span>
-            </div>
-          )}
-
-          {/* Badge de tipo com classe on-photo */}
-          <div className="absolute top-3 left-3">
-            <span className="on-photo px-2.5 py-1 rounded-full text-[11px] eyebrow text-foreground border border-line">
-              {typeLabel}
-            </span>
+      {/* Sem moldura de cartão: a foto (proporção 4:3, raio 12 px) e o texto logo abaixo */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[12px] bg-muted flex items-center justify-center">
+        {coverUrl ? (
+          <img
+            src={coverUrl}
+            alt={property.title}
+            style={{ viewTransitionName: transitionName }}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div
+            style={{ viewTransitionName: transitionName }}
+            className="flex flex-col items-center justify-center text-muted-foreground/60 p-4 h-full w-full rounded-[12px] bg-muted"
+          >
+            <Home className="h-10 w-10 stroke-[1.5]" />
+            <span className="text-xs mt-1.5 font-medium">Sem foto</span>
           </div>
+        )}
+
+        {/* Sobre a foto, no canto, só a pílula do tipo com .on-photo */}
+        <div className="absolute top-3 left-3">
+          <span className="on-photo px-3 py-1 rounded-full text-[11px] font-medium text-foreground border border-line">
+            {typeLabel}
+          </span>
         </div>
+      </div>
 
-        {/* Informações */}
-        <CardContent className="p-4 flex-1 flex flex-col justify-between">
-          <div>
-            {/* Preços */}
-            <div className="mb-2 space-y-0.5 tabular">
-              {salePriceStr && (
-                <div className="text-lg font-normal text-foreground tracking-tight">
-                  {salePriceStr}
-                </div>
-              )}
-              {rentPriceStr && (
-                <div className="text-base font-normal text-foreground/90 tracking-tight">
-                  {rentPriceStr}
-                </div>
-              )}
-              {!salePriceStr && !rentPriceStr && (
-                <div className="text-base font-normal text-muted-foreground">
-                  Valor não informado
-                </div>
-              )}
-            </div>
+      {/* Abaixo, em ordem: título (peso 500, uma linha), bairro e cidade em texto de apoio, dados (quartos, vagas, área) em texto de apoio, e preço em peso 600 */}
+      <div className="pt-3 pb-1 space-y-1 text-left">
+        {/* Título: peso 500, uma linha */}
+        <h3 className="font-medium text-[15px] sm:text-base text-foreground truncate">
+          {property.title}
+        </h3>
 
-            {/* Título */}
-            <h3 className="font-normal text-base text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-              {property.title}
-            </h3>
+        {/* Bairro e cidade em texto de apoio */}
+        <p className="text-sm text-muted-foreground truncate">
+          {[property.neighborhood, property.city].filter(Boolean).join(', ') ||
+            'Localização não informada'}
+        </p>
 
-            {/* Bairro, Cidade */}
-            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
-              {[property.neighborhood, property.city].filter(Boolean).join(', ')}
-            </p>
-          </div>
+        {/* Dados (quartos, vagas, área) em texto de apoio */}
+        {specsText && <p className="text-sm text-muted-foreground truncate">{specsText}</p>}
 
-          {/* Características */}
-          {specsText && (
-            <div className="mt-3 pt-3 border-t border-border/60 text-xs text-muted-foreground font-medium">
-              {specsText}
-            </div>
+        {/* Preço em peso 600 (venda e locação em duas linhas quando houver os dois) */}
+        <div className="pt-1 space-y-0.5 tabular font-semibold text-foreground">
+          {salePriceStr && <div className="text-[15px] sm:text-base">{salePriceStr}</div>}
+          {rentPriceStr && <div className="text-[15px] sm:text-base">{rentPriceStr}</div>}
+          {!salePriceStr && !rentPriceStr && (
+            <div className="text-sm font-medium text-muted-foreground">Valor não informado</div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </Link>
   )
 }

@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { PublicNeighborhoodOption, PublicTypeOption } from '@/services/publicSite'
-import { PUBLIC_PROPERTY_TYPE_LABELS } from '@/lib/publicSiteUtils'
+import { PUBLIC_PROPERTY_TYPE_LABELS, formatCurrencyBR } from '@/lib/publicSiteUtils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { SlidersHorizontal, RotateCcw } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Search, X, RotateCcw } from 'lucide-react'
 
 export interface FilterValues {
   purpose: 'venda' | 'locacao'
@@ -33,6 +33,20 @@ interface SearchFilterBarProps {
   onClear: () => void
 }
 
+function formatPriceSummary(valStr: string): string {
+  const num = Number(valStr)
+  if (!num || isNaN(num)) return ''
+  if (num >= 1000000) {
+    const mi = (num / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+    return `Até R$ ${mi} mi`
+  }
+  if (num >= 1000) {
+    const mil = (num / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+    return `Até R$ ${mil} mil`
+  }
+  return `Até ${formatCurrencyBR(num)}`
+}
+
 export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   values,
   neighborhoods,
@@ -40,186 +54,82 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
   onChange,
   onClear,
 }) => {
-  const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [draft, setDraft] = useState<FilterValues>(values)
+  const desktopContainerRef = useRef<HTMLDivElement>(null)
 
-  const handlePurposeChange = (purpose: 'venda' | 'locacao') => {
-    onChange({ ...values, purpose })
+  // Sincroniza draft sempre que values externos mudarem e o painel estiver fechado
+  useEffect(() => {
+    if (!panelOpen) {
+      setDraft(values)
+    }
+  }, [values, panelOpen])
+
+  // Fecha painel desktop ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (desktopContainerRef.current && !desktopContainerRef.current.contains(e.target as Node)) {
+        setPanelOpen(false)
+      }
+    }
+    if (panelOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [panelOpen])
+
+  const handleApply = () => {
+    onChange(draft)
+    setPanelOpen(false)
   }
 
-  const handleFieldChange = (field: keyof FilterValues, val: string) => {
-    onChange({ ...values, [field]: val })
+  const handleDraftField = <K extends keyof FilterValues>(field: K, val: FilterValues[K]) => {
+    setDraft((prev) => ({ ...prev, [field]: val }))
   }
 
-  const activeFiltersCount = [
-    values.type,
-    values.neighborhood,
-    values.bedrooms,
-    values.parking,
-    values.min_price,
-    values.max_price,
-    values.sort !== 'recent' ? values.sort : '',
-  ].filter(Boolean).length
+  const handleClearDraft = () => {
+    const cleared: FilterValues = {
+      purpose: 'venda',
+      type: '',
+      neighborhood: '',
+      bedrooms: '',
+      parking: '',
+      min_price: '',
+      max_price: '',
+      sort: 'recent',
+    }
+    setDraft(cleared)
+    onClear()
+    setPanelOpen(false)
+  }
 
-  // Componente dos campos de formulário (reutilizado no desktop e no sheet mobile)
-  const renderFilterFields = (isMobileSheet = false) => (
-    <div
-      className={`grid gap-4 ${isMobileSheet ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 items-end'}`}
-    >
-      {/* Tipo */}
-      <div className="space-y-1.5 text-left">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Tipo
-        </Label>
-        <Select
-          value={values.type || 'todos'}
-          onValueChange={(val) => handleFieldChange('type', val === 'todos' ? '' : val)}
-        >
-          <SelectTrigger className="h-10 bg-background text-sm">
-            <SelectValue placeholder="Todos os tipos" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os tipos</SelectItem>
-            {types.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {PUBLIC_PROPERTY_TYPE_LABELS[t.value] || t.value} ({t.count})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+  // Resumo para a pílula
+  const purposeLabel = values.purpose === 'locacao' ? 'Alugar' : 'Comprar'
+  const typeLabel = values.type
+    ? PUBLIC_PROPERTY_TYPE_LABELS[values.type] || values.type
+    : 'Qualquer tipo'
+  const neighborhoodLabel = values.neighborhood || 'Qualquer bairro'
+  const priceLabel = values.max_price
+    ? formatPriceSummary(values.max_price)
+    : values.min_price
+      ? `A partir de R$ ${Number(values.min_price).toLocaleString('pt-BR')}`
+      : 'Qualquer valor'
 
-      {/* Bairro */}
-      <div className="space-y-1.5 text-left">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Bairro
-        </Label>
-        <Select
-          value={values.neighborhood || 'todos'}
-          onValueChange={(val) => handleFieldChange('neighborhood', val === 'todos' ? '' : val)}
-        >
-          <SelectTrigger className="h-10 bg-background text-sm">
-            <SelectValue placeholder="Todos os bairros" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os bairros</SelectItem>
-            {neighborhoods.map((n) => (
-              <SelectItem key={n.name} value={n.name}>
-                {n.name} ({n.count})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Quartos */}
-      <div className="space-y-1.5 text-left">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Quartos
-        </Label>
-        <Select
-          value={values.bedrooms || 'qualquer'}
-          onValueChange={(val) => handleFieldChange('bedrooms', val === 'qualquer' ? '' : val)}
-        >
-          <SelectTrigger className="h-10 bg-background text-sm">
-            <SelectValue placeholder="Qualquer" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="qualquer">Qualquer</SelectItem>
-            <SelectItem value="1">1+ quarto</SelectItem>
-            <SelectItem value="2">2+ quartos</SelectItem>
-            <SelectItem value="3">3+ quartos</SelectItem>
-            <SelectItem value="4">4+ quartos</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Vagas */}
-      <div className="space-y-1.5 text-left">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Vagas
-        </Label>
-        <Select
-          value={values.parking || 'qualquer'}
-          onValueChange={(val) => handleFieldChange('parking', val === 'qualquer' ? '' : val)}
-        >
-          <SelectTrigger className="h-10 bg-background text-sm">
-            <SelectValue placeholder="Qualquer" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="qualquer">Qualquer</SelectItem>
-            <SelectItem value="1">1+ vaga</SelectItem>
-            <SelectItem value="2">2+ vagas</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Preço Mínimo */}
-      <div className="space-y-1.5 text-left">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Preço Mín (R$)
-        </Label>
-        <Input
-          type="number"
-          min="0"
-          step="1"
-          placeholder="R$ Mín"
-          className="h-10 bg-background text-sm"
-          value={values.min_price}
-          onChange={(e) => handleFieldChange('min_price', e.target.value.replace(/\D/g, ''))}
-        />
-      </div>
-
-      {/* Preço Máximo */}
-      <div className="space-y-1.5 text-left">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Preço Máx (R$)
-        </Label>
-        <Input
-          type="number"
-          min="0"
-          step="1"
-          placeholder="R$ Máx"
-          className="h-10 bg-background text-sm"
-          value={values.max_price}
-          onChange={(e) => handleFieldChange('max_price', e.target.value.replace(/\D/g, ''))}
-        />
-      </div>
-
-      {/* Ordenação */}
-      <div className="space-y-1.5 text-left">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Ordenar por
-        </Label>
-        <Select
-          value={values.sort}
-          onValueChange={(val: 'recent' | 'price_asc' | 'price_desc') =>
-            handleFieldChange('sort', val)
-          }
-        >
-          <SelectTrigger className="h-10 bg-background text-sm">
-            <SelectValue placeholder="Mais recentes" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="recent">Mais recentes</SelectItem>
-            <SelectItem value="price_asc">Menor preço</SelectItem>
-            <SelectItem value="price_desc">Maior preço</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
-  )
-
-  return (
-    <div className="w-full bg-card rounded-2xl border border-border shadow-sm p-4 sm:p-5">
-      {/* Topo da barra: Abas de Finalidade e Botão Mobile de Filtros */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-border/80">
-        <div className="flex items-center p-1 bg-muted rounded-xl">
+  // Componente dos campos de busca dentro do painel / sheet
+  const renderPanelForm = () => (
+    <div className="space-y-5">
+      {/* Finalidade: duas pílulas "Comprar" e "Alugar" */}
+      <div>
+        <span className="block text-[13px] font-medium text-foreground mb-2">Finalidade</span>
+        <div className="inline-flex p-1 bg-muted rounded-full">
           <button
             type="button"
-            onClick={() => handlePurposeChange('venda')}
-            className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all ${
-              values.purpose === 'venda'
-                ? 'bg-background text-foreground shadow-sm'
+            onClick={() => handleDraftField('purpose', 'venda')}
+            className={`px-5 py-2 text-sm font-medium rounded-full transition-all min-h-[44px] ${
+              draft.purpose === 'venda'
+                ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -227,98 +137,247 @@ export const SearchFilterBar: React.FC<SearchFilterBarProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => handlePurposeChange('locacao')}
-            className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all ${
-              values.purpose === 'locacao'
-                ? 'bg-background text-foreground shadow-sm'
+            onClick={() => handleDraftField('purpose', 'locacao')}
+            className={`px-5 py-2 text-sm font-medium rounded-full transition-all min-h-[44px] ${
+              draft.purpose === 'locacao'
+                ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Alugar
           </button>
         </div>
+      </div>
 
-        {/* Mobile: Botão que abre a folha de filtros */}
-        <div className="flex items-center gap-2 sm:hidden w-full xs:w-auto">
-          <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="flex-1 xs:flex-none gap-2 h-10">
-                <SlidersHorizontal className="h-4 w-4" />
-                <span>Filtrar</span>
-                {activeFiltersCount > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-primary text-primary-foreground font-bold">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="bottom"
-              className="rounded-t-2xl px-6 py-6 max-h-[85vh] overflow-y-auto"
-            >
-              <SheetHeader className="text-left mb-4">
-                <SheetTitle>Filtrar imóveis</SheetTitle>
-              </SheetHeader>
-              <div className="space-y-4">
-                {renderFilterFields(true)}
-                <div className="flex items-center gap-3 pt-3 border-t border-border">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1 gap-1.5"
-                    onClick={() => {
-                      onClear()
-                      setMobileSheetOpen(false)
-                    }}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Limpar filtros
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="default"
-                    className="flex-1"
-                    onClick={() => setMobileSheetOpen(false)}
-                  >
-                    Ver resultados
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          {activeFiltersCount > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onClear}
-              className="text-xs text-muted-foreground h-10 px-2"
-            >
-              Limpar
-            </Button>
-          )}
+      {/* Grid de campos: tipo, bairro, quartos, vagas, preço mín e máx, ordenação */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {/* Tipo */}
+        <div className="space-y-1.5 text-left">
+          <Label className="text-[13px] font-medium text-foreground">Tipo de imóvel</Label>
+          <Select
+            value={draft.type || 'todos'}
+            onValueChange={(val) => handleDraftField('type', val === 'todos' ? '' : val)}
+          >
+            <SelectTrigger className="h-12 rounded-[8px] bg-background text-sm border-border">
+              <SelectValue placeholder="Todos os tipos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os tipos</SelectItem>
+              {types.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  {PUBLIC_PROPERTY_TYPE_LABELS[t.value] || t.value} ({t.count})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* Desktop: Botão Limpar Filtros */}
-        <div className="hidden sm:flex items-center gap-2">
-          {activeFiltersCount > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onClear}
-              className="text-xs text-muted-foreground hover:text-foreground gap-1.5 h-9"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Limpar filtros
-            </Button>
-          )}
+        {/* Bairro */}
+        <div className="space-y-1.5 text-left">
+          <Label className="text-[13px] font-medium text-foreground">Bairro</Label>
+          <Select
+            value={draft.neighborhood || 'todos'}
+            onValueChange={(val) => handleDraftField('neighborhood', val === 'todos' ? '' : val)}
+          >
+            <SelectTrigger className="h-12 rounded-[8px] bg-background text-sm border-border">
+              <SelectValue placeholder="Todos os bairros" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os bairros</SelectItem>
+              {neighborhoods.map((n) => (
+                <SelectItem key={n.name} value={n.name}>
+                  {n.name} ({n.count})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Quartos */}
+        <div className="space-y-1.5 text-left">
+          <Label className="text-[13px] font-medium text-foreground">Quartos</Label>
+          <Select
+            value={draft.bedrooms || 'qualquer'}
+            onValueChange={(val) => handleDraftField('bedrooms', val === 'qualquer' ? '' : val)}
+          >
+            <SelectTrigger className="h-12 rounded-[8px] bg-background text-sm border-border">
+              <SelectValue placeholder="Qualquer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="qualquer">Qualquer</SelectItem>
+              <SelectItem value="1">1+ quarto</SelectItem>
+              <SelectItem value="2">2+ quartos</SelectItem>
+              <SelectItem value="3">3+ quartos</SelectItem>
+              <SelectItem value="4">4+ quartos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Vagas */}
+        <div className="space-y-1.5 text-left">
+          <Label className="text-[13px] font-medium text-foreground">Vagas</Label>
+          <Select
+            value={draft.parking || 'qualquer'}
+            onValueChange={(val) => handleDraftField('parking', val === 'qualquer' ? '' : val)}
+          >
+            <SelectTrigger className="h-12 rounded-[8px] bg-background text-sm border-border">
+              <SelectValue placeholder="Qualquer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="qualquer">Qualquer</SelectItem>
+              <SelectItem value="1">1+ vaga</SelectItem>
+              <SelectItem value="2">2+ vagas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Preço Mínimo */}
+        <div className="space-y-1.5 text-left">
+          <Label className="text-[13px] font-medium text-foreground">Preço mínimo (R$)</Label>
+          <Input
+            type="number"
+            min="0"
+            step="1000"
+            placeholder="R$ 0"
+            className="h-12 rounded-[8px] bg-background text-sm border-border"
+            value={draft.min_price}
+            onChange={(e) => handleDraftField('min_price', e.target.value.replace(/\D/g, ''))}
+          />
+        </div>
+
+        {/* Preço Máximo */}
+        <div className="space-y-1.5 text-left">
+          <Label className="text-[13px] font-medium text-foreground">Preço máximo (R$)</Label>
+          <Input
+            type="number"
+            min="0"
+            step="1000"
+            placeholder="Qualquer valor"
+            className="h-12 rounded-[8px] bg-background text-sm border-border"
+            value={draft.max_price}
+            onChange={(e) => handleDraftField('max_price', e.target.value.replace(/\D/g, ''))}
+          />
+        </div>
+
+        {/* Ordenação */}
+        <div className="space-y-1.5 text-left sm:col-span-2 md:col-span-3">
+          <Label className="text-[13px] font-medium text-foreground">Ordenar por</Label>
+          <Select
+            value={draft.sort}
+            onValueChange={(val: 'recent' | 'price_asc' | 'price_desc') =>
+              handleDraftField('sort', val)
+            }
+          >
+            <SelectTrigger className="h-12 rounded-[8px] bg-background text-sm border-border">
+              <SelectValue placeholder="Mais recentes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Mais recentes</SelectItem>
+              <SelectItem value="price_asc">Menor preço</SelectItem>
+              <SelectItem value="price_desc">Maior preço</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Desktop Filter Row */}
-      <div className="hidden sm:block pt-4">{renderFilterFields(false)}</div>
+      {/* Botões do painel: "Limpar filtros" (texto) e "Buscar" (ação principal preenchida, raio 8 px) */}
+      <div className="flex items-center justify-between pt-4 border-t border-border gap-4">
+        <button
+          type="button"
+          onClick={handleClearDraft}
+          className="text-sm font-medium text-muted-foreground hover:text-foreground underline underline-offset-4 min-h-[44px] px-2 transition-colors"
+        >
+          Limpar filtros
+        </button>
+        <Button
+          type="button"
+          onClick={handleApply}
+          className="rounded-[8px] h-12 px-8 font-medium text-sm min-h-[44px]"
+        >
+          <Search className="h-4 w-4 mr-2" />
+          Buscar
+        </Button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div ref={desktopContainerRef} className="relative w-full">
+      {/* Pílula de busca central estilo Airbnb */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => {
+          setDraft(values)
+          setPanelOpen((prev) => !prev)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setDraft(values)
+            setPanelOpen((prev) => !prev)
+          }
+        }}
+        aria-label="Abrir busca de imóveis"
+        className="w-full inline-flex items-center justify-between border border-border bg-card hover:bg-muted/40 text-foreground rounded-full pl-4 sm:pl-5 pr-2 py-2 shadow-sm transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary h-12"
+      >
+        {/* Segmentos separados por divisores: finalidade | tipo | bairro | preço */}
+        <div className="flex-1 flex items-center min-w-0 text-left overflow-hidden">
+          {/* Finalidade */}
+          <span className="text-xs sm:text-sm font-semibold truncate shrink-0">{purposeLabel}</span>
+          <span className="mx-2 sm:mx-3 text-border">|</span>
+
+          {/* Tipo */}
+          <span className="text-xs sm:text-sm font-medium truncate shrink-0 max-w-[120px] sm:max-w-none text-muted-foreground">
+            {typeLabel}
+          </span>
+          <span className="hidden sm:inline mx-3 text-border">|</span>
+
+          {/* Bairro */}
+          <span className="hidden sm:inline text-xs sm:text-sm font-medium truncate max-w-[140px] text-muted-foreground">
+            {neighborhoodLabel}
+          </span>
+          <span className="hidden md:inline mx-3 text-border">|</span>
+
+          {/* Preço */}
+          <span className="hidden md:inline text-xs sm:text-sm font-medium truncate text-muted-foreground">
+            {priceLabel}
+          </span>
+        </div>
+
+        {/* Botão redondo de busca com lupa */}
+        <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 ml-2">
+          <Search className="h-4 w-4" />
+        </div>
+      </div>
+
+      {/* Painel flutuante Desktop (logo abaixo da pílula, cartão com raio 16 px e sombra suave 0 6px 16px rgba(0,0,0,0.12) / borda no escuro) */}
+      {panelOpen && (
+        <div className="hidden md:block absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 w-full max-w-2xl bg-card rounded-[16px] border border-border p-6 z-50 shadow-[0_6px_16px_rgba(0,0,0,0.12)] dark:shadow-none animate-in fade-in zoom-in-95 duration-150">
+          {renderPanelForm()}
+        </div>
+      )}
+
+      {/* Folha inferior no celular (tela cheia/max-h, cantos de 16 px no topo) */}
+      <Sheet
+        open={panelOpen}
+        onOpenChange={(open) => {
+          setPanelOpen(open)
+          if (!open) setDraft(values)
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          className="md:hidden rounded-t-[16px] px-6 py-6 max-h-[90vh] overflow-y-auto"
+        >
+          <SheetHeader className="text-left mb-4">
+            <SheetTitle className="text-lg font-semibold text-foreground">
+              Buscar imóveis
+            </SheetTitle>
+          </SheetHeader>
+          {renderPanelForm()}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

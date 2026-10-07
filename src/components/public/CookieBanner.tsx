@@ -54,18 +54,19 @@ export const CookieBanner: React.FC<CookieBannerProps> = ({ forceOpen, onClose }
     <div
       role="region"
       aria-label="Aviso de cookies e privacidade"
-      className="fixed bottom-0 inset-x-0 z-50 p-4 bg-background/95 backdrop-blur-md border-t border-border shadow-lg"
+      className="fixed bottom-16 sm:bottom-4 inset-x-4 max-w-xl mx-auto z-50 p-4 sm:p-5 bg-card/98 backdrop-blur-md border border-border rounded-[12px] shadow-[0_6px_16px_rgba(0,0,0,0.12)] dark:shadow-none"
     >
-      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-sm text-foreground text-center sm:text-left">
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-foreground text-left leading-relaxed">
           Usamos cookies de marketing para medir o resultado dos nossos anúncios. Você pode recusar
           sem perder nada no site.
         </p>
-        <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 justify-center">
+        <div className="flex items-center gap-3 w-full justify-end">
+          {/* Duas ações com o mesmo peso visual: "Aceitar" preenchida e "Recusar" de contorno */}
           <Button
             type="button"
             variant="outline"
-            className="flex-1 sm:flex-none"
+            className="rounded-[8px] h-10 px-5 text-sm font-medium border-border min-h-[44px]"
             onClick={handleDecline}
           >
             Recusar
@@ -73,7 +74,7 @@ export const CookieBanner: React.FC<CookieBannerProps> = ({ forceOpen, onClose }
           <Button
             type="button"
             variant="default"
-            className="flex-1 sm:flex-none"
+            className="rounded-[8px] h-10 px-5 text-sm font-medium min-h-[44px]"
             onClick={handleAccept}
           >
             Aceitar
