@@ -134,108 +134,124 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Editar dados do lead</DialogTitle>
+      <DialogContent className="sm:max-w-2xl w-full max-sm:h-[90vh] max-sm:max-h-[90vh] max-sm:rounded-t-2xl max-sm:rounded-b-none max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:translate-y-0 rounded-lg border border-border bg-card p-6 shadow-none overflow-y-auto">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-base font-normal text-foreground">
+            Editar dados do lead
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20">
+              {errorMessage}
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-name">
+          <div className="space-y-1">
+            <label htmlFor="edit-name" className="text-[13px] font-normal text-foreground block">
               Nome <span className="text-destructive">*</span>
-            </Label>
-            <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} required />
+            </label>
+            <input
+              id="edit-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="edit-phone">Telefone</Label>
-              <Input
+            <div className="space-y-1">
+              <label htmlFor="edit-phone" className="text-[13px] font-normal text-foreground block">
+                Telefone
+              </label>
+              <input
                 id="edit-phone"
                 value={phone}
                 onChange={(e) => setPhone(maskPhoneInput(e.target.value))}
                 placeholder="(00) 00000-0000"
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">E-mail</Label>
-              <Input
+            <div className="space-y-1">
+              <label htmlFor="edit-email" className="text-[13px] font-normal text-foreground block">
+                E-mail
+              </label>
+              <input
                 id="edit-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@exemplo.com.br"
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
 
           {/* Origem como texto puro sem edição */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-md bg-muted/40 border">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-lg bg-muted/20 border border-border">
             <div>
-              <span className="text-xs text-muted-foreground block">Origem</span>
-              <span className="text-sm font-semibold capitalize">{lead.origin}</span>
+              <span className="eyebrow text-muted-foreground block">Origem</span>
+              <span className="text-sm font-normal text-foreground capitalize">{lead.origin}</span>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="edit-origin-detail" className="text-xs">
+              <label
+                htmlFor="edit-origin-detail"
+                className="text-[13px] font-normal text-foreground block"
+              >
                 Detalhe da origem
-              </Label>
-              <Input
+              </label>
+              <input
                 id="edit-origin-detail"
                 value={originDetail}
                 onChange={(e) => setOriginDetail(e.target.value)}
                 maxLength={80}
-                className="h-8 text-xs"
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
 
           {/* Imóvel de interesse */}
-          <div className="space-y-2">
-            <Label>Imóvel de interesse (Disponíveis)</Label>
+          <div className="space-y-1">
+            <label className="text-[13px] font-normal text-foreground block">
+              Imóvel de interesse (Disponíveis)
+            </label>
             {selectedPropertyId ? (
-              <div className="flex items-center justify-between p-2.5 rounded-md border bg-muted/40 text-xs">
-                <span className="font-medium">{selectedPropertyLabel}</span>
-                <Button
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20 text-xs">
+                <span className="font-normal text-foreground">{selectedPropertyLabel}</span>
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
                   onClick={() => {
                     setSelectedPropertyId('')
                     setSelectedPropertyLabel('')
                   }}
-                  className="h-7 text-xs"
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
                 >
                   Remover
-                </Button>
+                </button>
               </div>
             ) : (
               <div className="space-y-1.5">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
                     placeholder="Buscar por código ou título..."
                     value={propertySearch}
                     onChange={(e) => handleSearchProperty(e.target.value)}
-                    className="pl-8 text-xs"
+                    className="w-full h-12 pl-11 pr-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                   {searchingProperty && (
-                    <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                    <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
 
                 {propertySearchResults.length > 0 && (
-                  <div className="max-h-36 overflow-y-auto border rounded-md divide-y bg-card text-xs">
+                  <div className="max-h-36 overflow-y-auto border border-border rounded-lg divide-y divide-border bg-card text-xs">
                     {propertySearchResults.map((p) => (
                       <div
                         key={p.id}
-                        className="p-2 hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
+                        className="p-2.5 hover:bg-muted/40 cursor-pointer flex items-center justify-between gap-2"
                         onClick={() => {
                           setSelectedPropertyId(p.id)
                           setSelectedPropertyLabel(`${p.code} - ${p.title}`)
@@ -243,9 +259,9 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
                           setPropertySearchResults([])
                         }}
                       >
-                        <span className="font-semibold text-primary">{p.code}</span>
+                        <span className="eyebrow text-foreground">{p.code}</span>
                         <span className="truncate flex-1 text-muted-foreground">{p.title}</span>
-                        <span className="text-primary font-medium">Selecionar</span>
+                        <span className="text-xs text-primary underline">Selecionar</span>
                       </div>
                     ))}
                   </div>
@@ -256,22 +272,36 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
 
           {/* Perfil de busca */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="edit-neighborhood">Bairro de interesse</Label>
-              <Input
+            <div className="space-y-1">
+              <label
+                htmlFor="edit-neighborhood"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Bairro de interesse
+              </label>
+              <input
                 id="edit-neighborhood"
                 value={searchNeighborhood}
                 onChange={(e) => setSearchNeighborhood(e.target.value)}
                 maxLength={80}
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-search-type">Tipo de imóvel</Label>
+            <div className="space-y-1">
+              <label
+                htmlFor="edit-search-type"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Tipo de imóvel
+              </label>
               <Select
                 value={searchType || 'nenhum'}
                 onValueChange={(val) => setSearchType(val === 'nenhum' ? '' : val)}
               >
-                <SelectTrigger id="edit-search-type">
+                <SelectTrigger
+                  id="edit-search-type"
+                  className="h-12 rounded-lg border-border bg-background"
+                >
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -287,35 +317,52 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="edit-bedrooms">Quartos mínimos</Label>
-              <Input
+            <div className="space-y-1">
+              <label
+                htmlFor="edit-bedrooms"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Quartos mínimos
+              </label>
+              <input
                 id="edit-bedrooms"
                 type="number"
                 min="0"
                 value={searchBedrooms}
                 onChange={(e) => setSearchBedrooms(e.target.value)}
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-max-price">Valor máximo (R$)</Label>
-              <Input
+            <div className="space-y-1">
+              <label
+                htmlFor="edit-max-price"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Valor máximo (R$)
+              </label>
+              <input
                 id="edit-max-price"
                 type="number"
                 min="0"
                 value={searchMaxPrice}
                 onChange={(e) => setSearchMaxPrice(e.target.value)}
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-consent">Consentimento de comunicação</Label>
+          <div className="space-y-1">
+            <label htmlFor="edit-consent" className="text-[13px] font-normal text-foreground block">
+              Consentimento de comunicação
+            </label>
             <Select
               value={consentStatus}
               onValueChange={(val) => setConsentStatus(val as LeadConsentStatus)}
             >
-              <SelectTrigger id="edit-consent">
+              <SelectTrigger
+                id="edit-consent"
+                className="h-12 rounded-lg border-border bg-background"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -326,17 +373,22 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
             </Select>
           </div>
 
-          <DialogFooter className="pt-3">
+          <DialogFooter className="pt-3 gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={loading}
+              className="h-10 rounded-full px-5 text-xs font-normal border-border"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading} className="gap-2">
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+            >
+              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <span>Salvar alterações</span>
             </Button>
           </DialogFooter>

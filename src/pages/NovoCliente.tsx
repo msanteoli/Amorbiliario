@@ -275,12 +275,11 @@ export default function NovoCliente() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 pb-28 md:pb-12">
       {/* Cabeçalho */}
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
+          type="button"
           onClick={() => {
             if (step === 2 && !matchResult) {
               setStep(1)
@@ -288,13 +287,13 @@ export default function NovoCliente() {
               navigate('/clientes')
             }
           }}
-          className="h-8 w-8"
+          className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-        </Button>
+        </button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo cliente</h1>
-          <p className="text-xs text-muted-foreground">
+          <h1 className="display-sm text-foreground">Novo cliente</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             {step === 1
               ? 'Etapa 1 de 2: Verificação de duplicidade'
               : 'Etapa 2 de 2: Ficha completa'}
@@ -304,85 +303,63 @@ export default function NovoCliente() {
 
       {/* Erro global */}
       {errorMessage && (
-        <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20">
+          {errorMessage}
         </div>
       )}
 
       {/* Se houver matchResult da Etapa 1 */}
       {matchResult && (
-        <Card className="border-border">
-          <CardHeader>
+        <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+          <div>
             <div className="flex items-center gap-2">
-              {matchResult.status === 'same_person' ? (
-                <ShieldAlert className="h-5 w-5 text-amber-500" />
-              ) : (
-                <HelpCircle className="h-5 w-5 text-blue-500" />
-              )}
-              <CardTitle className="text-lg">
+              <Badge variant={matchResult.status === 'same_person' ? 'attention' : 'default'}>
                 {matchResult.status === 'same_person'
                   ? 'Cliente já cadastrado'
                   : 'Verificação de duplicidade'}
-              </CardTitle>
+              </Badge>
             </div>
-            <CardDescription>
+            <p className="text-xs text-muted-foreground mt-1">
               {matchResult.status === 'same_person'
                 ? 'Localizamos um cadastro com os mesmos dados informados.'
                 : 'Encontramos um registro com dados semelhantes.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Casos conforme especificação */}
+            </p>
+          </div>
+
+          <div>
             {(() => {
               const hasVisibleMatch = matchResult.matches.some((m) => m.visible && m.client)
               const firstVisibleClient = matchResult.matches.find(
                 (m) => m.visible && m.client,
               )?.client
 
-              // Caso 1: same_person com visible verdadeiro
               if (matchResult.status === 'same_person' && hasVisibleMatch && firstVisibleClient) {
                 return (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-lg bg-muted/60 border space-y-2">
-                      <p className="font-semibold text-foreground">
+                    <div className="p-3.5 rounded-lg bg-muted/20 border border-border space-y-2 text-xs">
+                      <p className="font-normal text-foreground">
                         Este cliente já está cadastrado.
                       </p>
-                      <div className="text-sm space-y-1 text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-primary" />
-                          <span className="font-medium text-foreground">
-                            {firstVisibleClient.name}
-                          </span>
-                        </div>
+                      <div className="space-y-1 text-muted-foreground tabular">
+                        <div>Nome: {firstVisibleClient.name}</div>
                         {firstVisibleClient.phone && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4" />
-                            <span>{formatPhoneNumber(firstVisibleClient.phone)}</span>
-                          </div>
+                          <div>Telefone: {formatPhoneNumber(firstVisibleClient.phone)}</div>
                         )}
-                        {firstVisibleClient.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4" />
-                            <span>{firstVisibleClient.email}</span>
-                          </div>
-                        )}
+                        {firstVisibleClient.email && <div>E-mail: {firstVisibleClient.email}</div>}
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <div className="flex flex-wrap gap-2 pt-1">
                       <Button
                         onClick={() => navigate(`/clientes/${firstVisibleClient.id}/editar`)}
-                        className="w-full sm:w-auto"
+                        className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground"
                       >
                         Completar cadastro
                       </Button>
                       <Button
                         variant="outline"
-                        onClick={() => {
-                          setMatchResult(null)
-                        }}
-                        className="w-full sm:w-auto"
+                        onClick={() => setMatchResult(null)}
+                        className="h-9 rounded-full px-4 text-xs font-normal border-border"
                       >
                         Voltar
                       </Button>
@@ -391,64 +368,46 @@ export default function NovoCliente() {
                 )
               }
 
-              // Caso 2: same_person com visible falso
               if (matchResult.status === 'same_person' && !hasVisibleMatch) {
                 return (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-sm">
+                    <div className="p-3.5 rounded-lg border border-attention/40 bg-muted/20 text-xs">
                       Já existe um cliente com esses dados. Fale com o SDR ou o admin.
                     </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setMatchResult(null)
-                        }}
-                      >
-                        Voltar
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setMatchResult(null)}
+                      className="h-9 rounded-full px-4 text-xs font-normal border-border"
+                    >
+                      Voltar
+                    </Button>
                   </div>
                 )
               }
 
-              // Caso 3: maybe_same com visible verdadeiro
               if (matchResult.status === 'maybe_same' && hasVisibleMatch && firstVisibleClient) {
                 return (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-lg bg-muted/60 border space-y-2">
-                      <p className="font-semibold text-foreground">É a mesma pessoa?</p>
-                      <div className="text-sm space-y-1 text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-primary" />
-                          <span className="font-medium text-foreground">
-                            {firstVisibleClient.name}
-                          </span>
-                        </div>
+                    <div className="p-3.5 rounded-lg bg-muted/20 border border-border space-y-2 text-xs">
+                      <p className="font-normal text-foreground">É a mesma pessoa?</p>
+                      <div className="space-y-1 text-muted-foreground tabular">
+                        <div>Nome: {firstVisibleClient.name}</div>
                         {firstVisibleClient.phone && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4" />
-                            <span>{formatPhoneNumber(firstVisibleClient.phone)}</span>
-                          </div>
+                          <div>Telefone: {formatPhoneNumber(firstVisibleClient.phone)}</div>
                         )}
-                        {firstVisibleClient.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4" />
-                            <span>{firstVisibleClient.email}</span>
-                          </div>
-                        )}
+                        {firstVisibleClient.email && <div>E-mail: {firstVisibleClient.email}</div>}
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <div className="flex flex-wrap gap-2 pt-1">
                       <Button
                         onClick={() => navigate(`/clientes/${firstVisibleClient.id}/editar`)}
-                        className="w-full sm:w-auto"
+                        className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground"
                       >
                         Sim, completar o cadastro dele
                       </Button>
                       <Button
-                        variant="secondary"
+                        variant="outline"
                         onClick={() => {
                           const rawCpf = cpf.replace(/\D/g, '')
                           const effectiveCpf = canSeeCpf ? rawCpf : ''
@@ -460,7 +419,7 @@ export default function NovoCliente() {
                             setStep(2)
                           }
                         }}
-                        className="w-full sm:w-auto"
+                        className="h-9 rounded-full px-4 text-xs font-normal border-border"
                       >
                         Não, criar outro cliente
                       </Button>
@@ -469,13 +428,12 @@ export default function NovoCliente() {
                 )
               }
 
-              // Caso 4: maybe_same com visible falso
               return (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-sm">
+                  <div className="p-3.5 rounded-lg border border-attention/40 bg-muted/20 text-xs">
                     Já existe um cliente com esses dados. Fale com o SDR ou o admin.
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     <Button
                       onClick={() => {
                         const rawCpf = cpf.replace(/\D/g, '')
@@ -488,17 +446,14 @@ export default function NovoCliente() {
                           setStep(2)
                         }
                       }}
-                      className="w-full sm:w-auto"
+                      className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground"
                     >
                       É outra pessoa, criar novo cliente
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        setMatchResult(null)
-                        // Permanece na etapa atual
-                      }}
-                      className="w-full sm:w-auto"
+                      onClick={() => setMatchResult(null)}
+                      className="h-9 rounded-full px-4 text-xs font-normal border-border"
                     >
                       Voltar
                     </Button>
@@ -506,315 +461,412 @@ export default function NovoCliente() {
                 </div>
               )
             })()}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* ETAPA 1: Formulário de pré-cadastro e verificação */}
       {step === 1 && !matchResult && (
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-lg">Identificação do cliente</CardTitle>
-            <CardDescription>
+        <form onSubmit={handleCheckMatch} className="space-y-6">
+          <div className="space-y-4">
+            <h2 className="text-[20px] font-normal text-foreground">Identificação do cliente</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Informe os dados básicos para verificarmos se o cliente já existe na imobiliária.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCheckMatch} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="step1-name">
+            </p>
+
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label
+                  htmlFor="step1-name"
+                  className="text-[13px] font-normal text-foreground block"
+                >
                   Nome do cliente <span className="text-destructive">*</span>
-                </Label>
-                <Input
+                </label>
+                <input
                   id="step1-name"
                   placeholder="Nome completo"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="step1-phone">Telefone celular</Label>
-                  <Input
+                <div className="space-y-1">
+                  <label
+                    htmlFor="step1-phone"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Telefone celular
+                  </label>
+                  <input
                     id="step1-phone"
                     placeholder="(00) 00000-0000"
                     value={phone}
                     onChange={(e) => setPhone(maskPhoneInput(e.target.value))}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
                   />
-                  <span className="text-xs text-muted-foreground">Com DDD</span>
+                  <span className="text-[11px] text-muted-foreground">Com DDD</span>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="step1-email">E-mail</Label>
-                  <Input
+                <div className="space-y-1">
+                  <label
+                    htmlFor="step1-email"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    E-mail
+                  </label>
+                  <input
                     id="step1-email"
                     type="email"
                     placeholder="cliente@exemplo.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                 </div>
               </div>
 
-              {/* CPF só para admin e corretor. O SDR NÃO vê o campo CPF. */}
               {canSeeCpf && (
-                <div className="space-y-2">
-                  <Label htmlFor="step1-cpf">CPF</Label>
-                  <Input
+                <div className="space-y-1">
+                  <label
+                    htmlFor="step1-cpf"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    CPF
+                  </label>
+                  <input
                     id="step1-cpf"
                     placeholder="000.000.000-00"
                     value={cpf}
                     onChange={(e) => setCpf(maskCpfInput(e.target.value))}
                     maxLength={14}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
                   />
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[11px] text-muted-foreground block">
                     Opcional nesta etapa. Usado para busca precisa de duplicidade.
                   </span>
                 </div>
               )}
+            </div>
+          </div>
 
-              <div className="pt-4 flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => navigate('/clientes')}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={checking} className="gap-2">
-                  {checking && <Loader2 className="h-4 w-4 animate-spin" />}
-                  <span>Continuar</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+          <div className="hidden md:flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/clientes')}
+              className="h-10 rounded-full px-5 text-xs font-normal border-border"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={checking}
+              className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+            >
+              {checking && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Continuar</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          <div className="md:hidden fixed bottom-16 left-0 right-0 z-30 p-3 bg-background/95 backdrop-blur border-t border-border flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/clientes')}
+              className="flex-1 h-12 rounded-full text-xs font-normal border-border"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={checking}
+              className="flex-1 h-12 rounded-full text-xs font-normal bg-primary text-primary-foreground gap-2"
+            >
+              {checking && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Continuar</span>
+            </Button>
+          </div>
+        </form>
       )}
 
       {/* ETAPA 2: Formulário completo */}
       {step === 2 && !matchResult && (
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-lg">Dados cadastrais completos</CardTitle>
-            <CardDescription>
-              Preencha o perfil completo do cliente e atribua o corretor responsável.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSaveClient} className="space-y-6">
-              {/* Dados Principais */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="step2-name">
-                    Nome completo <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="step2-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
+        <form onSubmit={handleSaveClient} className="space-y-8">
+          {/* Dados Principais */}
+          <div className="space-y-4">
+            <h2 className="text-[20px] font-normal text-foreground">Dados cadastrais completos</h2>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label
+                  htmlFor="step2-name"
+                  className="text-[13px] font-normal text-foreground block"
+                >
+                  Nome completo <span className="text-destructive">*</span>
+                </label>
+                <input
+                  id="step2-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label
+                    htmlFor="step2-phone"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Telefone celular
+                  </label>
+                  <input
+                    id="step2-phone"
+                    placeholder="(00) 00000-0000"
+                    value={phone}
+                    onChange={(e) => setPhone(maskPhoneInput(e.target.value))}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="step2-phone">Telefone celular</Label>
-                    <Input
-                      id="step2-phone"
-                      placeholder="(00) 00000-0000"
-                      value={phone}
-                      onChange={(e) => setPhone(maskPhoneInput(e.target.value))}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="step2-email">E-mail</Label>
-                    <Input
-                      id="step2-email"
-                      type="email"
-                      placeholder="cliente@exemplo.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  * Informe ao menos telefone ou e-mail para contato.
-                </p>
-              </div>
-
-              {/* Tipos de Relação */}
-              <div className="space-y-3 pt-2 border-t">
-                <Label className="text-sm font-semibold">
-                  Tipos de relação <span className="text-destructive">*</span>
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Selecione uma ou mais relações do cliente com a imobiliária.
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-                  {(['comprador', 'locatario', 'proprietario', 'investidor'] as ClientKind[]).map(
-                    (k) => (
-                      <div
-                        key={k}
-                        className="flex items-center space-x-2 border rounded-md p-3 hover:bg-muted/40 transition-colors"
-                      >
-                        <Checkbox
-                          id={`kind-${k}`}
-                          checked={kinds.includes(k)}
-                          onCheckedChange={() => handleToggleKind(k)}
-                        />
-                        <Label
-                          htmlFor={`kind-${k}`}
-                          className="text-sm font-normal cursor-pointer leading-none"
-                        >
-                          {KIND_LABELS[k]}
-                        </Label>
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-
-              {/* Responsável */}
-              <div className="space-y-2 pt-2 border-t">
-                <Label htmlFor="step2-responsible">Responsável</Label>
-                {isCorretor ? (
-                  <div className="p-2.5 rounded-md bg-muted text-sm text-foreground flex items-center justify-between border">
-                    <span>{user?.name || user?.email || 'Você (Corretor)'}</span>
-                    <span className="text-xs text-muted-foreground font-medium">
-                      Fixo (Corretor)
-                    </span>
-                  </div>
-                ) : (
-                  <Select
-                    value={responsibleId || 'nenhum'}
-                    onValueChange={(val) => setResponsibleId(val === 'nenhum' ? '' : val)}
+                <div className="space-y-1">
+                  <label
+                    htmlFor="step2-email"
+                    className="text-[13px] font-normal text-foreground block"
                   >
-                    <SelectTrigger id="step2-responsible">
-                      <SelectValue placeholder="Selecione o corretor responsável" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="nenhum">Nenhum responsável no momento</SelectItem>
-                      {responsibleUsers.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name} ({u.role})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  {isCorretor
-                    ? 'Como corretor, novos clientes ficam automaticamente atribuídos a você.'
-                    : 'Atribua um corretor ou administrador para gerenciar o cliente.'}
-                </span>
+                    E-mail
+                  </label>
+                  <input
+                    id="step2-email"
+                    type="email"
+                    placeholder="cliente@exemplo.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
               </div>
+            </div>
+          </div>
 
-              {/* Consentimento LGPD */}
-              <div className="space-y-4 pt-2 border-t">
-                <Label className="text-sm font-semibold">Consentimento LGPD</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="step2-consent-status">Status de consentimento</Label>
-                    <Select
-                      value={consentStatus}
-                      onValueChange={(val) => setConsentStatus(val as ConsentStatus)}
-                    >
-                      <SelectTrigger id="step2-consent-status">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unknown">{CONSENT_STATUS_LABELS['unknown']}</SelectItem>
-                        <SelectItem value="opt_in">{CONSENT_STATUS_LABELS['opt_in']}</SelectItem>
-                        <SelectItem value="opt_out">{CONSENT_STATUS_LABELS['opt_out']}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+          <div className="border-t border-border" />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="step2-consent-channel">Canal de consentimento</Label>
-                    <Input
-                      id="step2-consent-channel"
-                      placeholder="Ex.: WhatsApp, Formulário web, Presencial"
-                      value={consentChannel}
-                      onChange={(e) => setConsentChannel(e.target.value)}
+          {/* Tipos de Relação */}
+          <div className="space-y-3">
+            <label className="text-[13px] font-normal text-foreground block">
+              Tipos de relação <span className="text-destructive">*</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              {(['comprador', 'locatario', 'proprietario', 'investidor'] as ClientKind[]).map(
+                (k) => (
+                  <label
+                    key={k}
+                    className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-muted/30 cursor-pointer text-xs"
+                  >
+                    <Checkbox
+                      id={`kind-${k}`}
+                      checked={kinds.includes(k)}
+                      onCheckedChange={() => handleToggleKind(k)}
                     />
-                  </div>
-                </div>
-              </div>
-
-              {/* Dados Pessoais (apenas Admin e Corretor) */}
-              {canSeeCpf && (
-                <div className="space-y-4 pt-2 border-t">
-                  <div>
-                    <Label className="text-sm font-semibold">Dados pessoais</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Gravados com segurança em armazenamento protegido.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="step2-cpf">CPF</Label>
-                      <Input
-                        id="step2-cpf"
-                        placeholder="000.000.000-00"
-                        value={cpf}
-                        onChange={(e) => setCpf(maskCpfInput(e.target.value))}
-                        maxLength={14}
-                      />
-                      {cpf && !isValidCpf(cpf) && (
-                        <span className="text-xs text-destructive">
-                          Dígitos do CPF não conferem.
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="step2-birthdate">Data de nascimento</Label>
-                      <Input
-                        id="step2-birthdate"
-                        type="date"
-                        value={birthDate}
-                        onChange={(e) => setBirthDate(e.target.value)}
-                        max={new Date().toISOString().split('T')[0]}
-                      />
-                    </div>
-                  </div>
-                </div>
+                    <span>{KIND_LABELS[k]}</span>
+                  </label>
+                ),
               )}
+            </div>
+          </div>
 
-              {/* Botões de Ação */}
-              <div className="pt-4 border-t flex flex-col sm:flex-row justify-between gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep(1)}
-                  disabled={saving}
+          <div className="border-t border-border" />
+
+          {/* Responsável */}
+          <div className="space-y-2">
+            <label
+              htmlFor="step2-responsible"
+              className="text-[13px] font-normal text-foreground block"
+            >
+              Responsável
+            </label>
+            {isCorretor ? (
+              <div className="p-3 rounded-lg bg-muted/30 text-xs text-foreground flex items-center justify-between border border-border">
+                <span>{user?.name || user?.email || 'Você (Corretor)'}</span>
+                <span className="text-muted-foreground">Fixo</span>
+              </div>
+            ) : (
+              <Select
+                value={responsibleId || 'nenhum'}
+                onValueChange={(val) => setResponsibleId(val === 'nenhum' ? '' : val)}
+              >
+                <SelectTrigger
+                  id="step2-responsible"
+                  className="h-12 rounded-lg border-border bg-background"
                 >
-                  Voltar à etapa 1
-                </Button>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => navigate('/clientes')}
-                    disabled={saving}
+                  <SelectValue placeholder="Selecione o corretor responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nenhum">Nenhum responsável no momento</SelectItem>
+                  {responsibleUsers.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} ({u.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          <div className="border-t border-border" />
+
+          {/* Consentimento LGPD */}
+          <div className="space-y-4">
+            <h2 className="text-[20px] font-normal text-foreground">Consentimento LGPD</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label
+                  htmlFor="step2-consent-status"
+                  className="text-[13px] font-normal text-foreground block"
+                >
+                  Status de consentimento
+                </label>
+                <Select
+                  value={consentStatus}
+                  onValueChange={(val) => setConsentStatus(val as ConsentStatus)}
+                >
+                  <SelectTrigger
+                    id="step2-consent-status"
+                    className="h-12 rounded-lg border-border bg-background"
                   >
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={saving} className="gap-2">
-                    {saving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unknown">{CONSENT_STATUS_LABELS['unknown']}</SelectItem>
+                    <SelectItem value="opt_in">{CONSENT_STATUS_LABELS['opt_in']}</SelectItem>
+                    <SelectItem value="opt_out">{CONSENT_STATUS_LABELS['opt_out']}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="step2-consent-channel"
+                  className="text-[13px] font-normal text-foreground block"
+                >
+                  Canal de consentimento
+                </label>
+                <input
+                  id="step2-consent-channel"
+                  placeholder="Ex.: WhatsApp, Formulário web, Presencial"
+                  value={consentChannel}
+                  onChange={(e) => setConsentChannel(e.target.value)}
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dados Pessoais (apenas Admin e Corretor) */}
+          {canSeeCpf && (
+            <>
+              <div className="border-t border-border" />
+              <div className="space-y-4">
+                <h2 className="text-[20px] font-normal text-foreground">Dados pessoais</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="step2-cpf"
+                      className="text-[13px] font-normal text-foreground block"
+                    >
+                      CPF
+                    </label>
+                    <input
+                      id="step2-cpf"
+                      placeholder="000.000.000-00"
+                      value={cpf}
+                      onChange={(e) => setCpf(maskCpfInput(e.target.value))}
+                      maxLength={14}
+                      className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                    />
+                    {cpf && !isValidCpf(cpf) && (
+                      <span className="text-xs text-destructive">Dígitos do CPF não conferem.</span>
                     )}
-                    <span>Salvar cliente</span>
-                  </Button>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="step2-birthdate"
+                      className="text-[13px] font-normal text-foreground block"
+                    >
+                      Data de nascimento
+                    </label>
+                    <input
+                      id="step2-birthdate"
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                    />
+                  </div>
                 </div>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </>
+          )}
+
+          {/* Botões de Ação Desktop */}
+          <div className="hidden md:flex justify-between items-center pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep(1)}
+              disabled={saving}
+              className="h-10 rounded-full px-5 text-xs font-normal border-border"
+            >
+              Voltar à etapa 1
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/clientes')}
+                disabled={saving}
+                className="h-10 rounded-full px-5 text-xs font-normal border-border"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+              >
+                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                <span>Salvar cliente</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Barra fixa móvel */}
+          <div className="md:hidden fixed bottom-16 left-0 right-0 z-30 p-3 bg-background/95 backdrop-blur border-t border-border flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep(1)}
+              disabled={saving}
+              className="flex-1 h-12 rounded-full text-xs font-normal border-border"
+            >
+              Voltar
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="flex-1 h-12 rounded-full text-xs font-normal bg-primary text-primary-foreground gap-2"
+            >
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Salvar cliente</span>
+            </Button>
+          </div>
+        </form>
       )}
     </div>
   )

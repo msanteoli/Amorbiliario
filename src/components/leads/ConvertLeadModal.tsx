@@ -191,44 +191,41 @@ export function ConvertLeadModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5 text-primary" />
-            <span>Converter lead em cliente</span>
+      <DialogContent className="sm:max-w-md w-full max-sm:h-[90vh] max-sm:max-h-[90vh] max-sm:rounded-t-2xl max-sm:rounded-b-none max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:translate-y-0 rounded-lg border border-border bg-card p-6 shadow-none overflow-y-auto">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-base font-normal text-foreground">
+            Converter lead em cliente
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
           {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20">
+              {errorMessage}
             </div>
           )}
 
           {alreadyLinkedMsg && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 text-blue-800 text-sm border border-blue-200">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{alreadyLinkedMsg}</span>
+            <div className="p-3 rounded-lg bg-muted text-foreground text-xs border border-border">
+              {alreadyLinkedMsg}
             </div>
           )}
 
           {hiddenDuplicateMsg && (
-            <div className="p-4 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-sm space-y-1">
-              <div className="font-semibold flex items-center gap-1.5">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <div className="p-4 rounded-lg border border-attention/40 bg-muted/20 text-xs space-y-1">
+              <div className="font-medium text-foreground flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-attention" />
                 <span>Cliente já cadastrado</span>
               </div>
-              <p>{hiddenDuplicateMsg}</p>
+              <p className="text-muted-foreground">{hiddenDuplicateMsg}</p>
             </div>
           )}
 
           {/* Se houver conflito com cliente visível (409) */}
           {conflict && (
-            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 space-y-3">
-              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold text-sm">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
+            <div className="p-4 rounded-lg border border-attention/40 bg-muted/20 space-y-3">
+              <div className="flex items-center gap-2 text-foreground font-medium text-xs">
+                <AlertTriangle className="h-4 w-4 text-attention shrink-0" />
                 <span>
                   {conflict.status === 'same_person'
                     ? 'Este cliente já está cadastrado. Ligar o lead a ele?'
@@ -242,13 +239,13 @@ export function ConvertLeadModal({
                   return (
                     <div
                       key={idx}
-                      className="p-3 rounded-md bg-card border flex items-center justify-between gap-3 text-xs"
+                      className="p-3 rounded-lg bg-card border border-border flex items-center justify-between gap-3 text-xs"
                     >
                       <div>
-                        <div className="font-semibold text-foreground text-sm">
+                        <div className="font-normal text-foreground text-sm">
                           {item.client.name}
                         </div>
-                        <div className="text-muted-foreground">
+                        <div className="text-muted-foreground tabular">
                           {formatPhoneNumber(item.client.phone)}
                         </div>
                       </div>
@@ -256,7 +253,8 @@ export function ConvertLeadModal({
                         size="sm"
                         onClick={() => handleLinkToClient(item.client!.id)}
                         disabled={loading}
-                        className="text-xs h-8"
+                        className="h-8 rounded-full px-3 text-xs font-normal border-border"
+                        variant="outline"
                       >
                         {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
                         Ligar a este cliente
@@ -272,7 +270,7 @@ export function ConvertLeadModal({
                   size="sm"
                   onClick={() => handleClose(false)}
                   disabled={loading}
-                  className="text-xs"
+                  className="h-9 rounded-full px-4 text-xs font-normal border-border"
                 >
                   Cancelar
                 </Button>
@@ -283,22 +281,24 @@ export function ConvertLeadModal({
           {/* Formulário inicial de conversão */}
           {!conflict && !hiddenDuplicateMsg && !alreadyLinkedMsg && (
             <div className="space-y-4">
-              <div className="p-3 rounded-md bg-muted/40 border text-xs text-muted-foreground space-y-1">
+              <div className="p-3.5 rounded-lg bg-muted/20 border border-border text-xs text-muted-foreground space-y-1">
                 <div>
-                  Lead: <strong className="text-foreground">{lead.name}</strong>
+                  Lead: <strong className="text-foreground font-normal">{lead.name}</strong>
                 </div>
-                <div>Telefone: {formatPhoneNumber(lead.phone)}</div>
+                <div className="tabular">Telefone: {formatPhoneNumber(lead.phone)}</div>
                 {lead.email && <div>E-mail: {lead.email}</div>}
               </div>
 
               {/* Tipos de relação */}
               <div className="space-y-2">
-                <Label>Tipos de relação (ao menos um)</Label>
+                <label className="text-[13px] font-normal text-foreground block">
+                  Tipos de relação (ao menos um)
+                </label>
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   {CLIENT_KINDS.map((k) => (
                     <label
                       key={k.id}
-                      className="flex items-center gap-2 p-2 rounded-md border cursor-pointer hover:bg-muted/50 text-xs"
+                      className="flex items-center gap-2 p-2.5 rounded-lg border border-border cursor-pointer hover:bg-muted/40 text-xs"
                     >
                       <Checkbox
                         checked={selectedKinds.includes(k.id)}
@@ -312,10 +312,18 @@ export function ConvertLeadModal({
 
               {/* Responsável (só admin e SDR) */}
               {!isCorretor && (
-                <div className="space-y-2">
-                  <Label htmlFor="convert-responsible">Responsável pelo cliente</Label>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="convert-responsible"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Responsável pelo cliente
+                  </label>
                   <Select value={responsibleId} onValueChange={setResponsibleId}>
-                    <SelectTrigger id="convert-responsible">
+                    <SelectTrigger
+                      id="convert-responsible"
+                      className="h-12 rounded-lg border-border bg-background"
+                    >
                       <SelectValue placeholder="Selecione o responsável" />
                     </SelectTrigger>
                     <SelectContent>
@@ -332,13 +340,22 @@ export function ConvertLeadModal({
           )}
         </div>
 
-        <DialogFooter className="pt-3">
-          <Button variant="outline" onClick={() => handleClose(false)} disabled={loading}>
+        <DialogFooter className="pt-3 gap-2">
+          <Button
+            variant="outline"
+            onClick={() => handleClose(false)}
+            disabled={loading}
+            className="h-10 rounded-full px-5 text-xs font-normal border-border"
+          >
             Cancelar
           </Button>
           {!conflict && !hiddenDuplicateMsg && !alreadyLinkedMsg && (
-            <Button onClick={handleConvertCreate} disabled={loading} className="gap-2">
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button
+              onClick={handleConvertCreate}
+              disabled={loading}
+              className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+            >
+              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <span>Converter em cliente</span>
             </Button>
           )}

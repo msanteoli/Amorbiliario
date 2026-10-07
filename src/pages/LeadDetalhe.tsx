@@ -370,95 +370,159 @@ export default function LeadDetalhe() {
   const clientLinked = lead.expand?.client_id
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 pb-12">
       {/* Botão voltar e breadcrumb */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
+            type="button"
             onClick={() => navigate('/leads')}
+            className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
             title="Voltar para lista de leads"
           >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <span className="text-sm text-muted-foreground">Leads / {lead.name}</span>
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <span className="text-xs text-muted-foreground truncate">Leads / {lead.name}</span>
         </div>
 
-        {/* Botões de Ação Superiores */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Corrigir Origem (só admin) */}
+        {/* Botões de Ação Superiores no Desktop */}
+        <div className="hidden md:flex flex-wrap items-center gap-2">
           {isAdmin && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCorrectOriginModalOpen(true)}
-              className="gap-1.5 text-xs"
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
             >
               <Edit className="h-3.5 w-3.5" />
               <span>Corrigir origem</span>
             </Button>
           )}
 
-          {/* Editar dados (só admin e SDR) */}
           {canManageLeads && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setEditModalOpen(true)}
-              className="gap-1.5 text-xs"
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
             >
               <Edit className="h-3.5 w-3.5" />
               <span>Editar dados</span>
             </Button>
           )}
 
-          {/* Enviar ficha de imóvel (admin, SDR e o corretor do lead) */}
           {canOperateLead && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setSendFichaModalOpen(true)}
-              className="gap-1.5 text-xs"
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
             >
               <Send className="h-3.5 w-3.5" />
               <span>Enviar ficha de imóvel</span>
             </Button>
           )}
 
-          {/* Converter em cliente (admin, SDR e o corretor do lead, escondido se já tiver client_id) */}
           {canOperateLead && !lead.client_id && (
-            <Button size="sm" onClick={() => setConvertModalOpen(true)} className="gap-1.5 text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConvertModalOpen(true)}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
+            >
               <UserCheck className="h-3.5 w-3.5" />
               <span>Converter em cliente</span>
             </Button>
           )}
 
-          {/* Agendar visita (só admin e SDR) */}
           {canManageLeads && (
             <Button
+              variant="outline"
               size="sm"
               onClick={() => setCreateVisitModalOpen(true)}
-              className="gap-1.5 text-xs bg-primary"
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
             >
               <Calendar className="h-3.5 w-3.5" />
               <span>Agendar visita</span>
             </Button>
           )}
 
-          {/* Criar tarefa (admin, SDR, ou corretor se o lead for dele) */}
           {canOperateLead && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCreateTaskModalOpen(true)}
-              className="gap-1.5 text-xs"
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
             >
               <Clock className="h-3.5 w-3.5" />
               <span>Criar tarefa</span>
             </Button>
           )}
         </div>
+      </div>
+
+      {/* No celular: fileira rolante de ações logo abaixo do cabeçalho */}
+      <div className="md:hidden flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCorrectOriginModalOpen(true)}
+            className="h-9 rounded-full px-3.5 text-xs font-normal border-border shrink-0"
+          >
+            <span>Corrigir origem</span>
+          </Button>
+        )}
+        {canManageLeads && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditModalOpen(true)}
+            className="h-9 rounded-full px-3.5 text-xs font-normal border-border shrink-0"
+          >
+            <span>Editar</span>
+          </Button>
+        )}
+        {canOperateLead && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSendFichaModalOpen(true)}
+            className="h-9 rounded-full px-3.5 text-xs font-normal border-border shrink-0"
+          >
+            <span>Enviar ficha de imóvel</span>
+          </Button>
+        )}
+        {canOperateLead && !lead.client_id && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConvertModalOpen(true)}
+            className="h-9 rounded-full px-3.5 text-xs font-normal border-border shrink-0"
+          >
+            <span>Converter em cliente</span>
+          </Button>
+        )}
+        {canManageLeads && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCreateVisitModalOpen(true)}
+            className="h-9 rounded-full px-3.5 text-xs font-normal border-border shrink-0"
+          >
+            <span>Agendar visita</span>
+          </Button>
+        )}
+        {canOperateLead && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCreateTaskModalOpen(true)}
+            className="h-9 rounded-full px-3.5 text-xs font-normal border-border shrink-0"
+          >
+            <span>Criar tarefa</span>
+          </Button>
+        )}
       </div>
 
       {/* Banner de sucesso */}
@@ -477,605 +541,535 @@ export default function LeadDetalhe() {
         </div>
       )}
 
-      {/* CABEÇALHO DO LEAD */}
-      <Card className="border-border">
-        <CardContent className="p-6 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">{lead.name}</h1>
-                <Badge
-                  variant="outline"
-                  className={`text-xs font-semibold ${getStageBadgeColor(lead.stage)}`}
-                >
-                  {LEAD_STAGE_LABELS[lead.stage] || lead.stage}
-                </Badge>
-                {lead.client_id && (
-                  <Badge
-                    variant="outline"
-                    className="text-xs border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50"
-                  >
-                    Já é cliente
-                  </Badge>
-                )}
-                {lead.dedupe_status === 'pendente' && (
-                  <Badge
-                    variant="outline"
-                    className="text-xs border-amber-300 text-amber-800 bg-amber-50 dark:bg-amber-950/50"
-                  >
-                    Pendência de duplicidade
-                  </Badge>
-                )}
-              </div>
-
-              {/* Informação do cliente já ligado */}
-              {lead.client_id && (
-                <div className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
-                  <span>Cliente:</span>
-                  <Link
-                    to={`/clientes/${lead.client_id}`}
-                    className="text-primary font-medium hover:underline inline-flex items-center gap-1"
-                  >
-                    <span>{clientLinked?.name || 'Ver cliente'}</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </Link>
-                </div>
-              )}
-
-              {/* Se estiver Perdido, mostra o motivo */}
-              {lead.stage === 'perdido' && lead.lost_reason && (
-                <div className="text-xs text-destructive font-medium flex items-center gap-1 pt-0.5">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span>
-                    Motivo da perda: {LOST_REASON_LABELS[lead.lost_reason] || lead.lost_reason}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Controles de Etapa e Atribuição */}
+      {/* CABEÇALHO DO LEAD: nome em .display-sm, etapa em pílula, badges de duplicidade e cliente */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
+          <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              {/* Etapa (admin, SDR e corretor do lead) */}
-              {canOperateLead && (
-                <div className="space-y-1">
-                  <span className="text-[11px] text-muted-foreground block">Mudar etapa</span>
-                  <Select
-                    value={lead.stage}
-                    onValueChange={(val) => handleStageSelect(val as LeadStage)}
-                    disabled={savingStage}
-                  >
-                    <SelectTrigger className="w-[170px] h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="novo">Novo</SelectItem>
-                      <SelectItem value="em_atendimento">Em atendimento</SelectItem>
-                      <SelectItem value="visita_marcada">Visita marcada</SelectItem>
-                      <SelectItem value="proposta">Proposta</SelectItem>
-                      <SelectItem value="ganho">Ganho</SelectItem>
-                      <SelectItem value="perdido">Perdido</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <h1 className="display-sm text-foreground">{lead.name}</h1>
+              <Badge
+                variant={
+                  lead.stage === 'ganho'
+                    ? 'success'
+                    : lead.stage === 'perdido'
+                      ? 'destructive'
+                      : lead.stage === 'visita_marcada' || lead.stage === 'novo'
+                        ? 'info'
+                        : 'default'
+                }
+                className="text-xs"
+              >
+                {LEAD_STAGE_LABELS[lead.stage] || lead.stage}
+              </Badge>
+              {lead.client_id && (
+                <Badge variant="default" className="text-xs">
+                  Já é cliente
+                </Badge>
               )}
-
-              {/* Atribuição (só admin e SDR) */}
-              {canManageLeads && (
-                <div className="space-y-1">
-                  <span className="text-[11px] text-muted-foreground block">Atribuído</span>
-                  <Select
-                    value={lead.assigned_to || 'unassigned'}
-                    onValueChange={handleAssignChange}
-                  >
-                    <SelectTrigger className="w-[180px] h-9">
-                      <SelectValue placeholder="Selecione o responsável" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Sem dono</SelectItem>
-                      {assignees.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name || u.email || 'Usuário'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Grid de Metadados do Lead */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            {/* Telefone */}
-            <div className="space-y-1">
-              <span className="text-muted-foreground block">Telefone</span>
-              {lead.phone ? (
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">
-                    {formatPhoneNumber(lead.phone)}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground"
-                    onClick={handleCopyPhone}
-                    title="Copiar telefone"
-                  >
-                    {copiedPhone ? (
-                      <Check className="h-3 w-3 text-emerald-600" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
-                  </Button>
-                  <a
-                    href={`https://wa.me/${lead.phone}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center"
-                    title="Abrir no WhatsApp"
-                  >
-                    <Phone className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">-</span>
+              {lead.dedupe_status === 'pendente' && (
+                <Badge variant="attention" className="text-xs">
+                  Pendência de duplicidade
+                </Badge>
               )}
             </div>
 
-            {/* E-mail */}
-            <div className="space-y-1">
-              <span className="text-muted-foreground block">E-mail</span>
-              {lead.email ? (
-                <span className="font-semibold text-foreground truncate block">{lead.email}</span>
-              ) : (
-                <span className="text-muted-foreground">-</span>
-              )}
-            </div>
-
-            {/* Origem e Detalhe */}
-            <div className="space-y-1">
-              <span className="text-muted-foreground block">Origem</span>
-              <span className="font-semibold text-foreground">
-                {LEAD_ORIGIN_LABELS[lead.origin] || lead.origin}
-                {lead.origin_detail ? ` (${lead.origin_detail})` : ''}
-              </span>
-            </div>
-
-            {/* Consentimento */}
-            <div className="space-y-1">
-              <span className="text-muted-foreground block">Consentimento</span>
-              <span className="font-medium text-foreground">
-                {CONSENT_STATUS_LABELS[lead.consent_status] || 'Sem informação'}
-              </span>
-            </div>
-          </div>
-
-          {/* Linha 2 de metadados */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-2 border-t">
-            {/* Atribuído */}
-            <div className="space-y-1">
-              <span className="text-muted-foreground block">Atribuído a</span>
-              <span className="font-medium text-foreground flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 text-muted-foreground" />
-                {assigneeName}
-              </span>
-            </div>
-
-            {/* Imóvel de interesse */}
-            <div className="space-y-1 sm:col-span-2">
-              <span className="text-muted-foreground block">Imóvel de interesse</span>
-              {interestProperty ? (
-                <Link
-                  to={`/imoveis/${interestProperty.id}`}
-                  className="font-semibold text-primary hover:underline inline-flex items-center gap-1.5"
+            {/* Telefone com ações Copiar e WhatsApp em pílulas */}
+            {lead.phone && (
+              <div className="flex items-center gap-2 pt-1 text-xs">
+                <span className="tabular text-foreground">{formatPhoneNumber(lead.phone)}</span>
+                <button
+                  type="button"
+                  onClick={handleCopyPhone}
+                  className="h-7 px-3 rounded-full border border-border text-[11px] text-foreground hover:bg-muted inline-flex items-center gap-1"
                 >
-                  <Building className="h-3.5 w-3.5" />
-                  <span>
-                    {interestProperty.code} - {interestProperty.title}
-                  </span>
+                  {copiedPhone ? (
+                    <Check className="h-3 w-3 text-success" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
+                  <span>{copiedPhone ? 'Copiado' : 'Copiar'}</span>
+                </button>
+                <a
+                  href={`https://wa.me/${lead.phone}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-7 px-3 rounded-full border border-border text-[11px] text-foreground hover:bg-muted inline-flex items-center gap-1"
+                >
+                  <Phone className="h-3 w-3" />
+                  <span>WhatsApp</span>
+                </a>
+              </div>
+            )}
+
+            {/* Informação do cliente já ligado */}
+            {lead.client_id && (
+              <div className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
+                <span>Cliente:</span>
+                <Link
+                  to={`/clientes/${lead.client_id}`}
+                  className="text-primary underline inline-flex items-center gap-1"
+                >
+                  <span>{clientLinked?.name || 'Ver cliente'}</span>
                   <ExternalLink className="h-3 w-3" />
                 </Link>
-              ) : (
-                <span className="text-muted-foreground">Nenhum imóvel vinculado</span>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Contato inicial e último */}
-            <div className="space-y-1">
-              <span className="text-muted-foreground block">Último contato</span>
-              <span className="text-muted-foreground">
-                {lead.last_contact_at ? formatDateTimeBR(lead.last_contact_at) : 'Nenhum contato'}
-              </span>
-            </div>
+            {/* Se estiver Perdido, mostra o motivo */}
+            {lead.stage === 'perdido' && lead.lost_reason && (
+              <div className="text-xs text-destructive font-normal flex items-center gap-1 pt-0.5">
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span>
+                  Motivo da perda: {LOST_REASON_LABELS[lead.lost_reason] || lead.lost_reason}
+                </span>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Atribuição e etapa em campos de 48px */}
+          <div className="flex flex-wrap items-center gap-2">
+            {canOperateLead && (
+              <div className="space-y-1">
+                <span className="eyebrow text-muted-foreground block">Etapa</span>
+                <Select
+                  value={lead.stage}
+                  onValueChange={(val) => handleStageSelect(val as LeadStage)}
+                  disabled={savingStage}
+                >
+                  <SelectTrigger className="w-[170px] h-12 rounded-lg border-border bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="novo">Novo</SelectItem>
+                    <SelectItem value="em_atendimento">Em atendimento</SelectItem>
+                    <SelectItem value="visita_marcada">Visita marcada</SelectItem>
+                    <SelectItem value="proposta">Proposta</SelectItem>
+                    <SelectItem value="ganho">Ganho</SelectItem>
+                    <SelectItem value="perdido">Perdido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {canManageLeads && (
+              <div className="space-y-1">
+                <span className="eyebrow text-muted-foreground block">Atribuído</span>
+                <Select value={lead.assigned_to || 'unassigned'} onValueChange={handleAssignChange}>
+                  <SelectTrigger className="w-[180px] h-12 rounded-lg border-border bg-background">
+                    <SelectValue placeholder="Selecione o responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Sem dono</SelectItem>
+                    {assignees.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name || u.email || 'Usuário'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Metadados: dados e imóvel de interesse */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+          <div className="space-y-1">
+            <span className="eyebrow text-muted-foreground block">E-mail</span>
+            <span className="text-foreground truncate block">{lead.email || '—'}</span>
+          </div>
+
+          <div className="space-y-1">
+            <span className="eyebrow text-muted-foreground block">Origem</span>
+            <span className="text-foreground">
+              {LEAD_ORIGIN_LABELS[lead.origin] || lead.origin}
+              {lead.origin_detail ? ` (${lead.origin_detail})` : ''}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <span className="eyebrow text-muted-foreground block">Consentimento</span>
+            <span className="text-foreground">
+              {CONSENT_STATUS_LABELS[lead.consent_status] || 'Sem informação'}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <span className="eyebrow text-muted-foreground block">Último contato</span>
+            <span className="text-muted-foreground tabular">
+              {lead.last_contact_at ? formatDateTimeBR(lead.last_contact_at) : 'Nenhum contato'}
+            </span>
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+          <div className="space-y-1 sm:col-span-2">
+            <span className="eyebrow text-muted-foreground block">Imóvel de interesse</span>
+            {interestProperty ? (
+              <Link
+                to={`/imoveis/${interestProperty.id}`}
+                className="text-primary underline inline-flex items-center gap-1.5"
+              >
+                <Building className="h-3.5 w-3.5" />
+                <span>
+                  [{interestProperty.code}] {interestProperty.title}
+                </span>
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            ) : (
+              <span className="text-muted-foreground">Nenhum imóvel vinculado</span>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <span className="eyebrow text-muted-foreground block">Atribuído a</span>
+            <span className="text-foreground flex items-center gap-1.5">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              {assigneeName}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* PERFIL DE BUSCA (quando preenchido) */}
       {(lead.search_neighborhood ||
         lead.search_type ||
         (lead.search_bedrooms && lead.search_bedrooms > 0) ||
         (lead.search_max_price && lead.search_max_price > 0)) && (
-        <Card>
-          <CardHeader className="py-3 px-6">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Building className="h-4 w-4 text-primary" />
-              <span>Perfil de Busca</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-6 pb-4 pt-0">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-              {lead.search_neighborhood && (
-                <div>
-                  <span className="text-muted-foreground block">Bairro</span>
-                  <span className="font-medium">{lead.search_neighborhood}</span>
-                </div>
-              )}
-              {lead.search_type && (
-                <div>
-                  <span className="text-muted-foreground block">Tipo</span>
-                  <span className="font-medium capitalize">{lead.search_type}</span>
-                </div>
-              )}
-              {typeof lead.search_bedrooms === 'number' && lead.search_bedrooms > 0 && (
-                <div>
-                  <span className="text-muted-foreground block">Quartos mínimos</span>
-                  <span className="font-medium">{lead.search_bedrooms}</span>
-                </div>
-              )}
-              {typeof lead.search_max_price === 'number' && lead.search_max_price > 0 && (
-                <div>
-                  <span className="text-muted-foreground block">Valor máximo</span>
-                  <span className="font-medium">
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL',
-                    }).format(lead.search_max_price)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+          <div className="eyebrow text-muted-foreground flex items-center gap-2">
+            <Building className="h-3.5 w-3.5" />
+            <span>Perfil de Busca</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            {lead.search_neighborhood && (
+              <div>
+                <span className="eyebrow text-muted-foreground block">Bairro</span>
+                <span className="text-foreground">{lead.search_neighborhood}</span>
+              </div>
+            )}
+            {lead.search_type && (
+              <div>
+                <span className="eyebrow text-muted-foreground block">Tipo</span>
+                <span className="text-foreground capitalize">{lead.search_type}</span>
+              </div>
+            )}
+            {typeof lead.search_bedrooms === 'number' && lead.search_bedrooms > 0 && (
+              <div>
+                <span className="eyebrow text-muted-foreground block">Quartos mínimos</span>
+                <span className="text-foreground tabular">{lead.search_bedrooms}</span>
+              </div>
+            )}
+            {typeof lead.search_max_price === 'number' && lead.search_max_price > 0 && (
+              <div>
+                <span className="eyebrow text-muted-foreground block">Valor máximo</span>
+                <span className="text-foreground tabular font-normal">
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(lead.search_max_price)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* PRÓXIMO PASSO (admin, SDR e corretor do lead) */}
+      {/* PRÓXIMO PASSO E PRAZO */}
       {canOperateLead && (
-        <Card className={isOverdue ? 'border-destructive/40' : ''}>
-          <CardHeader className="py-3 px-6">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Clock className={`h-4 w-4 ${isOverdue ? 'text-destructive' : 'text-primary'}`} />
-                <span>Próximo Passo</span>
-              </CardTitle>
-              {lead.next_step_due && (
-                <div
-                  className={`text-xs font-medium ${
-                    isOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'
-                  }`}
-                >
-                  Prazo: {formatDateTimeBR(lead.next_step_due)}
-                  {isOverdue && ' (Vencido)'}
-                </div>
-              )}
+        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="eyebrow text-muted-foreground flex items-center gap-2">
+              <Clock className="h-3.5 w-3.5" />
+              <span>Próximo Passo e Prazo</span>
             </div>
-          </CardHeader>
-          <CardContent className="px-6 pb-4 pt-0 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2 space-y-1">
-                <Label htmlFor="next-step-input" className="text-xs">
-                  Ação a ser executada
-                </Label>
-                <Input
-                  id="next-step-input"
-                  placeholder="Ex.: Ligar para agendar visita"
-                  value={nextStepText}
-                  onChange={(e) => setNextStepText(e.target.value)}
-                  maxLength={200}
-                  className="text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="next-step-due-input" className="text-xs">
-                  Prazo (data e hora)
-                </Label>
-                <Input
-                  id="next-step-due-input"
-                  type="datetime-local"
-                  value={nextStepDueDate}
-                  onChange={(e) => setNextStepDueDate(e.target.value)}
-                  className={`text-xs ${isOverdue ? 'border-destructive text-destructive' : ''}`}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={handleSaveNextStep}
-                disabled={savingNextStep}
-                className="text-xs gap-1.5"
+            {lead.next_step_due && (
+              <div
+                className={`text-xs tabular ${
+                  isOverdue ? 'text-attention font-medium' : 'text-muted-foreground'
+                }`}
               >
-                {savingNextStep && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                <span>Salvar próximo passo</span>
-              </Button>
+                {isOverdue && 'Atrasado: '}
+                {formatDateTimeBR(lead.next_step_due)}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2 space-y-1">
+              <label
+                htmlFor="next-step-input"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Ação a ser executada
+              </label>
+              <input
+                id="next-step-input"
+                placeholder="Ex.: Ligar para agendar visita"
+                value={nextStepText}
+                onChange={(e) => setNextStepText(e.target.value)}
+                maxLength={200}
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-1">
+              <label
+                htmlFor="next-step-due-input"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Prazo (data e hora)
+              </label>
+              <input
+                id="next-step-due-input"
+                type="datetime-local"
+                value={nextStepDueDate}
+                onChange={(e) => setNextStepDueDate(e.target.value)}
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <Button
+              size="sm"
+              onClick={handleSaveNextStep}
+              disabled={savingNextStep}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border"
+              variant="outline"
+            >
+              {savingNextStep && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+              <span>Salvar próximo passo</span>
+            </Button>
+          </div>
+        </div>
       )}
 
-      {/* REGISTRO DE NOTAS E CONTATOS (admin, SDR e corretor do lead) */}
+      {/* NOTAS E CONTATOS COM CAMPO GRANDE E DUAS PÍLULAS */}
       {canOperateLead && (
-        <Card>
-          <CardHeader className="py-3 px-6">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-primary" />
-              <span>Registrar Nota ou Contato</span>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Adicione registros à linha do tempo do lead. O registro de contato atualiza a data de
-              atendimento.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 pb-4 pt-0 space-y-3">
-            <Textarea
-              placeholder="Digite sua nota ou detalhes do contato realizado..."
-              value={noteContactText}
-              onChange={(e) => setNoteContactText(e.target.value)}
-              rows={3}
-              className="text-xs"
-            />
-            <div className="flex justify-end items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleCreateEvent('nota')}
-                disabled={submittingNote || submittingContact || !noteContactText.trim()}
-                className="text-xs gap-1.5"
-              >
-                {submittingNote && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                <FileText className="h-3.5 w-3.5" />
-                <span>Registrar nota</span>
-              </Button>
+        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+          <div className="eyebrow text-muted-foreground flex items-center gap-2">
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span>Notas e Contatos</span>
+          </div>
+          <Textarea
+            placeholder="Digite sua nota ou detalhes do contato realizado..."
+            value={noteContactText}
+            onChange={(e) => setNoteContactText(e.target.value)}
+            rows={4}
+            className="text-xs rounded-lg border-border bg-background"
+          />
+          <div className="flex justify-end items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleCreateEvent('nota')}
+              disabled={submittingNote || submittingContact || !noteContactText.trim()}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
+            >
+              {submittingNote && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+              <FileText className="h-3.5 w-3.5" />
+              <span>Registrar nota</span>
+            </Button>
 
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => handleCreateEvent('contato')}
-                disabled={submittingNote || submittingContact || !noteContactText.trim()}
-                className="text-xs gap-1.5"
-              >
-                {submittingContact && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                <Phone className="h-3.5 w-3.5" />
-                <span>Registrar contato</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleCreateEvent('contato')}
+              disabled={submittingNote || submittingContact || !noteContactText.trim()}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
+            >
+              {submittingContact && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+              <Phone className="h-3.5 w-3.5" />
+              <span>Registrar contato</span>
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* SEÇÃO VISITAS DO LEAD */}
-      <Card>
-        <CardHeader className="py-3 px-6 border-b flex flex-row items-center justify-between">
-          <div className="space-y-0.5">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-primary" />
-              <span>Visitas ({visits.length})</span>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Visitas agendadas e realizadas para este lead
-            </CardDescription>
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="eyebrow text-muted-foreground flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5" />
+            <span>Visitas ({visits.length})</span>
           </div>
           {canManageLeads && (
             <Button
               size="sm"
               variant="outline"
               onClick={() => setCreateVisitModalOpen(true)}
-              className="text-xs h-8 gap-1"
+              className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
             >
               <Calendar className="h-3.5 w-3.5" />
-              <span>Agendar visita</span>
+              <span>Agendar</span>
             </Button>
           )}
-        </CardHeader>
-        <CardContent className="p-6">
-          {visits.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              Nenhuma visita registrada para este lead.
-            </p>
-          ) : (
-            <div className="divide-y rounded-md border">
-              {visits.map((v) => {
-                const prop = v.expand?.property_id
-                const broker = v.expand?.broker_id
-                return (
-                  <div
-                    key={v.id}
-                    onClick={() => {
-                      setSelectedVisit(v)
-                      setVisitDetailModalOpen(true)
-                    }}
-                    className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground">
-                          {formatDateTimeBahia(v.start_at)}
-                        </span>
-                        {getVisitStatusBadge(v.status)}
-                      </div>
-                      <p className="text-muted-foreground">
-                        Imóvel:{' '}
-                        <strong className="text-foreground">
-                          [{prop?.code || '-'}] {prop?.title || ''}
-                        </strong>
-                        {broker && (
-                          <span>
-                            {' '}
-                            · Corretor:{' '}
-                            <strong className="text-foreground">
-                              {broker.name || broker.email}
-                            </strong>
-                          </span>
-                        )}
-                      </p>
+        </div>
+
+        {visits.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Nenhuma visita registrada para este lead.
+          </p>
+        ) : (
+          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+            {visits.map((v) => {
+              const prop = v.expand?.property_id
+              const broker = v.expand?.broker_id
+              return (
+                <div
+                  key={v.id}
+                  onClick={() => {
+                    setSelectedVisit(v)
+                    setVisitDetailModalOpen(true)
+                  }}
+                  className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="tabular text-foreground">
+                        {formatDateTimeBahia(v.start_at)}
+                      </span>
+                      {getVisitStatusBadge(v.status)}
                     </div>
+                    <p className="text-muted-foreground">
+                      Imóvel: [{prop?.code || '-'}] {prop?.title || ''}
+                      {broker && <span> · Corretor: {broker.name || broker.email}</span>}
+                    </p>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* SEÇÃO TAREFAS DO LEAD */}
-      <Card>
-        <CardHeader className="py-3 px-6 border-b flex flex-row items-center justify-between">
-          <div className="space-y-0.5">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" />
-              <span>Tarefas ({tasks.length})</span>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Tarefas operacionais vinculadas a este lead
-            </CardDescription>
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="eyebrow text-muted-foreground flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Tarefas ({tasks.length})</span>
           </div>
           {canOperateLead && (
             <Button
               size="sm"
               variant="outline"
               onClick={() => setCreateTaskModalOpen(true)}
-              className="text-xs h-8 gap-1"
+              className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
             >
               <Clock className="h-3.5 w-3.5" />
               <span>Criar tarefa</span>
             </Button>
           )}
-        </CardHeader>
-        <CardContent className="p-6">
-          {tasks.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              Nenhuma tarefa vinculada a este lead.
-            </p>
-          ) : (
-            <div className="divide-y rounded-md border">
-              {tasks.map((t) => {
-                const overdue = isTaskOverdue(t)
-                const assignee = t.expand?.assigned_to
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => {
-                      setSelectedTask(t)
-                      setTaskDetailModalOpen(true)
-                    }}
-                    className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground">{t.title}</span>
-                        {getTaskStatusBadge(t)}
-                      </div>
-                      <p className="text-muted-foreground">
-                        Prazo:{' '}
-                        <span className={overdue ? 'text-destructive font-bold' : ''}>
-                          {formatTaskDateTimeBahia(t.due_at)}
-                        </span>
-                        {assignee && (
-                          <span>
-                            {' '}
-                            · Responsável:{' '}
-                            <strong className="text-foreground">
-                              {assignee.name || assignee.email}
-                            </strong>
-                          </span>
-                        )}
-                      </p>
+        </div>
+
+        {tasks.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Nenhuma tarefa vinculada a este lead.
+          </p>
+        ) : (
+          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+            {tasks.map((t) => {
+              const overdue = isTaskOverdue(t)
+              const assignee = t.expand?.assigned_to
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => {
+                    setSelectedTask(t)
+                    setTaskDetailModalOpen(true)
+                  }}
+                  className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-foreground">{t.title}</span>
+                      {getTaskStatusBadge(t)}
                     </div>
-                    {t.status === 'aberta' && (
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                          onClick={async () => {
-                            try {
-                              await completeTask(t.id)
-                              if (lead) {
-                                const freshTasks = await listTasksByLead(lead.id)
-                                setTasks(freshTasks)
-                              }
-                            } catch (err) {
-                              setErrorMessage(extractTaskErrorMessage(err))
+                    <p className="text-muted-foreground tabular">
+                      Prazo:{' '}
+                      <span className={overdue ? 'text-attention font-medium' : ''}>
+                        {overdue && 'Atrasado: '}
+                        {formatTaskDateTimeBahia(t.due_at)}
+                      </span>
+                      {assignee && <span> · Responsável: {assignee.name || assignee.email}</span>}
+                    </p>
+                  </div>
+                  {t.status === 'aberta' && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs rounded-full px-3 border-border"
+                        onClick={async () => {
+                          try {
+                            await completeTask(t.id)
+                            if (lead) {
+                              const freshTasks = await listTasksByLead(lead.id)
+                              setTasks(freshTasks)
                             }
-                          }}
-                        >
-                          <Check className="h-3 w-3 mr-1" />
-                          Concluir
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                          } catch (err) {
+                            setErrorMessage(extractTaskErrorMessage(err))
+                          }
+                        }}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Concluir
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* LINHA DO TEMPO */}
-      <Card>
-        <CardHeader className="py-4 px-6 border-b">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary" />
-            <span>Linha do Tempo</span>
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Histórico completo de eventos, alterações e contatos, do mais recente ao mais antigo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          {events.length === 0 ? (
-            <div className="text-center py-8 text-xs text-muted-foreground">
-              Nenhum evento registrado nesta linha do tempo.
-            </div>
-          ) : (
-            <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
-              {events.map((ev) => {
-                const authorName =
-                  ev.expand?.author_id?.name || ev.expand?.author_id?.email || 'Sistema'
-                const typeLabel = LEAD_EVENT_TYPE_LABELS[ev.type] || ev.type
+      {/* LINHA DO TEMPO: lista vertical com traço fino à esquerda, horário em .eyebrow e .tabular (dd/mm hh:mm) e o texto ao lado, do mais novo ao mais antigo */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div>
+          <h2 className="text-[20px] font-normal text-foreground">Linha do Tempo</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Histórico de eventos, alterações e contatos, do mais recente ao mais antigo.
+          </p>
+        </div>
 
-                return (
-                  <div key={ev.id} className="relative group">
-                    {/* Marcador */}
-                    <div className="absolute -left-[27px] top-1 h-3.5 w-3.5 rounded-full border-2 border-background bg-primary ring-4 ring-background" />
+        {events.length === 0 ? (
+          <div className="text-center py-6 text-xs text-muted-foreground">
+            Nenhum evento registrado nesta linha do tempo.
+          </div>
+        ) : (
+          <div className="relative pl-5 space-y-5 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-px before:bg-border">
+            {events.map((ev) => {
+              const authorName =
+                ev.expand?.author_id?.name || ev.expand?.author_id?.email || 'Sistema'
+              const typeLabel = LEAD_EVENT_TYPE_LABELS[ev.type] || ev.type
 
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2 text-xs">
-                        <Badge variant="outline" className="font-semibold text-[11px]">
-                          {typeLabel}
-                        </Badge>
-                        <span className="text-muted-foreground">
-                          {formatDateTimeBR(ev.occurred_at || ev.created)}
-                        </span>
-                        <span>·</span>
-                        <span className="font-medium text-foreground">{authorName}</span>
-                      </div>
-
-                      <div className="text-xs text-foreground/90 bg-muted/30 p-2.5 rounded-md border mt-1">
-                        {ev.text}
-                      </div>
+              return (
+                <div key={ev.id} className="relative group">
+                  <div className="absolute -left-[18px] top-1.5 h-2 w-2 rounded-full bg-foreground ring-4 ring-background" />
+                  <div className="space-y-1 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="eyebrow tabular text-muted-foreground">
+                        {formatDateTimeBR(ev.occurred_at || ev.created)}
+                      </span>
+                      <Badge variant="default" className="text-[10px] px-1.5 py-0">
+                        {typeLabel}
+                      </Badge>
+                      <span className="text-muted-foreground">por {authorName}</span>
+                    </div>
+                    <div className="text-foreground p-3 rounded-lg border border-border bg-muted/20">
+                      {ev.text}
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* DIÁLOGO: Motivo de perda (ao mudar etapa para perdido) */}
       <Dialog open={lostReasonDialogOpen} onOpenChange={setLostReasonDialogOpen}>

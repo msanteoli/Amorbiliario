@@ -75,25 +75,53 @@ const STAGE_ORDER: LeadStage[] = [
   'perdido',
 ]
 
-export function getStageBadgeColor(stage: LeadStage): string {
+export type BadgeVariant =
+  | 'default'
+  | 'secondary'
+  | 'destructive'
+  | 'outline'
+  | 'success'
+  | 'attention'
+  | 'info'
+
+export function getStageBadgeVariant(stage: LeadStage): BadgeVariant {
   switch (stage) {
     case 'novo':
-      return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800'
+      return 'info'
     case 'em_atendimento':
-      return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
+      return 'default'
     case 'visita_marcada':
-      return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800'
+      return 'info'
     case 'proposta':
-      return 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800'
+      return 'default'
     case 'ganho':
-      return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+      return 'success'
     case 'perdido':
-      return 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
+      return 'destructive'
     default:
-      return 'bg-secondary text-secondary-foreground'
+      return 'default'
   }
 }
 
+export function getStageBadgeColor(stage: LeadStage): string {
+  // Mantido para compatibilidade onde string de classe direta é esperada
+  switch (stage) {
+    case 'novo':
+      return 'bg-info/15 text-info-foreground border-info/30'
+    case 'em_atendimento':
+      return 'bg-primary/10 text-primary border-primary/20'
+    case 'visita_marcada':
+      return 'bg-info/15 text-info-foreground border-info/30'
+    case 'proposta':
+      return 'bg-primary/10 text-primary border-primary/20'
+    case 'ganho':
+      return 'bg-success/15 text-success-foreground border-success/30'
+    case 'perdido':
+      return 'bg-destructive/15 text-destructive border-destructive/30'
+    default:
+      return 'bg-muted text-muted-foreground'
+  }
+}
 export function formatDateTimeBR(dateIso?: string | null): string {
   if (!dateIso) return '-'
   try {
@@ -403,23 +431,36 @@ export default function Leads() {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Leads</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="display-sm text-foreground">Leads</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Acompanhe oportunidades, etapas de negociação e atendimento a novos contatos.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {canManageLeads && (
-            <Button onClick={() => navigate('/leads/novo')} className="gap-2 shrink-0">
-              <Plus className="h-4 w-4" />
-              <span>Novo lead</span>
-            </Button>
-          )}
-        </div>
+        {canManageLeads && (
+          <Button
+            onClick={() => navigate('/leads/novo')}
+            className="hidden sm:inline-flex rounded-full px-5 h-10 gap-2 font-medium"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Novo lead</span>
+          </Button>
+        )}
       </div>
+
+      {/* Botão flutuante no celular (FAB 56px) */}
+      {canManageLeads && (
+        <button
+          type="button"
+          onClick={() => navigate('/leads/novo')}
+          aria-label="Novo lead"
+          className="sm:hidden fixed right-4 bottom-20 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-none border border-border flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
 
       {/* Tabs bar: Lista, Funil, Pendências */}
       <div className="flex flex-col gap-3">
@@ -428,162 +469,197 @@ export default function Leads() {
           onValueChange={(val) => setActiveTab(val as 'lista' | 'funil' | 'pendencias')}
           className="w-full"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-2">
-            <TabsList className="bg-muted">
-              <TabsTrigger value="lista" className="gap-2">
-                <List className="h-4 w-4" />
+          <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <button
+                type="button"
+                onClick={() => setActiveTab('lista')}
+                className={`h-9 px-4 rounded-full text-xs font-normal border transition-colors inline-flex items-center gap-1.5 ${
+                  activeTab === 'lista'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-foreground border-border hover:bg-muted'
+                }`}
+              >
+                <List className="h-3.5 w-3.5" />
                 <span>Lista</span>
-              </TabsTrigger>
-              <TabsTrigger value="funil" className="gap-2">
-                <Kanban className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('funil')}
+                className={`h-9 px-4 rounded-full text-xs font-normal border transition-colors inline-flex items-center gap-1.5 ${
+                  activeTab === 'funil'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-transparent text-foreground border-border hover:bg-muted'
+                }`}
+              >
+                <Kanban className="h-3.5 w-3.5" />
                 <span>Funil</span>
-              </TabsTrigger>
+              </button>
               {canManageLeads && (
-                <TabsTrigger value="pendencias" className="gap-2">
-                  <AlertTriangle className="h-4 w-4" />
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('pendencias')}
+                  className={`h-9 px-4 rounded-full text-xs font-normal border transition-colors inline-flex items-center gap-1.5 ${
+                    activeTab === 'pendencias'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-transparent text-foreground border-border hover:bg-muted'
+                  }`}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" />
                   <span>Pendências</span>
-                </TabsTrigger>
+                  {pendencias.length > 0 && (
+                    <Badge variant="attention" className="ml-0.5 px-1.5 py-0 text-[10px] tabular">
+                      {pendencias.length}
+                    </Badge>
+                  )}
+                </button>
               )}
-            </TabsList>
+            </div>
+            <div className="text-xs text-muted-foreground tabular hidden sm:block">
+              {activeTab === 'lista' && `${totalItems} lead(s)`}
+              {activeTab === 'funil' && `${funnelLeads.length} lead(s)`}
+              {activeTab === 'pendencias' && `${pendencias.length} pendência(s)`}
+            </div>
           </div>
 
           {/* Filtros para Lista e Funil (compartilhados) */}
           {activeTab !== 'pendencias' && (
-            <Card className="mt-4 border-border">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar por nome, telefone ou e-mail..."
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
+            <div className="mt-3 space-y-2.5">
+              {/* Campo de busca em pílula de 48px */}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome, telefone ou e-mail..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="w-full h-12 pl-11 pr-4 rounded-full border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Etapa */}
-                    <Select
-                      value={selectedStage || 'todas'}
-                      onValueChange={(val) => {
-                        setSelectedStage(val === 'todas' ? '' : (val as LeadStage))
-                        if (filterNewUnassigned) setFilterNewUnassigned(false)
-                        setCurrentPage(1)
-                      }}
-                      disabled={filterNewUnassigned}
-                    >
-                      <SelectTrigger className="w-[170px]">
-                        <SelectValue placeholder="Etapa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todas">Todas as etapas</SelectItem>
-                        {STAGE_ORDER.map((st) => (
-                          <SelectItem key={st} value={st}>
-                            {LEAD_STAGE_LABELS[st]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              {/* Fileira de filtros em pílulas com rolagem lateral no celular */}
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                {/* Etapa */}
+                <Select
+                  value={selectedStage || 'todas'}
+                  onValueChange={(val) => {
+                    setSelectedStage(val === 'todas' ? '' : (val as LeadStage))
+                    if (filterNewUnassigned) setFilterNewUnassigned(false)
+                    setCurrentPage(1)
+                  }}
+                  disabled={filterNewUnassigned}
+                >
+                  <SelectTrigger className="h-9 rounded-full px-3.5 text-xs border-border bg-background shrink-0 w-auto min-w-[130px]">
+                    <SelectValue placeholder="Etapa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas as etapas</SelectItem>
+                    {STAGE_ORDER.map((st) => (
+                      <SelectItem key={st} value={st}>
+                        {LEAD_STAGE_LABELS[st]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                    {/* Origem */}
-                    <Select
-                      value={selectedOrigin || 'todas'}
-                      onValueChange={(val) => {
-                        setSelectedOrigin(val === 'todas' ? '' : (val as LeadOrigin))
-                        setCurrentPage(1)
-                      }}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Origem" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todas">Todas as origens</SelectItem>
-                        <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                        <SelectItem value="portal">Portais imobiliários</SelectItem>
-                        <SelectItem value="indicacao_balcao">Indicação ou balcão</SelectItem>
-                        <SelectItem value="site_redes_outros">Instagram, site e outros</SelectItem>
-                      </SelectContent>
-                    </Select>
+                {/* Origem */}
+                <Select
+                  value={selectedOrigin || 'todas'}
+                  onValueChange={(val) => {
+                    setSelectedOrigin(val === 'todas' ? '' : (val as LeadOrigin))
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-9 rounded-full px-3.5 text-xs border-border bg-background shrink-0 w-auto min-w-[130px]">
+                    <SelectValue placeholder="Origem" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas as origens</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                    <SelectItem value="portal">Portais imobiliários</SelectItem>
+                    <SelectItem value="indicacao_balcao">Indicação ou balcão</SelectItem>
+                    <SelectItem value="site_redes_outros">Instagram, site e outros</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                    {/* Atribuído (só admin e SDR) */}
-                    {canManageLeads && (
-                      <Select
-                        value={filterNewUnassigned ? 'unassigned' : selectedAssigned || 'todos'}
-                        onValueChange={(val) => {
-                          if (filterNewUnassigned) setFilterNewUnassigned(false)
-                          setSelectedAssigned(val === 'todos' ? '' : val)
-                          setCurrentPage(1)
-                        }}
-                        disabled={filterNewUnassigned}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Atribuído" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="todos">Todos os atribuídos</SelectItem>
-                          <SelectItem value="unassigned">Sem dono</SelectItem>
-                          {eligibleAssignees.map((u) => (
-                            <SelectItem key={u.id} value={u.id}>
-                              {u.name || u.email || 'Usuário'}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                {/* Atribuído (só admin e SDR) */}
+                {canManageLeads && (
+                  <Select
+                    value={filterNewUnassigned ? 'unassigned' : selectedAssigned || 'todos'}
+                    onValueChange={(val) => {
+                      if (filterNewUnassigned) setFilterNewUnassigned(false)
+                      setSelectedAssigned(val === 'todos' ? '' : val)
+                      setCurrentPage(1)
+                    }}
+                    disabled={filterNewUnassigned}
+                  >
+                    <SelectTrigger className="h-9 rounded-full px-3.5 text-xs border-border bg-background shrink-0 w-auto min-w-[130px]">
+                      <SelectValue placeholder="Atribuído" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os atribuídos</SelectItem>
+                      <SelectItem value="unassigned">Sem dono</SelectItem>
+                      {eligibleAssignees.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name || u.email || 'Usuário'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
-                    {/* Atalho Vencidos */}
-                    <Button
-                      type="button"
-                      variant={filterExpired ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        setFilterExpired(!filterExpired)
-                        setCurrentPage(1)
-                      }}
-                      className="gap-1.5"
-                    >
-                      <Clock className="h-4 w-4" />
-                      <span>Vencidos</span>
-                    </Button>
+                {/* Atalho Vencidos */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterExpired(!filterExpired)
+                    setCurrentPage(1)
+                  }}
+                  className={`h-9 px-3.5 rounded-full text-xs font-normal border transition-colors inline-flex items-center gap-1.5 shrink-0 ${
+                    filterExpired
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-foreground border-border hover:bg-muted'
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Vencidos</span>
+                </button>
 
-                    {/* Atalho Novos sem dono (só admin e SDR) */}
-                    {canManageLeads && (
-                      <Button
-                        type="button"
-                        variant={filterNewUnassigned ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => {
-                          const nextVal = !filterNewUnassigned
-                          setFilterNewUnassigned(nextVal)
-                          if (nextVal) {
-                            setSelectedStage('')
-                            setSelectedAssigned('')
-                          }
-                          setCurrentPage(1)
-                        }}
-                        className="gap-1.5"
-                      >
-                        <UserCheck className="h-4 w-4" />
-                        <span>Novos sem dono</span>
-                      </Button>
-                    )}
+                {/* Atalho Novos sem dono */}
+                {canManageLeads && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextVal = !filterNewUnassigned
+                      setFilterNewUnassigned(nextVal)
+                      if (nextVal) {
+                        setSelectedStage('')
+                        setSelectedAssigned('')
+                      }
+                      setCurrentPage(1)
+                    }}
+                    className={`h-9 px-3.5 rounded-full text-xs font-normal border transition-colors inline-flex items-center gap-1.5 shrink-0 ${
+                      filterNewUnassigned
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-foreground border-border hover:bg-muted'
+                    }`}
+                  >
+                    <UserCheck className="h-3.5 w-3.5" />
+                    <span>Novos sem dono</span>
+                  </button>
+                )}
 
-                    {hasActiveFilters && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleClearFilters}
-                        title="Limpar filtros"
-                        className="shrink-0"
-                      >
-                        <FilterX className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="text-xs text-muted-foreground hover:text-foreground shrink-0 px-2 py-1 underline"
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Erro global se houver */}
@@ -597,256 +673,196 @@ export default function Leads() {
           {/* TAB 1: LISTA */}
           <TabsContent value="lista" className="mt-4 space-y-4">
             {loading ? (
-              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm">Carregando leads...</p>
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="h-16 rounded-lg border border-border animate-pulse bg-muted/40"
+                  />
+                ))}
               </div>
             ) : leads.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-                  <Kanban className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                  <h3 className="text-base font-semibold">Nenhum lead encontrado</h3>
-                  <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
-                    {hasActiveFilters
-                      ? 'Nenhum lead corresponde aos filtros aplicados. Tente ajustar os termos.'
-                      : isCorretor
-                        ? 'Você não possui leads atribuídos a você no momento.'
-                        : 'Ainda não há leads cadastrados.'}
-                  </p>
-                  {hasActiveFilters ? (
-                    <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                      Limpar filtros
-                    </Button>
-                  ) : canManageLeads ? (
-                    <Button onClick={() => navigate('/leads/novo')} size="sm">
-                      Cadastrar primeiro lead
-                    </Button>
-                  ) : null}
-                </CardContent>
-              </Card>
+              <div className="p-12 text-center rounded-lg border border-border bg-card">
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+                  {hasActiveFilters
+                    ? 'Nenhum lead corresponde aos filtros aplicados.'
+                    : 'Nenhum lead por aqui. Cadastre o primeiro.'}
+                </p>
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="text-xs text-primary underline"
+                  >
+                    Limpar filtros
+                  </button>
+                ) : canManageLeads ? (
+                  <Button
+                    onClick={() => navigate('/leads/novo')}
+                    className="rounded-full px-5 h-10 gap-2 font-medium"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Novo lead</span>
+                  </Button>
+                ) : null}
+              </div>
             ) : (
               <>
-                {/* Desktop: Tabela */}
-                <div className="hidden md:block rounded-md border bg-card">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Telefone</TableHead>
-                        <TableHead>Origem</TableHead>
-                        <TableHead>Etapa</TableHead>
-                        <TableHead>Atribuído</TableHead>
-                        <TableHead>Próximo passo / Prazo</TableHead>
-                        <TableHead>Imóvel de interesse</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {leads.map((lead) => {
-                        const assigneeName =
-                          lead.expand?.assigned_to?.name ||
-                          lead.expand?.assigned_to?.email ||
-                          'Sem dono'
-                        const isOverdue = isLeadNextStepOverdue(lead)
-                        const propCode = lead.expand?.property_id?.code
+                {/* Desktop: Lista de linhas com divisores e cabeçalho em .eyebrow */}
+                <div className="hidden md:block rounded-lg border border-border bg-card overflow-hidden">
+                  <div className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-border text-left eyebrow text-muted-foreground">
+                    <div className="col-span-3">Nome</div>
+                    <div className="col-span-2">Telefone</div>
+                    <div className="col-span-1">Origem</div>
+                    <div className="col-span-2">Situação</div>
+                    <div className="col-span-2">Atribuído</div>
+                    <div className="col-span-2 text-right">Próximo passo</div>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {leads.map((lead) => {
+                      const assigneeName =
+                        lead.expand?.assigned_to?.name ||
+                        lead.expand?.assigned_to?.email ||
+                        'Sem dono'
+                      const isOverdue = isLeadNextStepOverdue(lead)
 
-                        return (
-                          <TableRow
-                            key={lead.id}
-                            className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => navigate(`/leads/${lead.id}`)}
-                          >
-                            <TableCell className="font-medium text-foreground">
-                              <div className="flex items-center gap-2">
-                                <Link
-                                  to={`/leads/${lead.id}`}
-                                  className="hover:underline font-semibold text-primary"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {lead.name}
-                                </Link>
-                                {lead.client_id && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] font-normal border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      return (
+                        <div
+                          key={lead.id}
+                          onClick={() => navigate(`/leads/${lead.id}`)}
+                          className="grid grid-cols-12 gap-3 px-4 py-3.5 items-center hover:bg-muted/40 cursor-pointer transition-colors"
+                        >
+                          <div className="col-span-3 flex items-center gap-2 min-w-0">
+                            <span className="font-normal text-sm text-foreground truncate">
+                              {lead.name}
+                            </span>
+                            {lead.client_id && (
+                              <Badge variant="default" className="text-[10px] shrink-0">
+                                Já é cliente
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="col-span-2 text-xs text-muted-foreground tabular whitespace-nowrap">
+                            {lead.phone ? formatPhoneNumber(lead.phone) : '—'}
+                          </div>
+                          <div className="col-span-1 text-xs text-muted-foreground truncate">
+                            {LEAD_ORIGIN_LABELS[lead.origin] || lead.origin}
+                          </div>
+                          <div className="col-span-2 flex items-center gap-1">
+                            <Badge variant={getStageBadgeVariant(lead.stage)} className="text-xs">
+                              {LEAD_STAGE_LABELS[lead.stage] || lead.stage}
+                            </Badge>
+                          </div>
+                          <div className="col-span-2 text-xs text-muted-foreground truncate">
+                            {assigneeName}
+                          </div>
+                          <div className="col-span-2 text-right text-xs">
+                            {lead.next_step ? (
+                              <div className="space-y-0.5">
+                                <span className="text-foreground line-clamp-1 block">
+                                  {lead.next_step}
+                                </span>
+                                {lead.next_step_due && (
+                                  <span
+                                    className={`tabular text-[11px] block ${
+                                      isOverdue
+                                        ? 'text-attention font-medium'
+                                        : 'text-muted-foreground'
+                                    }`}
                                   >
-                                    Já é cliente
-                                  </Badge>
+                                    {isOverdue && 'Atrasado: '}
+                                    {formatDateTimeBR(lead.next_step_due)}
+                                  </span>
                                 )}
                               </div>
-                            </TableCell>
-
-                            <TableCell className="text-muted-foreground whitespace-nowrap">
-                              {lead.phone ? formatPhoneNumber(lead.phone) : '-'}
-                            </TableCell>
-
-                            <TableCell className="text-muted-foreground">
-                              {LEAD_ORIGIN_LABELS[lead.origin] || lead.origin}
-                            </TableCell>
-
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={`text-xs font-medium ${getStageBadgeColor(lead.stage)}`}
-                              >
-                                {LEAD_STAGE_LABELS[lead.stage] || lead.stage}
-                              </Badge>
-                            </TableCell>
-
-                            <TableCell className="text-sm text-muted-foreground">
-                              {assigneeName}
-                            </TableCell>
-
-                            <TableCell>
-                              {lead.next_step ? (
-                                <div className="space-y-0.5 text-xs">
-                                  <div className="font-medium text-foreground line-clamp-1">
-                                    {lead.next_step}
-                                  </div>
-                                  {lead.next_step_due && (
-                                    <div
-                                      className={`text-[11px] ${
-                                        isOverdue
-                                          ? 'text-destructive font-semibold flex items-center gap-1'
-                                          : 'text-muted-foreground'
-                                      }`}
-                                    >
-                                      {isOverdue && <Clock className="h-3 w-3 shrink-0" />}
-                                      <span>{formatDateTimeBR(lead.next_step_due)}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-
-                            <TableCell>
-                              {propCode ? (
-                                <Badge variant="secondary" className="font-mono text-xs">
-                                  {propCode}
-                                </Badge>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
 
-                {/* Mobile: Cards */}
-                <div className="grid grid-cols-1 gap-3 md:hidden">
+                {/* Mobile: Lista de linhas empilhadas de ~72px com divisores de 1px */}
+                <div className="md:hidden rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
                   {leads.map((lead) => {
                     const assigneeName =
                       lead.expand?.assigned_to?.name ||
                       lead.expand?.assigned_to?.email ||
                       'Sem dono'
                     const isOverdue = isLeadNextStepOverdue(lead)
-                    const propCode = lead.expand?.property_id?.code
 
                     return (
-                      <Card
+                      <div
                         key={lead.id}
-                        className="cursor-pointer hover:border-primary/50 transition-colors"
                         onClick={() => navigate(`/leads/${lead.id}`)}
+                        className="p-3.5 flex flex-col justify-between min-h-[72px] hover:bg-muted/40 cursor-pointer active:bg-muted/60 transition-colors gap-1.5"
                       >
-                        <CardHeader className="p-4 pb-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="space-y-1">
-                              <CardTitle className="text-base font-semibold leading-tight text-primary">
-                                {lead.name}
-                              </CardTitle>
-                              <div className="flex flex-wrap gap-1.5 items-center">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${getStageBadgeColor(lead.stage)}`}
-                                >
-                                  {LEAD_STAGE_LABELS[lead.stage] || lead.stage}
-                                </Badge>
-                                {lead.client_id && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] font-normal border-emerald-300 text-emerald-700 bg-emerald-50"
-                                  >
-                                    Já é cliente
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            {propCode && (
-                              <Badge variant="secondary" className="font-mono text-xs">
-                                {propCode}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-normal text-sm text-foreground truncate">
+                              {lead.name}
+                            </span>
+                            {lead.client_id && (
+                              <Badge variant="default" className="text-[10px] shrink-0">
+                                Já é cliente
                               </Badge>
                             )}
                           </div>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0 space-y-2 text-xs text-muted-foreground">
-                          <div className="flex items-center justify-between gap-2">
-                            <span>{LEAD_ORIGIN_LABELS[lead.origin] || lead.origin}</span>
-                            <span className="font-medium text-foreground">
-                              Atribuído: {assigneeName}
-                            </span>
-                          </div>
-
-                          {lead.phone && (
-                            <div className="flex items-center gap-1.5">
-                              <Phone className="h-3.5 w-3.5 text-muted-foreground/70" />
-                              <span>{formatPhoneNumber(lead.phone)}</span>
-                            </div>
-                          )}
-
+                          <Badge
+                            variant={getStageBadgeVariant(lead.stage)}
+                            className="text-xs shrink-0"
+                          >
+                            {LEAD_STAGE_LABELS[lead.stage] || lead.stage}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
+                          <span className="tabular">
+                            {lead.phone ? formatPhoneNumber(lead.phone) : assigneeName}
+                          </span>
                           {lead.next_step && (
-                            <div className="pt-1 border-t border-border/60">
-                              <span className="font-medium text-foreground block">
-                                {lead.next_step}
-                              </span>
-                              {lead.next_step_due && (
-                                <span
-                                  className={`text-[11px] block mt-0.5 ${
-                                    isOverdue ? 'text-destructive font-semibold' : ''
-                                  }`}
-                                >
-                                  Prazo: {formatDateTimeBR(lead.next_step_due)}
-                                </span>
-                              )}
-                            </div>
+                            <span
+                              className={`truncate text-[11px] ${
+                                isOverdue ? 'text-attention font-medium' : 'text-muted-foreground'
+                              }`}
+                            >
+                              {isOverdue && 'Atrasado: '}
+                              {lead.next_step}
+                            </span>
                           )}
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )
                   })}
                 </div>
 
-                {/* Paginação */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                  <span className="text-xs text-muted-foreground order-2 sm:order-1">
-                    Mostrando {leads.length} de {totalItems} lead{totalItems === 1 ? '' : 's'}
+                {/* Paginação em pílulas com a página atual em texto de apoio */}
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-muted-foreground tabular">
+                    Página {currentPage} de {totalPages} ({totalItems} leads)
                   </span>
-                  <div className="flex items-center gap-2 order-1 sm:order-2">
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage <= 1 || loading}
-                      className="gap-1"
+                      className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1"
                     >
-                      <ChevronLeft className="h-4 w-4" />
+                      <ChevronLeft className="h-3.5 w-3.5" />
                       <span>Anterior</span>
                     </Button>
-                    <span className="text-xs font-medium px-2">
-                      Página {currentPage} de {totalPages}
-                    </span>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage >= totalPages || loading}
-                      className="gap-1"
+                      className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1"
                     >
                       <span>Próxima</span>
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -857,37 +873,37 @@ export default function Leads() {
           {/* TAB 2: FUNIL */}
           <TabsContent value="funil" className="mt-4">
             {loadingFunnel ? (
-              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm">Carregando funil...</p>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-20 rounded-lg border border-border animate-pulse bg-muted/40"
+                  />
+                ))}
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="text-xs text-muted-foreground">
-                  Total de leads no funil: <strong>{funnelLeads.length}</strong>
-                </div>
-
-                {/* Desktop: Colunas lado a lado com rolagem horizontal suave */}
+                {/* Desktop: Colunas com cabeçalho em .eyebrow e contagem, cartões de lead de 8px com borda 1px sem sombra */}
                 <div className="hidden lg:grid lg:grid-cols-6 gap-3 items-start overflow-x-auto pb-4">
                   {STAGE_ORDER.map((stageKey) => {
                     const columnLeads = funnelByStage[stageKey] || []
                     return (
                       <div
                         key={stageKey}
-                        className="flex flex-col rounded-lg border bg-muted/30 p-2.5 min-h-[420px]"
+                        className="flex flex-col rounded-lg border border-border bg-card p-2.5 min-h-[420px]"
                       >
-                        <div className="flex items-center justify-between pb-2 mb-2 border-b">
-                          <span className="text-xs font-semibold text-foreground">
+                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
+                          <span className="eyebrow text-muted-foreground">
                             {LEAD_STAGE_LABELS[stageKey]}
                           </span>
-                          <Badge variant="secondary" className="text-xs font-bold">
+                          <span className="tabular text-xs text-muted-foreground">
                             {columnLeads.length}
-                          </Badge>
+                          </span>
                         </div>
 
-                        <div className="flex-1 space-y-2 overflow-y-auto max-h-[650px] pr-0.5">
+                        <div className="flex-1 space-y-2 overflow-y-auto max-h-[650px]">
                           {columnLeads.length === 0 ? (
-                            <div className="py-8 text-center text-[11px] text-muted-foreground">
+                            <div className="py-8 text-center text-xs text-muted-foreground">
                               Nenhum lead
                             </div>
                           ) : (
@@ -898,43 +914,41 @@ export default function Leads() {
                                 'Sem dono'
                               const isOverdue = isLeadNextStepOverdue(item)
                               return (
-                                <Card
+                                <div
                                   key={item.id}
-                                  className="cursor-pointer hover:border-primary/50 transition-colors bg-card"
                                   onClick={() => navigate(`/leads/${item.id}`)}
+                                  className="p-3 rounded-lg border border-border bg-card hover:bg-muted/40 cursor-pointer transition-colors space-y-1.5"
                                 >
-                                  <CardContent className="p-2.5 space-y-1.5">
-                                    <div className="font-semibold text-xs text-primary leading-tight line-clamp-1">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-normal text-xs text-foreground line-clamp-1">
                                       {item.name}
-                                    </div>
-                                    <div className="text-[11px] text-muted-foreground flex justify-between gap-1">
-                                      <span>{LEAD_ORIGIN_LABELS[item.origin] || item.origin}</span>
-                                      {item.client_id && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-[9px] px-1 py-0 h-4 border-emerald-300 text-emerald-700 bg-emerald-50"
-                                        >
-                                          Cliente
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <div className="text-[11px] text-foreground/80">
-                                      {assigneeName}
-                                    </div>
-                                    {item.next_step_due && (
-                                      <div
-                                        className={`text-[10px] ${
-                                          isOverdue
-                                            ? 'text-destructive font-semibold flex items-center gap-1'
-                                            : 'text-muted-foreground'
-                                        }`}
+                                    </span>
+                                    {item.client_id && (
+                                      <Badge
+                                        variant="default"
+                                        className="text-[9px] px-1 py-0 h-4 shrink-0"
                                       >
-                                        {isOverdue && <Clock className="h-2.5 w-2.5 shrink-0" />}
-                                        <span>{formatDateTimeBR(item.next_step_due)}</span>
-                                      </div>
+                                        Já é cliente
+                                      </Badge>
                                     )}
-                                  </CardContent>
-                                </Card>
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground flex justify-between gap-1">
+                                    <span>{LEAD_ORIGIN_LABELS[item.origin] || item.origin}</span>
+                                    <span className="truncate">{assigneeName}</span>
+                                  </div>
+                                  {item.next_step_due && (
+                                    <div
+                                      className={`tabular text-[10px] ${
+                                        isOverdue
+                                          ? 'text-attention font-medium'
+                                          : 'text-muted-foreground'
+                                      }`}
+                                    >
+                                      {isOverdue && 'Atrasado: '}
+                                      {formatDateTimeBR(item.next_step_due)}
+                                    </div>
+                                  )}
+                                </div>
                               )
                             })
                           )}
@@ -944,87 +958,85 @@ export default function Leads() {
                   })}
                 </div>
 
-                {/* Mobile / Tablet: Abas de etapas para visualização compacta */}
+                {/* Mobile / Tablet: Uma coluna por vez, com as etapas como pílulas rolantes no topo (a escolhida preenchida) e as linhas da etapa abaixo */}
                 <div className="lg:hidden">
                   <Tabs defaultValue="novo" className="w-full">
-                    <TabsList className="grid grid-cols-3 sm:grid-cols-6 h-auto p-1 bg-muted">
-                      {STAGE_ORDER.map((stageKey) => (
-                        <TabsTrigger
-                          key={stageKey}
-                          value={stageKey}
-                          className="text-xs py-1.5 px-1 flex flex-col gap-0.5"
-                        >
-                          <span className="truncate max-w-[80px]">
-                            {LEAD_STAGE_LABELS[stageKey]}
-                          </span>
-                          <span className="text-[10px] font-bold opacity-80">
-                            ({(funnelByStage[stageKey] || []).length})
-                          </span>
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
+                    <div className="overflow-x-auto no-scrollbar py-1">
+                      <TabsList className="inline-flex gap-1.5 p-0 bg-transparent h-auto">
+                        {STAGE_ORDER.map((stageKey) => (
+                          <TabsTrigger
+                            key={stageKey}
+                            value={stageKey}
+                            className="h-9 px-3.5 rounded-full text-xs font-normal border border-border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary shrink-0 gap-1"
+                          >
+                            <span>{LEAD_STAGE_LABELS[stageKey]}</span>
+                            <span className="tabular text-[10px] opacity-75">
+                              ({(funnelByStage[stageKey] || []).length})
+                            </span>
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </div>
 
                     {STAGE_ORDER.map((stageKey) => {
                       const columnLeads = funnelByStage[stageKey] || []
                       return (
-                        <TabsContent key={stageKey} value={stageKey} className="mt-3 space-y-2">
+                        <TabsContent key={stageKey} value={stageKey} className="mt-3">
                           {columnLeads.length === 0 ? (
-                            <div className="p-8 text-center text-xs text-muted-foreground border rounded-lg bg-card">
+                            <div className="p-8 text-center text-xs text-muted-foreground border border-border rounded-lg bg-card">
                               Nenhum lead nesta etapa.
                             </div>
                           ) : (
-                            columnLeads.map((item) => {
-                              const assigneeName =
-                                item.expand?.assigned_to?.name ||
-                                item.expand?.assigned_to?.email ||
-                                'Sem dono'
-                              const isOverdue = isLeadNextStepOverdue(item)
-                              return (
-                                <Card
-                                  key={item.id}
-                                  className="cursor-pointer hover:border-primary/50 transition-colors"
-                                  onClick={() => navigate(`/leads/${item.id}`)}
-                                >
-                                  <CardContent className="p-3 space-y-1.5 text-xs">
+                            <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
+                              {columnLeads.map((item) => {
+                                const assigneeName =
+                                  item.expand?.assigned_to?.name ||
+                                  item.expand?.assigned_to?.email ||
+                                  'Sem dono'
+                                const isOverdue = isLeadNextStepOverdue(item)
+                                return (
+                                  <div
+                                    key={item.id}
+                                    onClick={() => navigate(`/leads/${item.id}`)}
+                                    className="p-3.5 flex flex-col justify-between min-h-[72px] hover:bg-muted/40 cursor-pointer active:bg-muted/60 transition-colors gap-1.5"
+                                  >
                                     <div className="flex items-center justify-between gap-2">
-                                      <span className="font-semibold text-sm text-primary">
-                                        {item.name}
-                                      </span>
-                                      {item.client_id && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-[10px] border-emerald-300 text-emerald-700 bg-emerald-50"
-                                        >
-                                          Já é cliente
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <div className="text-muted-foreground flex justify-between">
-                                      <span>
-                                        Origem: {LEAD_ORIGIN_LABELS[item.origin] || item.origin}
-                                      </span>
-                                      <span>Atribuído: {assigneeName}</span>
-                                    </div>
-                                    {item.next_step && (
-                                      <div className="pt-1 border-t text-muted-foreground">
-                                        <span className="text-foreground block">
-                                          {item.next_step}
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className="font-normal text-sm text-foreground truncate">
+                                          {item.name}
                                         </span>
-                                        {item.next_step_due && (
-                                          <span
-                                            className={`text-[11px] block mt-0.5 ${
-                                              isOverdue ? 'text-destructive font-semibold' : ''
-                                            }`}
-                                          >
-                                            Prazo: {formatDateTimeBR(item.next_step_due)}
-                                          </span>
+                                        {item.client_id && (
+                                          <Badge variant="default" className="text-[10px] shrink-0">
+                                            Já é cliente
+                                          </Badge>
                                         )}
                                       </div>
-                                    )}
-                                  </CardContent>
-                                </Card>
-                              )
-                            })
+                                      <Badge
+                                        variant={getStageBadgeVariant(item.stage)}
+                                        className="text-xs shrink-0"
+                                      >
+                                        {LEAD_STAGE_LABELS[item.stage] || item.stage}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
+                                      <span>{assigneeName}</span>
+                                      {item.next_step && (
+                                        <span
+                                          className={`truncate text-[11px] ${
+                                            isOverdue
+                                              ? 'text-attention font-medium'
+                                              : 'text-muted-foreground'
+                                          }`}
+                                        >
+                                          {isOverdue && 'Atrasado: '}
+                                          {item.next_step}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
                           )}
                         </TabsContent>
                       )
@@ -1039,26 +1051,24 @@ export default function Leads() {
           {canManageLeads && (
             <TabsContent value="pendencias" className="mt-4 space-y-4">
               {loadingPendencias ? (
-                <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-sm">Carregando pendências...</p>
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="h-28 rounded-lg border border-border animate-pulse bg-muted/40"
+                    />
+                  ))}
                 </div>
               ) : pendencias.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-                    <CheckCircle2 className="h-12 w-12 text-emerald-500/50 mb-3" />
-                    <h3 className="text-base font-semibold">Nenhuma pendência de duplicidade</h3>
-                    <p className="text-sm text-muted-foreground max-w-sm mt-1">
-                      Todos os contatos e leads recebidos foram validados ou não geraram conflito.
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="p-12 text-center rounded-lg border border-border bg-card">
+                  <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                    Nenhuma pendência de duplicidade por aqui.
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Estes leads foram cadastrados com telefone ou e-mail semelhante a outro já
-                    existente, mas com dados discordantes. Revise as duas fichas e defina a
-                    resolução:
+                  <p className="text-xs text-muted-foreground">
+                    Revise as duas fichas e defina a resolução de duplicidade:
                   </p>
 
                   <div className="space-y-4">
@@ -1066,141 +1076,130 @@ export default function Leads() {
                       const isWorking = resolvingId === pending.id
 
                       return (
-                        <Card
+                        <div
                           key={pending.id}
-                          className="border-amber-200 dark:border-amber-900/60"
+                          className="rounded-lg border border-border bg-card overflow-hidden"
                         >
-                          <CardHeader className="bg-amber-50/50 dark:bg-amber-950/20 p-4 border-b border-amber-100 dark:border-amber-900/40">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <div className="flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-                                <CardTitle className="text-base font-semibold text-foreground">
-                                  Conflito detectado no lead: {pending.name}
-                                </CardTitle>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleResolveSeparate(pending.id)}
-                                  disabled={isWorking}
-                                  className="text-xs"
-                                >
-                                  {isWorking ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                                  ) : null}
-                                  São pessoas diferentes
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => setConfirmSamePersonLead(pending)}
-                                  disabled={isWorking}
-                                  className="text-xs"
-                                >
-                                  É a mesma pessoa
-                                </Button>
-                              </div>
+                          <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="attention">Pendência de duplicidade</Badge>
+                              <span className="text-sm font-normal text-foreground">
+                                {pending.name}
+                              </span>
                             </div>
-                          </CardHeader>
-                          <CardContent className="p-4">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleResolveSeparate(pending.id)}
+                                disabled={isWorking}
+                                className="h-9 rounded-full px-4 text-xs font-normal border-border"
+                              >
+                                {isWorking && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+                                São pessoas diferentes
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setConfirmSamePersonLead(pending)}
+                                disabled={isWorking}
+                                className="h-9 rounded-full px-4 text-xs font-normal border-border"
+                              >
+                                É a mesma pessoa
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="p-4">
+                            {/* Cada pendência mostra os dois leads lado a lado no desktop e empilhados no celular */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* Lead pendente (novo) */}
-                              <div className="p-3 rounded-lg border bg-card space-y-2">
+                              {/* Lead pendente */}
+                              <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                                  <span className="eyebrow text-muted-foreground">
                                     Lead Novo (Pendente)
                                   </span>
                                   <Link
                                     to={`/leads/${pending.id}`}
-                                    className="text-xs text-primary hover:underline font-medium"
+                                    className="text-xs text-primary underline"
                                   >
-                                    Ver ficha completa →
+                                    Ver ficha
                                   </Link>
                                 </div>
-                                <div className="text-sm font-semibold text-foreground">
+                                <div className="text-sm font-normal text-foreground">
                                   {pending.name}
                                 </div>
-                                <div className="space-y-1 text-xs text-muted-foreground">
-                                  <div className="flex items-center gap-1.5">
-                                    <Phone className="h-3.5 w-3.5 text-muted-foreground/70" />
-                                    <span>
-                                      {pending.phone
-                                        ? formatPhoneNumber(pending.phone)
-                                        : 'Sem telefone'}
-                                    </span>
+                                <div className="space-y-1 text-xs text-muted-foreground tabular">
+                                  <div>
+                                    Telefone:{' '}
+                                    {pending.phone ? formatPhoneNumber(pending.phone) : '—'}
                                   </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Mail className="h-3.5 w-3.5 text-muted-foreground/70" />
-                                    <span>{pending.email || 'Sem e-mail'}</span>
-                                  </div>
+                                  <div>E-mail: {pending.email || '—'}</div>
                                   <div className="pt-1 flex items-center gap-2">
                                     <span>
                                       Origem: {LEAD_ORIGIN_LABELS[pending.origin] || pending.origin}
                                     </span>
-                                    <span>·</span>
-                                    <span>
-                                      Etapa: {LEAD_STAGE_LABELS[pending.stage] || pending.stage}
-                                    </span>
+                                    <span>•</span>
+                                    <Badge
+                                      variant={getStageBadgeVariant(pending.stage)}
+                                      className="text-[10px]"
+                                    >
+                                      {LEAD_STAGE_LABELS[pending.stage] || pending.stage}
+                                    </Badge>
                                   </div>
                                 </div>
                               </div>
 
-                              {/* Lead existente (apontado por dedupe_of) */}
-                              <div className="p-3 rounded-lg border bg-card space-y-2">
+                              {/* Lead existente */}
+                              <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                  <span className="eyebrow text-muted-foreground">
                                     Lead Existente (Anterior)
                                   </span>
                                   {original && (
                                     <Link
                                       to={`/leads/${original.id}`}
-                                      className="text-xs text-primary hover:underline font-medium"
+                                      className="text-xs text-primary underline"
                                     >
-                                      Ver ficha completa →
+                                      Ver ficha
                                     </Link>
                                   )}
                                 </div>
                                 {original ? (
                                   <>
-                                    <div className="text-sm font-semibold text-foreground">
+                                    <div className="text-sm font-normal text-foreground">
                                       {original.name}
                                     </div>
-                                    <div className="space-y-1 text-xs text-muted-foreground">
-                                      <div className="flex items-center gap-1.5">
-                                        <Phone className="h-3.5 w-3.5 text-muted-foreground/70" />
-                                        <span>
-                                          {original.phone
-                                            ? formatPhoneNumber(original.phone)
-                                            : 'Sem telefone'}
-                                        </span>
+                                    <div className="space-y-1 text-xs text-muted-foreground tabular">
+                                      <div>
+                                        Telefone:{' '}
+                                        {original.phone ? formatPhoneNumber(original.phone) : '—'}
                                       </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <Mail className="h-3.5 w-3.5 text-muted-foreground/70" />
-                                        <span>{original.email || 'Sem e-mail'}</span>
-                                      </div>
+                                      <div>E-mail: {original.email || '—'}</div>
                                       <div className="pt-1 flex items-center gap-2">
                                         <span>
                                           Origem:{' '}
                                           {LEAD_ORIGIN_LABELS[original.origin] || original.origin}
                                         </span>
-                                        <span>·</span>
-                                        <span>
-                                          Etapa:{' '}
+                                        <span>•</span>
+                                        <Badge
+                                          variant={getStageBadgeVariant(original.stage)}
+                                          className="text-[10px]"
+                                        >
                                           {LEAD_STAGE_LABELS[original.stage] || original.stage}
-                                        </span>
+                                        </Badge>
                                       </div>
                                     </div>
                                   </>
                                 ) : (
-                                  <div className="text-xs text-muted-foreground py-3">
-                                    Lead apontado não encontrado ou sem acesso.
+                                  <div className="text-xs text-muted-foreground py-2">
+                                    Lead apontado não encontrado.
                                   </div>
                                 )}
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       )
                     })}
                   </div>
@@ -1216,18 +1215,22 @@ export default function Leads() {
         open={Boolean(confirmSamePersonLead)}
         onOpenChange={(open) => !open && setConfirmSamePersonLead(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-lg border border-border p-5 max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar duplicidade</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base font-normal">
+              Confirmar duplicidade
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground">
               O lead mais novo será encerrado como duplicado. Nada é apagado.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel className="h-9 rounded-full px-4 text-xs font-normal border-border">
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmSamePerson}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground"
             >
               Confirmar
             </AlertDialogAction>

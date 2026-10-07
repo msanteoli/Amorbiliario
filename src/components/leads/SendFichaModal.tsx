@@ -144,69 +144,68 @@ export function SendFichaModal({ leadId, open, onOpenChange, onSent }: SendFicha
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Enviar ficha de imóvel</DialogTitle>
+      <DialogContent className="sm:max-w-xl w-full max-sm:h-[90vh] max-sm:max-h-[90vh] max-sm:rounded-t-2xl max-sm:rounded-b-none max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:translate-y-0 rounded-lg border border-border bg-card p-6 shadow-none overflow-y-auto">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-base font-normal text-foreground">
+            Enviar ficha de imóvel
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
           {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 flex items-center justify-between gap-2">
               <span>{errorMessage}</span>
               {selectedProperty && (
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={handleRetry}
-                  className="ml-auto text-xs"
+                  className="text-xs text-primary underline shrink-0"
                 >
                   Tentar novamente
-                </Button>
+                </button>
               )}
             </div>
           )}
 
           {successMessage && (
-            <Alert className="border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300">
-              <Check className="h-4 w-4 text-emerald-600" />
-              <AlertDescription className="text-sm font-medium">{successMessage}</AlertDescription>
-            </Alert>
+            <div className="p-3 rounded-lg border border-border bg-muted/40 text-foreground text-xs flex items-center gap-2">
+              <Check className="h-4 w-4 text-success shrink-0" />
+              <span>{successMessage}</span>
+            </div>
           )}
 
           {!selectedProperty ? (
             <div className="space-y-2">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs text-muted-foreground block">
                 Busque um imóvel disponível por código ou título para gerar a ficha:
               </span>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
                   placeholder="Ex.: AP001 ou Residencial Flores..."
                   value={propertySearch}
                   onChange={(e) => handleSearchProperty(e.target.value)}
-                  className="pl-9"
+                  className="w-full h-12 pl-11 pr-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
                 {searching && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
                 )}
               </div>
 
               {searchResults.length > 0 && (
-                <div className="max-h-56 overflow-y-auto border rounded-md divide-y bg-card text-xs">
+                <div className="max-h-56 overflow-y-auto border border-border rounded-lg divide-y divide-border bg-card text-xs">
                   {searchResults.map((p) => (
                     <div
                       key={p.id}
-                      className="p-3 hover:bg-muted cursor-pointer flex items-center justify-between gap-3"
+                      className="p-3 hover:bg-muted/40 cursor-pointer flex items-center justify-between gap-3"
                       onClick={() => handleSelectAndProcessProperty(p)}
                     >
                       <div>
-                        <span className="font-semibold text-primary block">{p.code}</span>
+                        <span className="eyebrow text-foreground block">{p.code}</span>
                         <span className="text-muted-foreground">{p.title}</span>
                       </div>
-                      <Button size="sm" variant="outline" className="text-xs h-7 shrink-0">
-                        Gerar ficha
-                      </Button>
+                      <span className="text-xs text-primary underline shrink-0">Gerar ficha</span>
                     </div>
                   ))}
                 </div>
@@ -214,25 +213,24 @@ export function SendFichaModal({ leadId, open, onOpenChange, onSent }: SendFicha
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-2.5 rounded-md border bg-muted/40 text-xs">
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20 text-xs">
                 <div>
-                  <span className="font-semibold text-primary">{selectedProperty.code}</span>
+                  <span className="eyebrow text-foreground">{selectedProperty.code}</span>
                   <span className="text-muted-foreground ml-2">{selectedProperty.title}</span>
                 </div>
                 {!processing && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={() => {
                       setSelectedProperty(null)
                       setFichaText('')
                       setSuccessMessage(null)
                       setErrorMessage(null)
                     }}
-                    className="h-7 text-xs"
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
                   >
                     Trocar imóvel
-                  </Button>
+                  </button>
                 )}
               </div>
 
@@ -244,23 +242,23 @@ export function SendFichaModal({ leadId, open, onOpenChange, onSent }: SendFicha
               ) : fichaText ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">
+                    <span className="eyebrow text-muted-foreground">
                       Texto da ficha gerado pelo servidor:
                     </span>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleManualCopy}
-                      className="h-7 text-xs gap-1"
+                      className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
                     >
                       {copied ? (
                         <>
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <Check className="h-3 w-3 text-success" />
                           <span>Copiado!</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="h-3.5 w-3.5" />
+                          <Copy className="h-3 w-3" />
                           <span>Copiar novamente</span>
                         </>
                       )}
@@ -270,7 +268,7 @@ export function SendFichaModal({ leadId, open, onOpenChange, onSent }: SendFicha
                     readOnly
                     value={fichaText}
                     rows={10}
-                    className="font-mono text-xs bg-muted/30"
+                    className="font-mono text-xs bg-muted/20 border-border"
                   />
                 </div>
               ) : null}
@@ -278,8 +276,12 @@ export function SendFichaModal({ leadId, open, onOpenChange, onSent }: SendFicha
           )}
         </div>
 
-        <DialogFooter className="pt-2">
-          <Button variant="outline" onClick={() => handleClose(false)}>
+        <DialogFooter className="pt-3">
+          <Button
+            variant="outline"
+            onClick={() => handleClose(false)}
+            className="h-10 rounded-full px-5 text-xs font-normal border-border"
+          >
             Fechar
           </Button>
         </DialogFooter>

@@ -523,94 +523,93 @@ export default function ImovelDetalhe() {
         </div>
       )}
 
-      {/* Barra de Navegação Superior e Ações */}
+      {/* Barra de Navegação Superior e Ações (uma só ação preenchida: Editar) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
+            type="button"
             onClick={() => navigate('/imoveis')}
-            className="h-8 w-8"
+            className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
-          </Button>
+          </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                {property.code}
-              </span>
+              <span className="eyebrow text-muted-foreground">{property.code}</span>
               <Badge
-                variant="outline"
-                className={`text-xs font-medium border ${statusInfo.className}`}
+                variant={
+                  property.status === 'disponivel'
+                    ? 'success'
+                    : property.status === 'reservado'
+                      ? 'attention'
+                      : property.status === 'inativo'
+                        ? 'destructive'
+                        : 'default'
+                }
+                className="text-xs"
               >
                 {statusInfo.label}
               </Badge>
               {isOutdated && (
-                <Badge
-                  variant="outline"
-                  className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700 gap-1 inline-flex items-center"
-                >
-                  <Clock className="h-3 w-3" />
-                  <span>Desatualizado</span>
+                <Badge variant="attention" className="text-xs">
+                  Desatualizado
                 </Badge>
               )}
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground mt-1">
-              {property.title}
-            </h1>
+            <h1 className="display-sm text-foreground mt-0.5">{property.title}</h1>
           </div>
         </div>
 
-        {/* Botões de Ação do Cabeçalho */}
+        {/* Botões de Ação do Cabeçalho em pílulas */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Botão Criar tarefa */}
           <Button
             variant="outline"
             onClick={() => setCreateTaskModalOpen(true)}
-            className="gap-1.5 text-xs h-9"
+            className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
           >
-            <Clock className="h-4 w-4" />
+            <Clock className="h-3.5 w-3.5" />
             <span>Criar tarefa</span>
           </Button>
-          {/* Botão Copiar Ficha: Disponível para admin, sdr e corretor SÓ quando status = disponivel */}
+
           {property.status === 'disponivel' && (
             <Button
               variant="outline"
               onClick={handleOpenFicha}
               disabled={loadingFicha}
-              className="gap-2 text-xs h-9"
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
             >
               {loadingFicha ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Share2 className="h-4 w-4 text-emerald-600" />
+                <Share2 className="h-3.5 w-3.5" />
               )}
               <span>Copiar ficha</span>
             </Button>
           )}
 
-          {/* Botão Confirmar dados: só admin e captador */}
           {canManage && (
             <Button
               variant="outline"
               onClick={handleConfirmData}
               disabled={confirming}
-              className="gap-2 text-xs h-9"
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
             >
               {confirming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <CheckCircle2 className="h-3.5 w-3.5" />
               )}
               <span>Confirmar dados</span>
             </Button>
           )}
 
-          {/* Botão Editar: só admin e corretor captador */}
           {canManage && (
-            <Button asChild className="gap-2 text-xs h-9">
+            <Button
+              asChild
+              className="h-9 rounded-full px-5 text-xs font-medium bg-primary text-primary-foreground gap-1.5"
+            >
               <Link to={`/imoveis/${property.id}/editar`}>
-                <Edit className="h-4 w-4" />
+                <Edit className="h-3.5 w-3.5" />
                 <span>Editar</span>
               </Link>
             </Button>
@@ -618,177 +617,107 @@ export default function ImovelDetalhe() {
         </div>
       </div>
 
-      {/* 1. SEÇÃO: GALERIA DE FOTOS */}
-      <Card className="border-border overflow-hidden">
-        <CardHeader className="pb-3 border-b">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base font-semibold">Galeria de fotos</CardTitle>
-                <Badge variant="secondary" className="text-xs font-mono">
-                  {photos.length} de 20 fotos
-                </Badge>
-              </div>
-              <CardDescription>A primeira foto é utilizada como capa do imóvel.</CardDescription>
+      {/* 1. SEÇÃO: GALERIA DE FOTOS (fileira rolante de miniaturas de 8px, a primeira maior, contador "N de 20 fotos" em texto de apoio e aviso com borda attention) */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[20px] font-normal text-foreground">Galeria de fotos</h2>
+              <span className="text-xs text-muted-foreground tabular font-normal">
+                {photos.length} de 20 fotos
+              </span>
             </div>
-
-            {/* Botão Adicionar Fotos: só admin e captador */}
-            {canManage && (
-              <div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  multiple
-                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  disabled={isUploading || photos.length >= 20}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading || photos.length >= 20}
-                  className="gap-2 text-xs"
-                >
-                  {isUploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <UploadCloud className="h-4 w-4" />
-                  )}
-                  <span>Adicionar fotos</span>
-                </Button>
-              </div>
-            )}
+            <p className="text-xs text-muted-foreground">
+              A primeira foto é utilizada como capa do imóvel.
+            </p>
           </div>
-        </CardHeader>
 
-        <CardContent className="p-4 sm:p-6 space-y-4">
-          {/* Aviso quando houver menos de 5 fotos */}
-          {photos.length < 5 && (
-            <div className="flex items-start gap-2 p-3.5 rounded-lg bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs sm:text-sm border border-amber-500/20 font-medium">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-              <span>Para ficar Disponível o imóvel precisa de pelo menos 5 fotos.</span>
-            </div>
-          )}
-
-          {/* Progresso de upload quando em andamento */}
-          {uploadList.length > 0 && (
-            <div className="p-3 rounded-lg border bg-muted/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-medium">
-                <span className="text-muted-foreground">Progresso do envio de fotos:</span>
-                {isUploading && (
-                  <span className="flex items-center gap-1 text-primary">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span>Enviando...</span>
-                  </span>
+          {canManage && (
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                multiple
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                className="hidden"
+                disabled={isUploading || photos.length >= 20}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading || photos.length >= 20}
+                className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
+              >
+                {isUploading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <UploadCloud className="h-3.5 w-3.5" />
                 )}
-              </div>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                {uploadList.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between text-xs p-1.5 rounded bg-background border"
-                  >
-                    <span className="truncate max-w-[240px] text-foreground font-mono">
-                      {item.name}
-                    </span>
-                    {item.status === 'uploading' && (
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                        <span>Enviando...</span>
-                      </span>
-                    )}
-                    {item.status === 'done' && (
-                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>Concluído</span>
-                      </span>
-                    )}
-                    {item.status === 'error' && (
-                      <span
-                        className="text-destructive flex items-center gap-1 font-medium truncate max-w-[200px]"
-                        title={item.errorMessage}
-                      >
-                        <AlertCircle className="h-3 w-3 shrink-0" />
-                        <span>{item.errorMessage || 'Falhou'}</span>
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
+                <span>Adicionar fotos</span>
+              </Button>
             </div>
           )}
+        </div>
 
-          {/* Grade de Fotos */}
-          {photos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-lg">
-              <UploadCloud className="h-10 w-10 text-muted-foreground/40 mb-2" />
-              <p className="text-sm font-medium text-foreground">Nenhuma foto cadastrada</p>
-              <p className="text-xs text-muted-foreground max-w-xs mt-0.5">
-                {canManage
-                  ? 'Adicione fotos para apresentar o imóvel no catálogo e viabilizar a situação Disponível.'
-                  : 'Nenhuma foto ativa foi adicionada a este imóvel.'}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {photos.map((photo, index) => {
-                const isCover = index === 0
-                return (
-                  <div
-                    key={photo.id}
-                    className="group relative aspect-square rounded-lg overflow-hidden border bg-muted"
-                  >
-                    <img
-                      src={getPhotoFileUrl(photo, '300x300')}
-                      alt={`Foto ${index + 1} do imóvel`}
-                      className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
-                      onClick={() => setViewingPhotoIndex(index)}
-                      loading="lazy"
-                    />
+        {/* Aviso com borda attention */}
+        {photos.length < 5 && (
+          <div className="p-3.5 rounded-lg border border-attention/40 bg-muted/20 text-xs text-foreground font-normal">
+            Para ficar Disponível o imóvel precisa de pelo menos 5 fotos.
+          </div>
+        )}
 
-                    {/* Etiqueta de Capa na primeira foto */}
-                    {isCover && (
-                      <div className="absolute top-2 left-2 pointer-events-none">
-                        <Badge className="text-[10px] px-1.5 py-0 bg-primary/95 text-primary-foreground">
-                          Capa
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Botão de zoom */}
+        {/* Fileira rolante de miniaturas */}
+        {photos.length === 0 ? (
+          <div className="text-center py-8 text-xs text-muted-foreground">
+            Nenhuma foto cadastrada.
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+            {photos.map((photo, index) => {
+              const isCover = index === 0
+              return (
+                <div
+                  key={photo.id}
+                  className={`group relative rounded-lg overflow-hidden border border-border bg-muted shrink-0 cursor-pointer ${
+                    isCover ? 'w-40 h-40 sm:w-48 sm:h-48' : 'w-24 h-24 sm:w-28 sm:h-28'
+                  }`}
+                  onClick={() => setViewingPhotoIndex(index)}
+                >
+                  <img
+                    src={getPhotoFileUrl(photo, isCover ? '400x400' : '200x200')}
+                    alt={`Foto ${index + 1}`}
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  {isCover && (
+                    <div className="absolute top-2 left-2">
+                      <Badge variant="default" className="text-[10px] px-1.5 py-0">
+                        Capa
+                      </Badge>
+                    </div>
+                  )}
+                  {canManage && (
                     <button
                       type="button"
-                      onClick={() => setViewingPhotoIndex(index)}
-                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-                      title="Ampliar foto"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPhotoToDelete(photo)
+                      }}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 hover:bg-destructive hover:text-destructive-foreground text-destructive transition-colors opacity-90 sm:opacity-0 sm:group-hover:opacity-100"
+                      title="Remover foto"
                     >
-                      <ZoomIn className="h-6 w-6" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
-
-                    {/* Botão de Remover Foto: só admin e captador */}
-                    {canManage && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setPhotoToDelete(photo)
-                        }}
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 hover:bg-destructive hover:text-destructive-foreground text-destructive transition-colors opacity-90 sm:opacity-0 sm:group-hover:opacity-100"
-                        title="Remover foto"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* 2. SEÇÃO: DADOS DO IMÓVEL */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

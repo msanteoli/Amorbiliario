@@ -196,20 +196,19 @@ export default function EditarCliente() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 pb-28 md:pb-12">
       {/* Cabeçalho */}
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
+          type="button"
           onClick={() => navigate(`/clientes/${id}`)}
-          className="h-8 w-8"
+          className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-        </Button>
+        </button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Editar cliente</h1>
-          <p className="text-xs text-muted-foreground">
+          <h1 className="display-sm text-foreground">Editar cliente</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Atualize as informações de contato, relação e dados pessoais.
           </p>
         </div>
@@ -217,212 +216,268 @@ export default function EditarCliente() {
 
       {/* Alerta de erro */}
       {errorMessage && (
-        <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20">
+          {errorMessage}
         </div>
       )}
 
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle className="text-lg">Formulário de edição</CardTitle>
-          <CardDescription>Campos com * são obrigatórios.</CardDescription>
-        </CardHeader>
+      {/* Formulário em seções sem cartões envolventes, divisores de 1px */}
+      <form onSubmit={handleSave} className="space-y-8">
+        {/* Dados Principais */}
+        <div className="space-y-4">
+          <h2 className="text-[20px] font-normal text-foreground">Dados de contato</h2>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label htmlFor="edit-name" className="text-[13px] font-normal text-foreground block">
+                Nome completo <span className="text-destructive">*</span>
+              </label>
+              <input
+                id="edit-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
 
-        <CardContent>
-          <form onSubmit={handleSave} className="space-y-6">
-            {/* Dados Principais */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">
-                  Nome completo <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="edit-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label
+                  htmlFor="edit-phone"
+                  className="text-[13px] font-normal text-foreground block"
+                >
+                  Telefone celular
+                </label>
+                <input
+                  id="edit-phone"
+                  placeholder="(00) 00000-0000"
+                  value={phone}
+                  onChange={(e) => setPhone(maskPhoneInput(e.target.value))}
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-phone">Telefone celular</Label>
-                  <Input
-                    id="edit-phone"
-                    placeholder="(00) 00000-0000"
-                    value={phone}
-                    onChange={(e) => setPhone(maskPhoneInput(e.target.value))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="edit-email">E-mail</Label>
-                  <Input
-                    id="edit-email"
-                    type="email"
-                    placeholder="cliente@exemplo.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                * Informe ao menos telefone ou e-mail para contato.
-              </p>
-            </div>
-
-            {/* Tipos de Relação */}
-            <div className="space-y-3 pt-2 border-t">
-              <Label className="text-sm font-semibold">
-                Tipos de relação <span className="text-destructive">*</span>
-              </Label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-                {(['comprador', 'locatario', 'proprietario', 'investidor'] as ClientKind[]).map(
-                  (k) => (
-                    <div
-                      key={k}
-                      className="flex items-center space-x-2 border rounded-md p-3 hover:bg-muted/40 transition-colors"
-                    >
-                      <Checkbox
-                        id={`edit-kind-${k}`}
-                        checked={kinds.includes(k)}
-                        onCheckedChange={() => handleToggleKind(k)}
-                      />
-                      <Label
-                        htmlFor={`edit-kind-${k}`}
-                        className="text-sm font-normal cursor-pointer leading-none"
-                      >
-                        {KIND_LABELS[k]}
-                      </Label>
-                    </div>
-                  ),
-                )}
-              </div>
-            </div>
-
-            {/* Responsável */}
-            <div className="space-y-2 pt-2 border-t">
-              <Label htmlFor="edit-responsible">Responsável</Label>
-              {isCorretor ? (
-                <div className="p-2.5 rounded-md bg-muted text-sm text-foreground flex items-center justify-between border">
-                  <span>{user?.name || user?.email || 'Você (Corretor)'}</span>
-                  <span className="text-xs text-muted-foreground font-medium">Fixo (Corretor)</span>
-                </div>
-              ) : (
-                <Select
-                  value={responsibleId || 'nenhum'}
-                  onValueChange={(val) => setResponsibleId(val === 'nenhum' ? '' : val)}
+              <div className="space-y-1">
+                <label
+                  htmlFor="edit-email"
+                  className="text-[13px] font-normal text-foreground block"
                 >
-                  <SelectTrigger id="edit-responsible">
-                    <SelectValue placeholder="Selecione o corretor responsável" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nenhum">Nenhum responsável</SelectItem>
-                    {responsibleUsers.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name} ({u.role})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+                  E-mail
+                </label>
+                <input
+                  id="edit-email"
+                  type="email"
+                  placeholder="cliente@exemplo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-border" />
+
+        {/* Tipos de Relação */}
+        <div className="space-y-3">
+          <label className="text-[13px] font-normal text-foreground block">
+            Tipos de relação <span className="text-destructive">*</span>
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            {(['comprador', 'locatario', 'proprietario', 'investidor'] as ClientKind[]).map((k) => (
+              <label
+                key={k}
+                className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-muted/30 cursor-pointer text-xs"
+              >
+                <Checkbox
+                  id={`edit-kind-${k}`}
+                  checked={kinds.includes(k)}
+                  onCheckedChange={() => handleToggleKind(k)}
+                />
+                <span>{KIND_LABELS[k]}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-border" />
+
+        {/* Responsável */}
+        <div className="space-y-2">
+          <label
+            htmlFor="edit-responsible"
+            className="text-[13px] font-normal text-foreground block"
+          >
+            Responsável
+          </label>
+          {isCorretor ? (
+            <div className="p-3 rounded-lg bg-muted/30 text-xs text-foreground flex items-center justify-between border border-border">
+              <span>{user?.name || user?.email || 'Você (Corretor)'}</span>
+              <span className="text-muted-foreground">Fixo</span>
+            </div>
+          ) : (
+            <Select
+              value={responsibleId || 'nenhum'}
+              onValueChange={(val) => setResponsibleId(val === 'nenhum' ? '' : val)}
+            >
+              <SelectTrigger
+                id="edit-responsible"
+                className="h-12 rounded-lg border-border bg-background"
+              >
+                <SelectValue placeholder="Selecione o corretor responsável" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nenhum">Nenhum responsável</SelectItem>
+                {responsibleUsers.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name} ({u.role})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        <div className="border-t border-border" />
+
+        {/* Consentimento LGPD */}
+        <div className="space-y-4">
+          <h2 className="text-[20px] font-normal text-foreground">Consentimento LGPD</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label
+                htmlFor="edit-consent-status"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Status de consentimento
+              </label>
+              <Select
+                value={consentStatus}
+                onValueChange={(val) => setConsentStatus(val as ConsentStatus)}
+              >
+                <SelectTrigger
+                  id="edit-consent-status"
+                  className="h-12 rounded-lg border-border bg-background"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unknown">{CONSENT_STATUS_LABELS['unknown']}</SelectItem>
+                  <SelectItem value="opt_in">{CONSENT_STATUS_LABELS['opt_in']}</SelectItem>
+                  <SelectItem value="opt_out">{CONSENT_STATUS_LABELS['opt_out']}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Consentimento LGPD */}
-            <div className="space-y-4 pt-2 border-t">
-              <Label className="text-sm font-semibold">Consentimento LGPD</Label>
+            <div className="space-y-1">
+              <label
+                htmlFor="edit-consent-channel"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Canal de consentimento
+              </label>
+              <input
+                id="edit-consent-channel"
+                placeholder="Ex.: WhatsApp, Presencial"
+                value={consentChannel}
+                onChange={(e) => setConsentChannel(e.target.value)}
+                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Dados Pessoais (Apenas Admin e Corretor) */}
+        {canSeeCpf && hasPrivateAccess && (
+          <>
+            <div className="border-t border-border" />
+            <div className="space-y-4">
+              <h2 className="text-[20px] font-normal text-foreground">Dados pessoais</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-consent-status">Status de consentimento</Label>
-                  <Select
-                    value={consentStatus}
-                    onValueChange={(val) => setConsentStatus(val as ConsentStatus)}
+                <div className="space-y-1">
+                  <label
+                    htmlFor="edit-cpf"
+                    className="text-[13px] font-normal text-foreground block"
                   >
-                    <SelectTrigger id="edit-consent-status">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unknown">{CONSENT_STATUS_LABELS['unknown']}</SelectItem>
-                      <SelectItem value="opt_in">{CONSENT_STATUS_LABELS['opt_in']}</SelectItem>
-                      <SelectItem value="opt_out">{CONSENT_STATUS_LABELS['opt_out']}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    CPF
+                  </label>
+                  <input
+                    id="edit-cpf"
+                    placeholder="000.000.000-00"
+                    value={cpf}
+                    onChange={(e) => setCpf(maskCpfInput(e.target.value))}
+                    maxLength={14}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                  />
+                  {cpf && !isValidCpf(cpf) && (
+                    <span className="text-xs text-destructive">Dígitos do CPF não conferem.</span>
+                  )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="edit-consent-channel">Canal de consentimento</Label>
-                  <Input
-                    id="edit-consent-channel"
-                    placeholder="Ex.: WhatsApp, Presencial"
-                    value={consentChannel}
-                    onChange={(e) => setConsentChannel(e.target.value)}
+                <div className="space-y-1">
+                  <label
+                    htmlFor="edit-birthdate"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Data de nascimento
+                  </label>
+                  <input
+                    id="edit-birthdate"
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
                   />
                 </div>
               </div>
             </div>
+          </>
+        )}
 
-            {/* Dados Pessoais (Apenas Admin e Corretor) */}
-            {canSeeCpf && hasPrivateAccess && (
-              <div className="space-y-4 pt-2 border-t">
-                <div>
-                  <Label className="text-sm font-semibold">Dados pessoais</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Armazenados em client_private com regras estritas de acesso.
-                  </p>
-                </div>
+        {/* Ações Desktop */}
+        <div className="hidden md:flex justify-end gap-3 pt-4 border-t border-border">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(`/clientes/${id}`)}
+            disabled={saving}
+            className="h-10 rounded-full px-5 text-xs font-normal border-border"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            disabled={saving}
+            className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+          >
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            <span>Salvar alterações</span>
+          </Button>
+        </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-cpf">CPF</Label>
-                    <Input
-                      id="edit-cpf"
-                      placeholder="000.000.000-00"
-                      value={cpf}
-                      onChange={(e) => setCpf(maskCpfInput(e.target.value))}
-                      maxLength={14}
-                    />
-                    {cpf && !isValidCpf(cpf) && (
-                      <span className="text-xs text-destructive">Dígitos do CPF não conferem.</span>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-birthdate">Data de nascimento</Label>
-                    <Input
-                      id="edit-birthdate"
-                      type="date"
-                      value={birthDate}
-                      onChange={(e) => setBirthDate(e.target.value)}
-                      max={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Ações */}
-            <div className="pt-4 border-t flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate(`/clientes/${id}`)}
-                disabled={saving}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={saving} className="gap-2">
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
-                <span>Salvar alterações</span>
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        {/* Barra fixa móvel */}
+        <div className="md:hidden fixed bottom-16 left-0 right-0 z-30 p-3 bg-background/95 backdrop-blur border-t border-border flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(`/clientes/${id}`)}
+            disabled={saving}
+            className="flex-1 h-12 rounded-full text-xs font-normal border-border"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            disabled={saving}
+            className="flex-1 h-12 rounded-full text-xs font-normal bg-primary text-primary-foreground gap-2"
+          >
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            <span>Salvar alterações</span>
+          </Button>
+        </div>
+      </form>
     </div>
   )
 }

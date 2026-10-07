@@ -126,90 +126,100 @@ export default function Clientes() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Clientes
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="display-sm text-foreground">Clientes</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Gerencie sua carteira de compradores, locatários, proprietários e investidores.
           </p>
         </div>
-        <Button onClick={() => navigate('/clientes/novo')} className="gap-2 shrink-0">
+        <Button
+          onClick={() => navigate('/clientes/novo')}
+          className="hidden sm:inline-flex rounded-full px-5 h-10 gap-2 font-medium"
+        >
           <Plus className="h-4 w-4" />
           <span>Novo cliente</span>
         </Button>
       </div>
 
-      {/* Filtros e Busca */}
-      <Card className="border-border">
-        <CardContent className="p-4 space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, telefone ou e-mail..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+      {/* Botão flutuante no celular (FAB 56px) */}
+      <button
+        type="button"
+        onClick={() => navigate('/clientes/novo')}
+        aria-label="Novo cliente"
+        className="sm:hidden fixed right-4 bottom-20 z-40 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-none border border-border flex items-center justify-center active:scale-95 transition-transform"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
-          <div className="flex flex-wrap sm:flex-nowrap gap-2">
+      {/* Filtros e Busca */}
+      <div className="space-y-2.5">
+        {/* Campo em pílula de 48px */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Buscar por nome, telefone ou e-mail..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-full h-12 pl-11 pr-4 rounded-full border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+
+        {/* Pílulas de seleção em fileira com rolagem lateral no celular */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          <Select
+            value={selectedKind || 'todos'}
+            onValueChange={(val) => {
+              setSelectedKind(val === 'todos' ? '' : (val as ClientKind))
+              setCurrentPage(1)
+            }}
+          >
+            <SelectTrigger className="h-9 rounded-full px-3.5 text-xs border-border bg-background shrink-0 w-auto min-w-[130px]">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os tipos</SelectItem>
+              <SelectItem value="comprador">Comprador</SelectItem>
+              <SelectItem value="locatario">Locatário</SelectItem>
+              <SelectItem value="proprietario">Proprietário</SelectItem>
+              <SelectItem value="investidor">Investidor</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {canFilterResponsible && (
             <Select
-              value={selectedKind || 'todos'}
+              value={selectedResponsible || 'todos'}
               onValueChange={(val) => {
-                setSelectedKind(val === 'todos' ? '' : (val as ClientKind))
+                setSelectedResponsible(val === 'todos' ? '' : val)
                 setCurrentPage(1)
               }}
             >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Tipo" />
+              <SelectTrigger className="h-9 rounded-full px-3.5 text-xs border-border bg-background shrink-0 w-auto min-w-[140px]">
+                <SelectValue placeholder="Responsável" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os tipos</SelectItem>
-                <SelectItem value="comprador">Comprador</SelectItem>
-                <SelectItem value="locatario">Locatário</SelectItem>
-                <SelectItem value="proprietario">Proprietário</SelectItem>
-                <SelectItem value="investidor">Investidor</SelectItem>
+                <SelectItem value="todos">Todos os responsáveis</SelectItem>
+                {responsibleUsers.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+          )}
 
-            {canFilterResponsible && (
-              <Select
-                value={selectedResponsible || 'todos'}
-                onValueChange={(val) => {
-                  setSelectedResponsible(val === 'todos' ? '' : val)
-                  setCurrentPage(1)
-                }}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os responsáveis</SelectItem>
-                  {responsibleUsers.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleClearFilters}
-                title="Limpar filtros"
-                className="shrink-0"
-              >
-                <FilterX className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="text-xs text-muted-foreground hover:text-foreground shrink-0 px-2 py-1 underline"
+            >
+              Limpar filtros
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Erro de carregamento */}
       {errorMessage && (
@@ -219,100 +229,96 @@ export default function Clientes() {
         </div>
       )}
 
-      {/* Conteúdo: Desktop Tabela + Mobile Cards */}
+      {/* Conteúdo: Desktop Lista de Linhas + Mobile Linhas Empilhadas de 72px */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm">Carregando clientes...</p>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-16 rounded-lg border border-border animate-pulse bg-muted/40"
+            />
+          ))}
         </div>
       ) : clients.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-            <User className="h-12 w-12 text-muted-foreground/50 mb-3" />
-            <h3 className="text-base font-semibold">Nenhum cliente encontrado</h3>
-            <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
-              {hasActiveFilters
-                ? 'Nenhum resultado corresponde aos filtros aplicados. Tente ajustar os termos de busca.'
-                : 'Você ainda não possui clientes cadastrados na sua carteira.'}
-            </p>
-            {hasActiveFilters ? (
-              <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                Limpar filtros
-              </Button>
-            ) : (
-              <Button onClick={() => navigate('/clientes/novo')} size="sm">
-                Cadastrar primeiro cliente
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <div className="p-12 text-center rounded-lg border border-border bg-card">
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+            {hasActiveFilters
+              ? 'Nenhum resultado corresponde aos filtros aplicados.'
+              : 'Nenhum cliente por aqui. Cadastre o primeiro.'}
+          </p>
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="text-xs text-primary underline"
+            >
+              Limpar filtros
+            </button>
+          ) : (
+            <Button
+              onClick={() => navigate('/clientes/novo')}
+              className="rounded-full px-5 h-10 gap-2 font-medium"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Novo cliente</span>
+            </Button>
+          )}
+        </div>
       ) : (
         <>
-          {/* Versão Desktop: Tabela */}
-          <div className="hidden md:block rounded-md border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>E-mail</TableHead>
-                  <TableHead>Tipos</TableHead>
-                  <TableHead>Responsável</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clients.map((client) => {
-                  const respName =
-                    client.expand?.responsible_id?.name ||
-                    client.expand?.responsible_id?.email ||
-                    'Não atribuído'
+          {/* Versão Desktop: Lista de linhas com divisores e cabeçalho em .eyebrow */}
+          <div className="hidden md:block rounded-lg border border-border bg-card overflow-hidden">
+            <div className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-border text-left eyebrow text-muted-foreground">
+              <div className="col-span-4">Nome</div>
+              <div className="col-span-2">Telefone</div>
+              <div className="col-span-2">E-mail</div>
+              <div className="col-span-2">Tipo de relação</div>
+              <div className="col-span-2 text-right">Responsável</div>
+            </div>
+            <div className="divide-y divide-border">
+              {clients.map((client) => {
+                const respName =
+                  client.expand?.responsible_id?.name ||
+                  client.expand?.responsible_id?.email ||
+                  'Não atribuído'
 
-                  return (
-                    <TableRow key={client.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium text-foreground">
-                        <Link
-                          to={`/clientes/${client.id}`}
-                          className="hover:underline font-semibold text-primary"
-                        >
-                          {client.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {formatPhoneNumber(client.phone)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{client.email || '-'}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {client.kind && client.kind.length > 0 ? (
-                            client.kind.map((k) => (
-                              <Badge key={k} variant="secondary" className="text-xs">
-                                {KIND_LABELS[k] || k}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{respName}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild className="h-8 gap-1.5">
-                          <Link to={`/clientes/${client.id}`}>
-                            <Eye className="h-4 w-4" />
-                            <span>Ver ficha</span>
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                return (
+                  <div
+                    key={client.id}
+                    onClick={() => navigate(`/clientes/${client.id}`)}
+                    className="grid grid-cols-12 gap-3 px-4 py-3.5 items-center hover:bg-muted/40 cursor-pointer transition-colors"
+                  >
+                    <div className="col-span-4 font-normal text-sm text-foreground truncate">
+                      {client.name}
+                    </div>
+                    <div className="col-span-2 text-xs text-muted-foreground tabular whitespace-nowrap">
+                      {formatPhoneNumber(client.phone)}
+                    </div>
+                    <div className="col-span-2 text-xs text-muted-foreground truncate">
+                      {client.email || '—'}
+                    </div>
+                    <div className="col-span-2 flex flex-wrap gap-1">
+                      {client.kind && client.kind.length > 0 ? (
+                        client.kind.map((k) => (
+                          <Badge key={k} variant="default" className="text-[10px]">
+                            {KIND_LABELS[k] || k}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </div>
+                    <div className="col-span-2 text-right text-xs text-muted-foreground truncate">
+                      {respName}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
-          {/* Versão Mobile: Cards */}
-          <div className="grid grid-cols-1 gap-3 md:hidden">
+          {/* Versão Mobile: Linhas empilhadas de 72px com divisores de 1px */}
+          <div className="md:hidden rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
             {clients.map((client) => {
               const respName =
                 client.expand?.responsible_id?.name ||
@@ -320,92 +326,57 @@ export default function Clientes() {
                 'Não atribuído'
 
               return (
-                <Card
+                <div
                   key={client.id}
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
                   onClick={() => navigate(`/clientes/${client.id}`)}
+                  className="p-3.5 flex flex-col justify-between min-h-[72px] hover:bg-muted/40 cursor-pointer active:bg-muted/60 transition-colors gap-1.5"
                 >
-                  <CardHeader className="p-4 pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base font-semibold leading-tight text-primary">
-                        {client.name}
-                      </CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-muted-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/clientes/${client.id}`)
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0 space-y-2.5">
-                    <div className="flex flex-wrap gap-1">
-                      {client.kind && client.kind.length > 0
-                        ? client.kind.map((k) => (
-                            <Badge key={k} variant="secondary" className="text-xs">
-                              {KIND_LABELS[k] || k}
-                            </Badge>
-                          ))
-                        : null}
-                    </div>
-
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      {client.phone && (
-                        <div className="flex items-center gap-1.5">
-                          <Phone className="h-3.5 w-3.5 text-muted-foreground/70" />
-                          <span>{formatPhoneNumber(client.phone)}</span>
-                        </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-normal text-sm text-foreground truncate">
+                      {client.name}
+                    </span>
+                    <div className="flex gap-1 shrink-0">
+                      {client.kind && client.kind.length > 0 && (
+                        <Badge variant="default" className="text-[10px]">
+                          {KIND_LABELS[client.kind[0]] || client.kind[0]}
+                        </Badge>
                       )}
-                      {client.email && (
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="h-3.5 w-3.5 text-muted-foreground/70" />
-                          <span className="truncate">{client.email}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1.5 pt-1 text-foreground/80 font-medium">
-                        <User className="h-3.5 w-3.5 text-muted-foreground/70" />
-                        <span>Responsável: {respName}</span>
-                      </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
+                    <span className="tabular">{formatPhoneNumber(client.phone)}</span>
+                    <span className="truncate">{respName}</span>
+                  </div>
+                </div>
               )
             })}
           </div>
 
-          {/* Paginação */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <span className="text-xs text-muted-foreground order-2 sm:order-1">
-              Mostrando {clients.length} de {totalItems} cliente{totalItems === 1 ? '' : 's'}
+          {/* Paginação em pílulas com a página atual em texto de apoio */}
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-muted-foreground tabular">
+              Página {currentPage} de {totalPages} ({totalItems} clientes)
             </span>
-            <div className="flex items-center gap-2 order-1 sm:order-2">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage <= 1 || loading}
-                className="gap-1"
+                className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-3.5 w-3.5" />
                 <span>Anterior</span>
               </Button>
-              <span className="text-xs font-medium px-2">
-                Página {currentPage} de {totalPages}
-              </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages || loading}
-                className="gap-1"
+                className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1"
               >
                 <span>Próxima</span>
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>

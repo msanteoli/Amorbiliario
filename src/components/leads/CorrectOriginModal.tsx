@@ -79,39 +79,45 @@ export function CorrectOriginModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Edit className="h-5 w-5 text-primary" />
-            <span>Corrigir origem do lead</span>
+      <DialogContent className="sm:max-w-md w-full max-sm:h-[90vh] max-sm:max-h-[90vh] max-sm:rounded-t-2xl max-sm:rounded-b-none max-sm:fixed max-sm:bottom-0 max-sm:top-auto max-sm:translate-y-0 rounded-lg border border-border bg-card p-6 shadow-none overflow-y-auto">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-base font-normal text-foreground">
+            Corrigir origem do lead
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20">
+              {errorMessage}
             </div>
           )}
 
-          <div className="p-3 rounded-md bg-muted/40 border text-xs text-muted-foreground space-y-1">
+          <div className="p-3.5 rounded-lg bg-muted/20 border border-border text-xs text-muted-foreground space-y-1">
             <div>
               Origem atual:{' '}
-              <strong className="text-foreground">
+              <strong className="text-foreground font-normal">
                 {LEAD_ORIGIN_LABELS[lead.origin] || lead.origin}
               </strong>
             </div>
             {lead.origin_detail && <div>Detalhe: {lead.origin_detail}</div>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="correct-origin">Nova origem</Label>
+          <div className="space-y-1">
+            <label
+              htmlFor="correct-origin"
+              className="text-[13px] font-normal text-foreground block"
+            >
+              Nova origem
+            </label>
             <Select
               value={selectedOrigin}
               onValueChange={(val) => setSelectedOrigin(val as LeadOrigin)}
             >
-              <SelectTrigger id="correct-origin">
+              <SelectTrigger
+                id="correct-origin"
+                className="h-12 rounded-lg border-border bg-background"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -124,11 +130,14 @@ export function CorrectOriginModal({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="correct-reason">
+          <div className="space-y-1">
+            <label
+              htmlFor="correct-reason"
+              className="text-[13px] font-normal text-foreground block"
+            >
               Motivo da correção <span className="text-destructive">*</span>
-            </Label>
-            <Input
+            </label>
+            <input
               id="correct-reason"
               placeholder="Ex.: Cliente informou que conheceu pelo Instagram"
               value={reason}
@@ -136,23 +145,29 @@ export function CorrectOriginModal({
               minLength={3}
               maxLength={300}
               required
+              className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <span className="text-[11px] text-muted-foreground block">
               Obrigatório (mínimo de 3 caracteres). Fica gravado no log de auditoria.
             </span>
           </div>
 
-          <DialogFooter className="pt-3">
+          <DialogFooter className="pt-3 gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => handleClose(false)}
               disabled={loading}
+              className="h-10 rounded-full px-5 text-xs font-normal border-border"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading} className="gap-2">
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+            >
+              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <span>Confirmar correção</span>
             </Button>
           </DialogFooter>
