@@ -20,12 +20,9 @@ import {
   KIND_LABELS,
   CONSENT_STATUS_LABELS,
 } from '@/lib/clientUtils'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -34,16 +31,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  AlertCircle,
   ArrowLeft,
   ArrowRight,
-  CheckCircle2,
-  HelpCircle,
   Loader2,
-  User,
-  Phone,
-  Mail,
-  ShieldAlert,
 } from 'lucide-react'
 
 export default function NovoCliente() {

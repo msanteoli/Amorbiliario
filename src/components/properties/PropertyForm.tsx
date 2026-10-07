@@ -793,7 +793,7 @@ export function PropertyForm({
                   setSelectedOwner(null)
                   setOwnerSearchTerm('')
                 }}
-                className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                className="h-9 sm:h-8 min-h-[44px] sm:min-h-[32px] rounded-full px-3.5 sm:px-3 text-xs font-normal border-border gap-1"
               >
                 <X className="h-3.5 w-3.5" />
                 <span>Trocar</span>

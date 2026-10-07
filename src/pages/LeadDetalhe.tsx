@@ -74,7 +74,6 @@ import {
   User,
   Clock,
   AlertCircle,
-  AlertTriangle,
   Loader2,
   Calendar,
   Building,
@@ -527,8 +526,8 @@ export default function LeadDetalhe() {
 
       {/* Banner de sucesso */}
       {successBanner && (
-        <Alert className="border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300">
-          <Check className="h-4 w-4 text-emerald-600" />
+        <Alert className="border border-border bg-muted/40 text-foreground">
+          <Check className="h-4 w-4 text-primary" />
           <AlertDescription className="text-sm font-medium">{successBanner}</AlertDescription>
         </Alert>
       )}

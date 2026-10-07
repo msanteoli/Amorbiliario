@@ -12,7 +12,7 @@ import { parseCurrencyInput, formatCurrencyInput } from '@/lib/currencyUtils'
 import { PropertyForm, PropertyFormData } from '@/components/properties/PropertyForm'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, ArrowLeft, Loader2, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Loader2, ShieldAlert } from 'lucide-react'
 
 export default function EditarImovel() {
   const { id } = useParams<{ id: string }>()
@@ -141,7 +141,7 @@ export default function EditarImovel() {
         <Button
           onClick={() => navigate('/imoveis')}
           variant="outline"
-          className="h-9 rounded-full px-4 text-xs font-normal border-border gap-2"
+          className="h-11 min-h-[44px] rounded-full px-5 text-xs font-normal border-border gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Voltar para Imóveis</span>
@@ -265,7 +265,8 @@ export default function EditarImovel() {
         <button
           type="button"
           onClick={() => navigate(`/imoveis/${id}`)}
-          className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
+          className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
+          aria-label="Voltar para detalhes do imóvel"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>

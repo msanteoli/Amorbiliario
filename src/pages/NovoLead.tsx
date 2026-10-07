@@ -12,9 +12,6 @@ import { maskPhoneInput } from '@/lib/clientUtils'
 import { PROPERTY_TYPE_LABELS, PropertyType } from '@/services/properties'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -22,13 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   ArrowLeft,
   Loader2,
-  AlertCircle,
-  CheckCircle2,
-  AlertTriangle,
   Search,
   ExternalLink,
 } from 'lucide-react'
