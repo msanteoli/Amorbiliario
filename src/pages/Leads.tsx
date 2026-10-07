@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   listLeads,
   listAllLeadsForFunnel,
@@ -125,8 +125,16 @@ export default function Leads() {
   const isCorretor = user?.role === 'corretor'
   const canManageLeads = user?.role === 'admin' || user?.role === 'sdr'
 
+  const [searchParams] = useSearchParams()
+
   // View state: 'lista' | 'funil' | 'pendencias'
-  const [activeTab, setActiveTab] = useState<'lista' | 'funil' | 'pendencias'>('lista')
+  const [activeTab, setActiveTab] = useState<'lista' | 'funil' | 'pendencias'>(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam === 'pendencias' || tabParam === 'funil' || tabParam === 'lista') {
+      return tabParam
+    }
+    return 'lista'
+  })
 
   // Pagination and data for Table / List
   const [leads, setLeads] = useState<LeadRecord[]>([])
@@ -153,7 +161,13 @@ export default function Leads() {
   // Filters
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [selectedStage, setSelectedStage] = useState<LeadStage | ''>('')
+  const [selectedStage, setSelectedStage] = useState<LeadStage | ''>(() => {
+    const st = searchParams.get('stage') as LeadStage
+    if (st && STAGE_ORDER.includes(st)) {
+      return st
+    }
+    return ''
+  })
   const [selectedOrigin, setSelectedOrigin] = useState<LeadOrigin | ''>('')
   const [selectedAssigned, setSelectedAssigned] = useState<string>('')
   const [filterExpired, setFilterExpired] = useState(false)

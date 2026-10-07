@@ -5,9 +5,9 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute, AdminRoute } from '@/components/ProtectedRoute'
 import { AppLayout } from '@/components/AppLayout'
-import { UnderConstructionPage } from '@/components/UnderConstructionPage'
 
 import Login from '@/pages/Login'
+import ResetPassword from '@/pages/ResetPassword'
 import BuscarPage from '@/pages/BuscarPage'
 import ImovelPublicoPage from '@/pages/ImovelPublicoPage'
 import Hoje from '@/pages/Hoje'
@@ -33,8 +33,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <Routes>
-          {/* Public login route */}
+          {/* Public login & reset password routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Public site routes (fora de ProtectedRoute e de AppLayout) */}
           <Route path="/buscar" element={<BuscarPage />} />

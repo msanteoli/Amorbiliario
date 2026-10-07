@@ -6,7 +6,16 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { requestPasswordReset } from '@/services/auth'
+import { AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
 
 export default function Login() {
   const { login, isAuthenticated } = useAuth()
@@ -16,6 +25,12 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Modal Esqueci minha senha
+  const [forgotModalOpen, setForgotModalOpen] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotSubmitting, setForgotSubmitting] = useState(false)
+  const [forgotSuccessMessage, setForgotSuccessMessage] = useState<string | null>(null)
 
   // Redirect if already authenticated
   if (isAuthenticated) {
@@ -117,7 +132,20 @@ export default function Login() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Senha</Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(email)
+                      setForgotSuccessMessage(null)
+                      setForgotModalOpen(true)
+                    }}
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
                 <Input
                   id="password"
                   type="password"
@@ -144,6 +172,88 @@ export default function Login() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal Esqueci minha senha */}
+      <Dialog open={forgotModalOpen} onOpenChange={setForgotModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Recuperar senha</DialogTitle>
+            <DialogDescription>
+              Informe o e-mail da sua conta para receber o link de criação de uma nova senha.
+            </DialogDescription>
+          </DialogHeader>
+
+          {forgotSuccessMessage ? (
+            <div className="space-y-4 py-2">
+              <Alert className="bg-emerald-50 text-emerald-900 border-emerald-300">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <AlertDescription className="text-sm font-medium">
+                  {forgotSuccessMessage}
+                </AlertDescription>
+              </Alert>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  onClick={() => setForgotModalOpen(false)}
+                  className="w-full sm:w-auto"
+                >
+                  Fechar
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault()
+                const trimmed = forgotEmail.trim().toLowerCase()
+                if (!trimmed) return
+
+                setForgotSubmitting(true)
+                try {
+                  await requestPasswordReset(trimmed)
+                } catch {
+                  // Independentemente do resultado, nunca revela se o e-mail existe
+                } finally {
+                  setForgotSubmitting(false)
+                  setForgotSuccessMessage(
+                    'Se o e-mail estiver cadastrado, enviamos um link para criar uma nova senha.',
+                  )
+                }
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">E-mail cadastrado</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  required
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  disabled={forgotSubmitting}
+                />
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setForgotModalOpen(false)}
+                  disabled={forgotSubmitting}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={forgotSubmitting} className="gap-2">
+                  {forgotSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  <span>Enviar link</span>
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

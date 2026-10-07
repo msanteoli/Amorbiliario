@@ -61,7 +61,7 @@ import {
   ListTodo,
   ExternalLink,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 export default function Agenda() {
   const { user } = useAuth()
@@ -72,8 +72,14 @@ export default function Agenda() {
   const canFilterBroker = isAdmin || isSdr
   const canCreateVisit = isAdmin || isSdr
 
+  const [searchParams] = useSearchParams()
+
   // Aba principal: "visitas" | "tarefas"
-  const [activeTab, setActiveTab] = useState<'visitas' | 'tarefas'>('visitas')
+  const [activeTab, setActiveTab] = useState<'visitas' | 'tarefas'>(() => {
+    const t = searchParams.get('tab')
+    if (t === 'tarefas') return 'tarefas'
+    return 'visitas'
+  })
 
   // Notificação / mensagem de sucesso ou conflito
   const [alertSuccess, setAlertSuccess] = useState<string | null>(null)
