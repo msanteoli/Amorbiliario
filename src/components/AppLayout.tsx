@@ -1,4 +1,5 @@
 import { useLocation, Link, Outlet } from 'react-router-dom'
+import { cn } from '@/lib/utils'
 import {
   Sidebar,
   SidebarContent,
