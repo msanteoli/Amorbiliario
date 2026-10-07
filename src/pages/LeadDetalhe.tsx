@@ -19,7 +19,7 @@ import {
   LEAD_EVENT_TYPE_LABELS,
   formatLeadErrorMessage,
 } from '@/services/leads'
-import { getStageBadgeColor, formatDateTimeBR, isLeadNextStepOverdue } from '@/pages/Leads'
+import { formatDateTimeBR, isLeadNextStepOverdue } from '@/pages/Leads'
 import { formatPhoneNumber, CONSENT_STATUS_LABELS } from '@/lib/clientUtils'
 import { useAuth } from '@/contexts/AuthContext'
 import { EditLeadModal } from '@/components/leads/EditLeadModal'

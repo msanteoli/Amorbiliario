@@ -12,7 +12,6 @@ import { parseCurrencyInput, formatCurrencyInput } from '@/lib/currencyUtils'
 import { PropertyForm, PropertyFormData } from '@/components/properties/PropertyForm'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { AlertCircle, ArrowLeft, Loader2, ShieldAlert } from 'lucide-react'
 
 export default function EditarImovel() {
@@ -129,24 +128,24 @@ export default function EditarImovel() {
   // Corretor tentando editar imóvel que não captou
   if (hasPermission === false) {
     return (
-      <div className="max-w-xl mx-auto space-y-6 pt-6">
-        <Card className="border-border">
-          <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-              <ShieldAlert className="h-6 w-6" />
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-lg font-bold text-foreground">Acesso negado</h2>
-              <p className="text-sm text-muted-foreground">
-                Você não tem permissão para editar este imóvel.
-              </p>
-            </div>
-            <Button onClick={() => navigate('/imoveis')} variant="outline" className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              <span>Voltar para Imóveis</span>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="max-w-md mx-auto my-12 text-center space-y-4">
+        <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
+          <ShieldAlert className="h-6 w-6" />
+        </div>
+        <h2 className="text-lg font-normal text-foreground">
+          Você não tem permissão para editar este imóvel.
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          O corretor só pode editar imóveis que ele próprio captou.
+        </p>
+        <Button
+          onClick={() => navigate('/imoveis')}
+          variant="outline"
+          className="h-9 rounded-full px-4 text-xs font-normal border-border gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Voltar para Imóveis</span>
+        </Button>
       </div>
     )
   }
@@ -260,20 +259,19 @@ export default function EditarImovel() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 pb-28 md:pb-12">
       {/* Cabeçalho */}
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
+          type="button"
           onClick={() => navigate(`/imoveis/${id}`)}
-          className="h-8 w-8"
+          className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-        </Button>
+        </button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Editar imóvel</h1>
-          <p className="text-xs text-muted-foreground">
+          <h1 className="display-sm text-foreground">Editar imóvel</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Altere as informações, situação, valores e características do imóvel.
           </p>
         </div>
@@ -281,17 +279,15 @@ export default function EditarImovel() {
 
       {/* Alerta de erro do servidor no topo (ex: imóvel incompleto) */}
       {errorMessage && (
-        <div className="flex items-start gap-2 p-4 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20 font-medium">
-          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-          <span>{errorMessage}</span>
+        <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal">
+          {errorMessage}
         </div>
       )}
 
       {/* Alerta de retorno para rascunho */}
       {warningMessage && (
-        <div className="flex items-start gap-2 p-4 rounded-lg bg-amber-500/15 text-amber-900 dark:text-amber-200 text-sm border border-amber-500/30 font-medium">
-          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-          <span>{warningMessage}</span>
+        <div className="p-4 rounded-lg border border-attention/40 bg-muted/20 text-xs text-foreground font-normal">
+          {warningMessage}
         </div>
       )}
 

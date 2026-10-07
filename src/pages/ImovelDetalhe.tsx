@@ -25,7 +25,7 @@ import {
 import { formatPhoneNumber, formatDate } from '@/lib/clientUtils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+
 import {
   Dialog,
   DialogContent,
@@ -101,37 +101,18 @@ const HISTORY_FIELD_LABELS: Record<string, string> = {
   captured_by: 'Captador',
 }
 
-// Estilos de badge para cada situação do imóvel
-const STATUS_BADGE_VARIANTS: Record<PropertyStatus, { label: string; className: string }> = {
-  rascunho: {
-    label: PROPERTY_STATUS_LABELS.rascunho,
-    className: 'bg-muted text-muted-foreground border-border',
-  },
-  disponivel: {
-    label: PROPERTY_STATUS_LABELS.disponivel,
-    className:
-      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
-  },
-  reservado: {
-    label: PROPERTY_STATUS_LABELS.reservado,
-    className:
-      'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
-  },
-  vendido: {
-    label: PROPERTY_STATUS_LABELS.vendido,
-    className:
-      'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
-  },
-  alugado: {
-    label: PROPERTY_STATUS_LABELS.alugado,
-    className:
-      'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800',
-  },
-  inativo: {
-    label: PROPERTY_STATUS_LABELS.inativo,
-    className:
-      'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700',
-  },
+// Mapa de variante de pílula para a situação do imóvel:
+// Rascunho=default; Disponível=success; Reservado=attention; Vendido=default; Alugado=default; Inativo=destructive
+const STATUS_BADGE_VARIANT_MAP: Record<
+  PropertyStatus,
+  'default' | 'success' | 'attention' | 'destructive'
+> = {
+  rascunho: 'default',
+  disponivel: 'success',
+  reservado: 'attention',
+  vendido: 'default',
+  alugado: 'default',
+  inativo: 'destructive',
 }
 
 const ACCEPTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -497,10 +478,8 @@ export default function ImovelDetalhe() {
   }
 
   const isOutdated = isPropertyPendingReview(property)
-  const statusInfo = STATUS_BADGE_VARIANTS[property.status] || {
-    label: property.status,
-    className: 'bg-muted text-muted-foreground',
-  }
+  const statusVariant = STATUS_BADGE_VARIANT_MAP[property.status] || 'default'
+  const statusLabel = PROPERTY_STATUS_LABELS[property.status] || property.status
 
   const captadorName =
     property.expand?.captured_by?.name || property.expand?.captured_by?.email || 'Não informado'
@@ -517,9 +496,8 @@ export default function ImovelDetalhe() {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Alerta de aviso (ex: voltou para Rascunho por falta de fotos) */}
       {warningMessage && (
-        <div className="flex items-start gap-2 p-4 rounded-lg bg-amber-500/15 text-amber-900 dark:text-amber-200 text-sm border border-amber-500/30 font-medium">
-          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-          <span>{warningMessage}</span>
+        <div className="p-4 rounded-lg border border-attention/40 bg-muted/20 text-xs text-foreground font-normal">
+          {warningMessage}
         </div>
       )}
 
@@ -536,19 +514,8 @@ export default function ImovelDetalhe() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="eyebrow text-muted-foreground">{property.code}</span>
-              <Badge
-                variant={
-                  property.status === 'disponivel'
-                    ? 'success'
-                    : property.status === 'reservado'
-                      ? 'attention'
-                      : property.status === 'inativo'
-                        ? 'destructive'
-                        : 'default'
-                }
-                className="text-xs"
-              >
-                {statusInfo.label}
+              <Badge variant={statusVariant} className="text-xs">
+                {statusLabel}
               </Badge>
               {isOutdated && (
                 <Badge variant="attention" className="text-xs">
@@ -719,416 +686,332 @@ export default function ImovelDetalhe() {
         )}
       </div>
 
-      {/* 2. SEÇÃO: DADOS DO IMÓVEL */}
+      {/* 2. SEÇÃO: DADOS DO IMÓVEL (linhas rótulo/valor com rótulo em .eyebrow) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Identificação e Localização */}
-        <Card className="border-border">
-          <CardHeader className="pb-3 border-b">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-primary" />
-              <span>Identificação e Localização</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 space-y-4">
+        <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+          <div className="eyebrow text-muted-foreground flex items-center gap-2 border-b border-border pb-3">
+            <Building2 className="h-3.5 w-3.5" />
+            <span>Identificação e Localização</span>
+          </div>
+          <div className="space-y-3 text-xs">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Tipo de imóvel</span>
-                <p className="text-sm font-semibold text-foreground">
+                <span className="eyebrow text-muted-foreground block">Tipo</span>
+                <p className="text-sm font-normal text-foreground">
                   {PROPERTY_TYPE_LABELS[property.property_type] || property.property_type}
                 </p>
               </div>
               <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Finalidade</span>
-                <p className="text-sm font-semibold text-foreground">
+                <span className="eyebrow text-muted-foreground block">Finalidade</span>
+                <p className="text-sm font-normal text-foreground">
                   {PROPERTY_PURPOSE_LABELS[property.purpose] || property.purpose}
                 </p>
               </div>
             </div>
 
-            <div className="pt-3 border-t space-y-2">
-              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5 text-primary" />
-                <span>Endereço (Ficha interna)</span>
+            <div className="pt-3 border-t border-border space-y-2">
+              <span className="eyebrow text-muted-foreground block">
+                Endereço completo (Ficha interna)
               </span>
-
-              {/* Endereço completo: rua, número e complemento aparecem SÓ aqui na ficha interna */}
-              <div className="p-3 rounded-md bg-muted/40 border space-y-1 text-sm">
-                <p className="font-medium text-foreground">
+              <div className="p-3.5 rounded-lg bg-muted/20 border border-border space-y-1 text-xs">
+                <p className="font-normal text-foreground">
                   {[property.street, property.street_number].filter(Boolean).join(', ') ||
                     'Logradouro não informado'}
                 </p>
                 {property.complement && (
-                  <p className="text-xs text-muted-foreground">
-                    Complemento: {property.complement}
-                  </p>
+                  <p className="text-muted-foreground">Complemento: {property.complement}</p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground">
                   {[property.neighborhood, property.city].filter(Boolean).join(' • ') ||
                     'Bairro/Cidade não informados'}
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Características e Valores */}
-        <Card className="border-border">
-          <CardHeader className="pb-3 border-b">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span>Características e Valores</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 space-y-4">
-            {/* Características em badges/ícones */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="p-2.5 rounded-md border bg-muted/30 text-center">
-                <div className="flex items-center justify-center text-muted-foreground mb-1">
-                  <Bed className="h-4 w-4" />
-                </div>
-                <p className="text-xs text-muted-foreground">Quartos</p>
-                <p className="text-sm font-bold text-foreground">
-                  {property.bedrooms !== undefined &&
-                  property.bedrooms !== null &&
-                  property.bedrooms > 0
-                    ? property.bedrooms
-                    : '-'}
+        <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+          <div className="eyebrow text-muted-foreground flex items-center gap-2 border-b border-border pb-3">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Características e Valores</span>
+          </div>
+          <div className="space-y-3 text-xs">
+            <div className="grid grid-cols-4 gap-2">
+              <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
+                <p className="eyebrow text-muted-foreground text-[10px]">Quartos</p>
+                <p className="tabular text-sm font-normal text-foreground mt-0.5">
+                  {property.bedrooms ?? '—'}
                 </p>
               </div>
-
-              <div className="p-2.5 rounded-md border bg-muted/30 text-center">
-                <div className="flex items-center justify-center text-muted-foreground mb-1">
-                  <Bath className="h-4 w-4" />
-                </div>
-                <p className="text-xs text-muted-foreground">Banheiros</p>
-                <p className="text-sm font-bold text-foreground">
-                  {property.bathrooms !== undefined &&
-                  property.bathrooms !== null &&
-                  property.bathrooms > 0
-                    ? property.bathrooms
-                    : '-'}
+              <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
+                <p className="eyebrow text-muted-foreground text-[10px]">Banh.</p>
+                <p className="tabular text-sm font-normal text-foreground mt-0.5">
+                  {property.bathrooms ?? '—'}
                 </p>
               </div>
-
-              <div className="p-2.5 rounded-md border bg-muted/30 text-center">
-                <div className="flex items-center justify-center text-muted-foreground mb-1">
-                  <Car className="h-4 w-4" />
-                </div>
-                <p className="text-xs text-muted-foreground">Vagas</p>
-                <p className="text-sm font-bold text-foreground">
-                  {property.parking !== undefined &&
-                  property.parking !== null &&
-                  property.parking > 0
-                    ? property.parking
-                    : '-'}
+              <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
+                <p className="eyebrow text-muted-foreground text-[10px]">Vagas</p>
+                <p className="tabular text-sm font-normal text-foreground mt-0.5">
+                  {property.parking ?? '—'}
                 </p>
               </div>
-
-              <div className="p-2.5 rounded-md border bg-muted/30 text-center">
-                <div className="flex items-center justify-center text-muted-foreground mb-1">
-                  <Maximize className="h-4 w-4" />
-                </div>
-                <p className="text-xs text-muted-foreground">Área</p>
-                <p className="text-sm font-bold text-foreground">
-                  {property.area && property.area > 0 ? `${property.area} m²` : '-'}
+              <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
+                <p className="eyebrow text-muted-foreground text-[10px]">Área</p>
+                <p className="tabular text-sm font-normal text-foreground mt-0.5">
+                  {property.area && property.area > 0 ? `${property.area} m²` : '—'}
                 </p>
               </div>
             </div>
 
-            {/* Valores financeiros */}
-            <div className="pt-3 border-t space-y-2">
-              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                <DollarSign className="h-3.5 w-3.5 text-primary" />
-                <span>Valores</span>
-              </span>
-
+            <div className="pt-3 border-t border-border space-y-2">
+              <span className="eyebrow text-muted-foreground block">Valores</span>
               {property.price_on_request ? (
-                <div className="p-3 rounded-md bg-muted/40 border">
-                  <Badge variant="outline" className="text-xs font-semibold bg-background">
+                <div className="p-3.5 rounded-lg bg-muted/20 border border-border text-xs">
+                  <Badge variant="default" className="text-xs">
                     Sob consulta
                   </Badge>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Preço sob consulta direta com a imobiliária.
-                  </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3 p-3 rounded-md bg-muted/40 border text-xs">
+                <div className="grid grid-cols-2 gap-3 p-3.5 rounded-lg bg-muted/20 border border-border text-xs tabular">
                   {showSalePrice && (
                     <div>
-                      <span className="text-muted-foreground">Preço de venda:</span>
-                      <p className="font-semibold text-foreground text-sm">
+                      <span className="eyebrow text-muted-foreground block">Venda</span>
+                      <p className="font-normal text-foreground">
                         {property.sale_price && property.sale_price > 0
                           ? formatCurrencyBRL(property.sale_price)
-                          : 'Não informado'}
+                          : '—'}
                       </p>
                     </div>
                   )}
 
                   {showRentPrice && (
                     <div>
-                      <span className="text-muted-foreground">Preço de locação:</span>
-                      <p className="font-semibold text-foreground text-sm">
+                      <span className="eyebrow text-muted-foreground block">Locação</span>
+                      <p className="font-normal text-foreground">
                         {property.rent_price && property.rent_price > 0
                           ? `${formatCurrencyBRL(property.rent_price)}/mês`
-                          : 'Não informado'}
+                          : '—'}
                       </p>
                     </div>
                   )}
 
                   <div>
-                    <span className="text-muted-foreground">Condomínio:</span>
-                    <p className="font-medium text-foreground">
+                    <span className="eyebrow text-muted-foreground block">Condomínio</span>
+                    <p className="text-foreground">
                       {property.condo_fee && property.condo_fee > 0
                         ? formatCurrencyBRL(property.condo_fee)
-                        : 'Não informado'}
+                        : '—'}
                     </p>
                   </div>
 
                   <div>
-                    <span className="text-muted-foreground">IPTU anual:</span>
-                    <p className="font-medium text-foreground">
-                      {property.iptu && property.iptu > 0
-                        ? formatCurrencyBRL(property.iptu)
-                        : 'Não informado'}
+                    <span className="eyebrow text-muted-foreground block">IPTU</span>
+                    <p className="text-foreground">
+                      {property.iptu && property.iptu > 0 ? formatCurrencyBRL(property.iptu) : '—'}
                     </p>
                   </div>
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* 3. SEÇÃO: DESCRIÇÃO */}
-      <Card className="border-border">
-        <CardHeader className="pb-3 border-b">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" />
-            <span>Descrição do imóvel</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          {property.description ? (
-            <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
-              {property.description}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">
-              Nenhuma descrição fornecida para este anúncio.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+        <div className="eyebrow text-muted-foreground flex items-center gap-2 border-b border-border pb-3">
+          <FileText className="h-3.5 w-3.5" />
+          <span>Descrição do imóvel</span>
+        </div>
+        {property.description ? (
+          <p className="text-xs text-foreground whitespace-pre-line leading-relaxed">
+            {property.description}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Nenhuma descrição fornecida para este anúncio.
+          </p>
+        )}
+      </div>
 
       {/* 4. SEÇÃO: PROPRIETÁRIO E CAPTADOR */}
-      <Card className="border-border">
-        <CardHeader className="pb-3 border-b">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <UserCheck className="h-4 w-4 text-primary" />
-            <span>Proprietário e Captador</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Proprietário */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">
-                Proprietário do imóvel
-              </span>
-              {ownerRecord ? (
-                <div className="p-3 rounded-lg border bg-muted/40 space-y-1">
-                  <p className="text-sm font-bold text-foreground">
-                    <Link
-                      to={`/clientes/${ownerRecord.id}`}
-                      className="hover:text-primary hover:underline"
-                    >
-                      {ownerRecord.name}
-                    </Link>
-                  </p>
-                  {ownerRecord.phone && (
-                    <p className="text-xs text-muted-foreground">
-                      Telefone: {formatPhoneNumber(ownerRecord.phone)}
-                    </p>
-                  )}
-                  {ownerRecord.email && (
-                    <p className="text-xs text-muted-foreground">E-mail: {ownerRecord.email}</p>
-                  )}
-                </div>
-              ) : hasOwner ? (
-                <div className="p-3 rounded-lg border bg-muted/40">
-                  <p className="text-sm font-semibold text-foreground">Proprietário cadastrado</p>
-                  <p className="text-xs text-muted-foreground">
-                    Os dados detalhados deste proprietário estão restritos ao responsável ou
-                    administrador.
-                  </p>
-                </div>
-              ) : (
-                <div className="p-3 rounded-lg border bg-muted/40 text-xs text-muted-foreground italic">
-                  Nenhum cliente proprietário vinculado.
-                </div>
-              )}
-            </div>
-
-            {/* Captador */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">Corretor captador</span>
-              <div className="p-3 rounded-lg border bg-muted/40 space-y-1">
-                <p className="text-sm font-bold text-foreground">{captadorName}</p>
-                <p className="text-xs text-muted-foreground">
-                  Responsável pelo anúncio e captação inicial.
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div className="eyebrow text-muted-foreground flex items-center gap-2 border-b border-border pb-3">
+          <UserCheck className="h-3.5 w-3.5" />
+          <span>Proprietário e Captador</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          {/* Proprietário */}
+          <div className="space-y-1.5">
+            <span className="eyebrow text-muted-foreground block">Proprietário</span>
+            {ownerRecord ? (
+              <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-1">
+                <p className="font-normal text-foreground">
+                  <Link to={`/clientes/${ownerRecord.id}`} className="text-primary underline">
+                    {ownerRecord.name}
+                  </Link>
                 </p>
-                {property.last_reviewed_at && (
-                  <p className="text-[11px] text-muted-foreground pt-1 border-t mt-1">
-                    Última revisão de dados: {formatDate(property.last_reviewed_at)}
+                {ownerRecord.phone && (
+                  <p className="text-muted-foreground tabular">
+                    Telefone: {formatPhoneNumber(ownerRecord.phone)}
                   </p>
                 )}
+                {ownerRecord.email && (
+                  <p className="text-muted-foreground">E-mail: {ownerRecord.email}</p>
+                )}
               </div>
+            ) : hasOwner ? (
+              <div className="p-3.5 rounded-lg border border-border bg-muted/20">
+                <p className="font-normal text-foreground">Proprietário cadastrado</p>
+                <p className="text-muted-foreground">
+                  Dados restritos ao responsável ou administrador.
+                </p>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-lg border border-border bg-muted/20 text-muted-foreground">
+                Nenhum cliente proprietário vinculado.
+              </div>
+            )}
+          </div>
+
+          {/* Captador */}
+          <div className="space-y-1.5">
+            <span className="eyebrow text-muted-foreground block">Corretor captador</span>
+            <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-1">
+              <p className="font-normal text-foreground">{captadorName}</p>
+              <p className="text-muted-foreground">Responsável pelo anúncio e captação inicial.</p>
+              {property.last_reviewed_at && (
+                <p className="text-muted-foreground pt-1 border-t border-border mt-1 tabular">
+                  Última revisão de dados: {formatDate(property.last_reviewed_at)}
+                </p>
+              )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* SEÇÃO TAREFAS DO IMÓVEL */}
-      <Card className="border-border">
-        <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
-          <div className="space-y-0.5">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" />
-              <span>Tarefas ({tasks.length})</span>
-            </CardTitle>
-            <CardDescription>Tarefas operacionais vinculadas a este imóvel</CardDescription>
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="eyebrow text-muted-foreground flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Tarefas ({tasks.length})</span>
           </div>
           <Button
             size="sm"
             variant="outline"
             onClick={() => setCreateTaskModalOpen(true)}
-            className="text-xs h-8 gap-1"
+            className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
           >
             <Clock className="h-3.5 w-3.5" />
             <span>Criar tarefa</span>
           </Button>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          {tasks.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              Nenhuma tarefa vinculada a este imóvel.
-            </p>
-          ) : (
-            <div className="divide-y rounded-md border">
-              {tasks.map((t) => {
-                const overdue = isTaskOverdue(t)
-                const assignee = t.expand?.assigned_to
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => {
-                      setSelectedTask(t)
-                      setTaskDetailModalOpen(true)
-                    }}
-                    className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground">{t.title}</span>
-                        {getTaskStatusBadge(t)}
-                      </div>
-                      <p className="text-muted-foreground">
-                        Prazo:{' '}
-                        <span className={overdue ? 'text-destructive font-bold' : ''}>
-                          {formatTaskDateTimeBahia(t.due_at)}
-                        </span>
-                        {assignee && (
-                          <span>
-                            {' '}
-                            · Responsável:{' '}
-                            <strong className="text-foreground">
-                              {assignee.name || assignee.email}
-                            </strong>
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    {t.status === 'aberta' && (
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                          onClick={async () => {
-                            try {
-                              await completeTask(t.id)
-                              if (property) {
-                                const freshTasks = await listTasksByProperty(property.id)
-                                setTasks(freshTasks)
-                              }
-                            } catch (err) {
-                              toast({
-                                title: 'Erro ao concluir tarefa',
-                                description: extractTaskErrorMessage(err),
-                                variant: 'destructive',
-                              })
-                            }
-                          }}
-                        >
-                          <Check className="h-3 w-3 mr-1" />
-                          Concluir
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* 5. SEÇÃO: HISTÓRICO DE ALTERAÇÕES */}
-      <Card className="border-border">
-        <CardHeader className="pb-3 border-b">
-          <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-primary" />
-            <CardTitle className="text-base font-semibold">Histórico de alterações</CardTitle>
+        {tasks.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Nenhuma tarefa vinculada a este imóvel.
+          </p>
+        ) : (
+          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+            {tasks.map((t) => {
+              const overdue = isTaskOverdue(t)
+              const assignee = t.expand?.assigned_to
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => {
+                    setSelectedTask(t)
+                    setTaskDetailModalOpen(true)
+                  }}
+                  className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-foreground">{t.title}</span>
+                      {getTaskStatusBadge(t)}
+                    </div>
+                    <p className="text-muted-foreground tabular">
+                      Prazo:{' '}
+                      <span className={overdue ? 'text-attention font-medium' : ''}>
+                        {overdue && 'Atrasado: '}
+                        {formatTaskDateTimeBahia(t.due_at)}
+                      </span>
+                      {assignee && <span> · Responsável: {assignee.name || assignee.email}</span>}
+                    </p>
+                  </div>
+                  {t.status === 'aberta' && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs rounded-full px-3 border-border"
+                        onClick={async () => {
+                          try {
+                            await completeTask(t.id)
+                            if (property) {
+                              const freshTasks = await listTasksByProperty(property.id)
+                              setTasks(freshTasks)
+                            }
+                          } catch (err) {
+                            toast({
+                              title: 'Erro ao concluir tarefa',
+                              description: extractTaskErrorMessage(err),
+                              variant: 'destructive',
+                            })
+                          }
+                        }}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Concluir
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
-          <CardDescription>
-            Registros de criação, confirmações e alterações realizadas no imóvel (do mais novo ao
-            mais antigo).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          {historyItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Nenhuma alteração registrada até o momento.
-            </p>
-          ) : (
-            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
-              {historyItems.map((item, idx) => {
-                const actionLabel = formatHistoryEntry(item)
-                return (
-                  <div key={idx} className="relative group">
-                    {/* Marcador na linha do tempo */}
-                    <div className="absolute -left-6 top-1 h-3 w-3 rounded-full border-2 border-background bg-primary ring-2 ring-primary/20" />
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-foreground">{actionLabel}</span>
-                        {item.actor && (
-                          <span className="text-[11px] text-muted-foreground">
-                            por{' '}
-                            <strong className="font-medium text-foreground">{item.actor}</strong>
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground font-mono">
+        )}
+      </div>
+
+      {/* 5. SEÇÃO: HISTÓRICO DE ALTERAÇÕES (linha do tempo do lead com traço fino e horário em .eyebrow e .tabular) */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div className="eyebrow text-muted-foreground flex items-center gap-2 border-b border-border pb-3">
+          <History className="h-3.5 w-3.5" />
+          <span>Histórico de alterações</span>
+        </div>
+        {historyItems.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Nenhuma alteração registrada até o momento.
+          </p>
+        ) : (
+          <div className="relative pl-5 space-y-5 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-px before:bg-border">
+            {historyItems.map((item, idx) => {
+              const actionLabel = formatHistoryEntry(item)
+              return (
+                <div key={idx} className="relative group">
+                  <div className="absolute -left-[18px] top-1.5 h-2 w-2 rounded-full bg-foreground ring-4 ring-background" />
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="eyebrow tabular text-muted-foreground">
                         {formatDate(item.occurred_at)}
-                      </p>
+                      </span>
+                      {item.actor && (
+                        <span className="text-muted-foreground">por {item.actor}</span>
+                      )}
+                    </div>
+                    <div className="p-3 rounded-lg border border-border bg-muted/20 text-foreground">
+                      {actionLabel}
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* DIÁLOGO: Visualizador de Foto em Alta Resolução */}
       {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
@@ -1221,7 +1104,7 @@ export default function ImovelDetalhe() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Share2 className="h-5 w-5 text-emerald-600" />
+              <Share2 className="h-4 w-4 text-foreground" />
               <span>Ficha para WhatsApp</span>
             </DialogTitle>
             <DialogDescription>
@@ -1230,23 +1113,30 @@ export default function ImovelDetalhe() {
           </DialogHeader>
 
           <div className="space-y-3 py-2">
-            <div className="p-3 rounded-md bg-muted/60 border font-sans text-xs whitespace-pre-wrap max-h-72 overflow-y-auto leading-relaxed select-all">
+            <div className="p-3.5 rounded-lg bg-muted/20 border border-border font-sans text-xs whitespace-pre-wrap max-h-72 overflow-y-auto leading-relaxed select-all text-foreground">
               {fichaText}
             </div>
             {copiedFicha && (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4" />
+              <p className="text-xs text-foreground font-normal flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
                 <span>Ficha copiada. Cole no WhatsApp.</span>
               </p>
             )}
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setFichaModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setFichaModalOpen(false)}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border"
+            >
               Fechar
             </Button>
-            <Button onClick={handleCopyFichaAgain} className="gap-2">
-              <Copy className="h-4 w-4" />
+            <Button
+              onClick={handleCopyFichaAgain}
+              className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground gap-1.5"
+            >
+              <Copy className="h-3.5 w-3.5" />
               <span>Copiar novamente</span>
             </Button>
           </DialogFooter>

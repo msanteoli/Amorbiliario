@@ -10,6 +10,7 @@ import {
 } from '@/services/leads'
 import { maskPhoneInput } from '@/lib/clientUtils'
 import { PROPERTY_TYPE_LABELS, PropertyType } from '@/services/properties'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

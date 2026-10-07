@@ -6,7 +6,6 @@ import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/client
 import { parseCurrencyInput } from '@/lib/currencyUtils'
 import { PropertyForm, PropertyFormData } from '@/components/properties/PropertyForm'
 import { useToast } from '@/hooks/use-toast'
-import { Button } from '@/components/ui/button'
 import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react'
 
 export default function NovoImovel() {
@@ -123,20 +122,19 @@ export default function NovoImovel() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 pb-28 md:pb-12">
       {/* Cabeçalho */}
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
+          type="button"
           onClick={() => navigate('/imoveis')}
-          className="h-8 w-8"
+          className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-        </Button>
+        </button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo imóvel</h1>
-          <p className="text-xs text-muted-foreground">
+          <h1 className="display-sm text-foreground">Novo imóvel</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Cadastre um novo imóvel no catálogo. Ele nascerá como Rascunho.
           </p>
         </div>
@@ -144,9 +142,8 @@ export default function NovoImovel() {
 
       {/* Alerta de erro */}
       {errorMessage && (
-        <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal">
+          {errorMessage}
         </div>
       )}
 

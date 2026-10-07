@@ -19,13 +19,11 @@ import {
 import { formatDateTimeBahia, bahiaLocalToIsoUtc } from '@/services/visits'
 import { getRoleLabel } from '@/lib/roles'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select,
   SelectContent,
@@ -33,14 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -60,22 +50,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
-  Users,
-  Building,
-  ShieldCheck,
-  Plus,
-  Mail,
-  Edit2,
-  Send,
-  UserX,
-  UserCheck,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  FilterX,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Plus, Loader2, MoreVertical, ChevronLeft, ChevronRight, FilterX } from 'lucide-react'
 
 export default function Admin() {
   const { user: currentUser } = useAuth()
@@ -471,53 +451,41 @@ export default function Admin() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Administração
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Gerencie os usuários da equipe, configurações da organização e registro de auditoria.
-          </p>
-        </div>
+      <div>
+        <h1 className="display-sm text-foreground">Administração</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Gerencie os usuários da equipe, configurações da organização e registro de auditoria.
+        </p>
       </div>
 
       {/* Alertas globais de Sucesso ou Erro */}
       {globalSuccess && (
-        <Alert className="bg-emerald-50 text-emerald-900 border-emerald-300">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          <AlertDescription className="font-medium text-sm flex items-center justify-between">
-            <span>{globalSuccess}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setGlobalSuccess(null)}
-              className="h-6 text-xs"
-            >
-              Fechar
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <div className="p-3.5 rounded-lg border border-border bg-card text-xs text-foreground flex items-center justify-between">
+          <span>{globalSuccess}</span>
+          <button
+            type="button"
+            onClick={() => setGlobalSuccess(null)}
+            className="text-xs text-muted-foreground hover:text-foreground ml-3"
+          >
+            Fechar
+          </button>
+        </div>
       )}
 
       {globalError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="font-medium text-sm flex items-center justify-between">
-            <span>{globalError}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setGlobalError(null)}
-              className="h-6 text-xs text-destructive-foreground hover:bg-destructive/20"
-            >
-              Fechar
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <div className="p-3.5 rounded-lg border border-destructive/20 bg-destructive/10 text-xs text-destructive flex items-center justify-between">
+          <span>{globalError}</span>
+          <button
+            type="button"
+            onClick={() => setGlobalError(null)}
+            className="text-xs text-destructive hover:underline ml-3"
+          >
+            Fechar
+          </button>
+        </div>
       )}
 
-      {/* Abas */}
+      {/* Abas como pílulas */}
       <Tabs
         value={activeTab}
         onValueChange={(val) => {
@@ -525,20 +493,26 @@ export default function Admin() {
           setGlobalError(null)
           setActiveTab(val as 'usuarios' | 'organizacao' | 'auditoria')
         }}
-        className="w-full space-y-4"
+        className="w-full space-y-6"
       >
-        <TabsList className="grid w-full sm:w-96 grid-cols-3">
-          <TabsTrigger value="usuarios" className="gap-2 text-xs">
-            <Users className="h-4 w-4" />
-            <span>Usuários</span>
+        <TabsList className="h-auto p-1 bg-muted/40 border border-border rounded-full inline-flex gap-1">
+          <TabsTrigger
+            value="usuarios"
+            className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Usuários
           </TabsTrigger>
-          <TabsTrigger value="organizacao" className="gap-2 text-xs">
-            <Building className="h-4 w-4" />
-            <span>Organização</span>
+          <TabsTrigger
+            value="organizacao"
+            className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Organização
           </TabsTrigger>
-          <TabsTrigger value="auditoria" className="gap-2 text-xs">
-            <ShieldCheck className="h-4 w-4" />
-            <span>Auditoria</span>
+          <TabsTrigger
+            value="auditoria"
+            className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Auditoria
           </TabsTrigger>
         </TabsList>
 
@@ -548,8 +522,8 @@ export default function Admin() {
         <TabsContent value="usuarios" className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Equipe da organização</h2>
-              <p className="text-xs text-muted-foreground">
+              <h2 className="text-[20px] font-normal text-foreground">Equipe da organização</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Controle de acessos, papéis e convites de novos colaboradores
               </p>
             </div>
@@ -558,609 +532,521 @@ export default function Admin() {
                 setInviteError(null)
                 setInviteModalOpen(true)
               }}
-              className="gap-2 shrink-0 self-start sm:self-auto"
+              className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground gap-1.5 shrink-0 self-start sm:self-auto"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
               <span>Convidar usuário</span>
             </Button>
           </div>
 
           {loadingUsers ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-md" />
+                <Skeleton key={i} className="h-14 w-full rounded-lg" />
               ))}
             </div>
+          ) : users.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-10">
+              Nenhum usuário cadastrado. Convide um membro da equipe para começar.
+            </p>
           ) : (
-            <>
-              {/* Tabela no desktop */}
-              <div className="hidden md:block rounded-lg border bg-card overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Nome</TableHead>
-                      <TableHead>E-mail</TableHead>
-                      <TableHead>Papel</TableHead>
-                      <TableHead>Situação</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                          Nenhum usuário cadastrado.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      users.map((u) => {
-                        const isSelf = u.id === currentUser?.id
-                        return (
-                          <TableRow
-                            key={u.id}
-                            className={!u.active ? 'opacity-50 bg-muted/20' : undefined}
-                          >
-                            <TableCell className="font-medium">
-                              <div className="flex items-center gap-2">
-                                <span>{u.name || 'Sem nome'}</span>
-                                {isSelf && (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                    Você
-                                  </Badge>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {u.email}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="font-normal text-xs">
-                                {getRoleLabel(u.role)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {u.active ? (
-                                <Badge
-                                  variant="outline"
-                                  className="border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"
-                                >
-                                  Ativo
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="outline"
-                                  className="border-zinc-300 text-zinc-600 bg-zinc-100 dark:bg-zinc-800"
-                                >
-                                  Inativo
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleOpenEdit(u)}
-                                  className="h-8 gap-1 text-xs"
-                                >
-                                  <Edit2 className="h-3.5 w-3.5" />
-                                  <span>Editar</span>
-                                </Button>
+            <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
+              {users.map((u) => {
+                const isSelf = u.id === currentUser?.id
+                return (
+                  <div
+                    key={u.id}
+                    className={`p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors ${
+                      !u.active ? 'opacity-60' : ''
+                    }`}
+                  >
+                    {/* Identificação do Usuário */}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-normal text-foreground truncate">
+                          {u.name || 'Sem nome'}
+                        </span>
+                        {isSelf && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                            Você
+                          </Badge>
+                        )}
+                        <Badge variant="secondary" className="text-[11px] font-normal">
+                          {getRoleLabel(u.role)}
+                        </Badge>
+                        <Badge
+                          variant={u.active ? 'success' : 'destructive'}
+                          className="text-[11px] font-normal"
+                        >
+                          {u.active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                    </div>
 
-                                {u.active && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleReinvite(u)}
-                                    disabled={reinvitingId === u.id}
-                                    className="h-8 gap-1 text-xs"
-                                    title="Reenviar convite por e-mail"
-                                  >
-                                    {reinvitingId === u.id ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <Send className="h-3.5 w-3.5" />
-                                    )}
-                                    <span>Reenviar convite</span>
-                                  </Button>
-                                )}
-
-                                {!isSelf && (
-                                  <>
-                                    {u.active ? (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleStartDeactivate(u)}
-                                        className="h-8 gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-                                      >
-                                        <UserX className="h-3.5 w-3.5" />
-                                        <span>Desativar</span>
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleReactivate(u)}
-                                        className="h-8 gap-1 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                                      >
-                                        <UserCheck className="h-3.5 w-3.5" />
-                                        <span>Reativar</span>
-                                      </Button>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Cartões no celular */}
-              <div className="md:hidden space-y-3">
-                {users.length === 0 ? (
-                  <p className="text-center text-sm text-muted-foreground py-8">
-                    Nenhum usuário cadastrado.
-                  </p>
-                ) : (
-                  users.map((u) => {
-                    const isSelf = u.id === currentUser?.id
-                    return (
-                      <Card
-                        key={u.id}
-                        className={`p-4 space-y-3 ${!u.active ? 'opacity-60 bg-muted/30' : ''}`}
+                    {/* Ações no Desktop (pílulas de contorno) */}
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenEdit(u)}
+                        className="h-8 rounded-full px-3 text-xs font-normal border-border"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <h3 className="font-semibold text-sm text-foreground">
-                                {u.name || 'Sem nome'}
-                              </h3>
-                              {isSelf && (
-                                <Badge variant="outline" className="text-[10px] px-1 py-0">
-                                  Você
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-0.5">{u.email}</p>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="secondary" className="font-normal text-xs">
-                              {getRoleLabel(u.role)}
-                            </Badge>
-                            {u.active ? (
-                              <Badge
-                                variant="outline"
-                                className="border-emerald-300 text-emerald-700 bg-emerald-50 text-[11px]"
-                              >
-                                Ativo
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="outline"
-                                className="border-zinc-300 text-zinc-600 bg-zinc-100 text-[11px]"
-                              >
-                                Inativo
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
+                        Editar
+                      </Button>
 
-                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenEdit(u)}
-                            className="h-8 text-xs flex-1"
-                          >
-                            <Edit2 className="h-3 w-3 mr-1" />
-                            Editar
-                          </Button>
+                      {u.active && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleReinvite(u)}
+                          disabled={reinvitingId === u.id}
+                          className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                        >
+                          {reinvitingId === u.id && <Loader2 className="h-3 w-3 animate-spin" />}
+                          <span>Reenviar convite</span>
+                        </Button>
+                      )}
 
-                          {u.active && (
+                      {!isSelf && (
+                        <>
+                          {u.active ? (
                             <Button
+                              type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => handleReinvite(u)}
-                              disabled={reinvitingId === u.id}
-                              className="h-8 text-xs flex-1"
+                              onClick={() => handleStartDeactivate(u)}
+                              className="h-8 rounded-full px-3 text-xs font-normal border-border text-destructive hover:bg-destructive/10"
                             >
-                              {reinvitingId === u.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              ) : (
-                                <Send className="h-3 w-3 mr-1" />
-                              )}
-                              Reenviar convite
+                              Desativar
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReactivate(u)}
+                              className="h-8 rounded-full px-3 text-xs font-normal border-border"
+                            >
+                              Reativar
                             </Button>
                           )}
+                        </>
+                      )}
+                    </div>
 
+                    {/* Ações no Celular (menu três pontos de 44px de alvo) */}
+                    <div className="sm:hidden shrink-0">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="Ações do usuário"
+                            className="w-11 h-11 rounded-full border border-border flex items-center justify-center hover:bg-muted text-foreground"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => handleOpenEdit(u)}>
+                            Editar
+                          </DropdownMenuItem>
+                          {u.active && (
+                            <DropdownMenuItem
+                              onClick={() => handleReinvite(u)}
+                              disabled={reinvitingId === u.id}
+                            >
+                              Reenviar convite
+                            </DropdownMenuItem>
+                          )}
                           {!isSelf && (
                             <>
                               {u.active ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
+                                <DropdownMenuItem
                                   onClick={() => handleStartDeactivate(u)}
-                                  className="h-8 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive flex-1"
+                                  className="text-destructive focus:text-destructive"
                                 >
-                                  <UserX className="h-3 w-3 mr-1" />
                                   Desativar
-                                </Button>
+                                </DropdownMenuItem>
                               ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReactivate(u)}
-                                  className="h-8 text-xs text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 flex-1"
-                                >
-                                  <UserCheck className="h-3 w-3 mr-1" />
+                                <DropdownMenuItem onClick={() => handleReactivate(u)}>
                                   Reativar
-                                </Button>
+                                </DropdownMenuItem>
                               )}
                             </>
                           )}
-                        </div>
-                      </Card>
-                    )
-                  })
-                )}
-              </div>
-            </>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
         </TabsContent>
 
         {/* ═════════════════════════════════════════════════════════════ */}
         {/* ABA 2: ORGANIZAÇÃO */}
         {/* ═════════════════════════════════════════════════════════════ */}
-        <TabsContent value="organizacao">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Dados da organização</CardTitle>
-              <CardDescription>
-                Informações cadastrais e dados de contato corporativo exibidos aos clientes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingOrg ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
+        <TabsContent value="organizacao" className="space-y-6">
+          <div>
+            <h2 className="text-[20px] font-normal text-foreground">Dados da organização</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Informações cadastrais e dados de contato corporativo exibidos aos clientes
+            </p>
+          </div>
+
+          {loadingOrg ? (
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full rounded-lg" />
+              <Skeleton className="h-12 w-full rounded-lg" />
+              <Skeleton className="h-12 w-full rounded-lg" />
+            </div>
+          ) : (
+            <form onSubmit={handleOrgSubmit} className="space-y-6 max-w-3xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="org-name"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Nome da organização <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    id="org-name"
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    placeholder="Ex: Imobiliária Modelo"
+                    required
+                    disabled={submittingOrg}
+                    className="h-12 text-sm border-border"
+                  />
                 </div>
-              ) : (
-                <form onSubmit={handleOrgSubmit} className="space-y-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="org-name">Nome da organização</Label>
-                      <Input
-                        id="org-name"
-                        value={orgName}
-                        onChange={(e) => setOrgName(e.target.value)}
-                        placeholder="Ex: Imobiliária Modelo"
-                        required
-                        disabled={submittingOrg}
-                      />
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="org-phone">Telefone de contato</Label>
-                      <Input
-                        id="org-phone"
-                        value={orgPhone}
-                        onChange={(e) => setOrgPhone(e.target.value)}
-                        placeholder="Ex: (71) 99999-9999"
-                        disabled={submittingOrg}
-                      />
-                    </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="org-phone"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Telefone de contato
+                  </label>
+                  <Input
+                    id="org-phone"
+                    value={orgPhone}
+                    onChange={(e) => setOrgPhone(e.target.value)}
+                    placeholder="Ex: (71) 99999-9999"
+                    disabled={submittingOrg}
+                    className="h-12 text-sm border-border tabular"
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="org-email">E-mail de contato</Label>
-                      <Input
-                        id="org-email"
-                        type="email"
-                        value={orgEmail}
-                        onChange={(e) => setOrgEmail(e.target.value)}
-                        placeholder="contato@empresa.com.br"
-                        disabled={submittingOrg}
-                      />
-                    </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="org-email"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    E-mail de contato
+                  </label>
+                  <Input
+                    id="org-email"
+                    type="email"
+                    value={orgEmail}
+                    onChange={(e) => setOrgEmail(e.target.value)}
+                    placeholder="contato@empresa.com.br"
+                    disabled={submittingOrg}
+                    className="h-12 text-sm border-border"
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="org-address">Endereço</Label>
-                      <Input
-                        id="org-address"
-                        value={orgAddress}
-                        onChange={(e) => setOrgAddress(e.target.value)}
-                        placeholder="Ex: Av. Tancredo Neves, 1000 - Salvador/BA"
-                        disabled={submittingOrg}
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="org-address"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Endereço
+                  </label>
+                  <Input
+                    id="org-address"
+                    value={orgAddress}
+                    onChange={(e) => setOrgAddress(e.target.value)}
+                    placeholder="Ex: Av. Tancredo Neves, 1000 - Salvador/BA"
+                    disabled={submittingOrg}
+                    className="h-12 text-sm border-border"
+                  />
+                </div>
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg bg-muted/40 border">
-                    <div>
-                      <span className="text-xs font-semibold uppercase text-muted-foreground block">
-                        Identificador (slug)
-                      </span>
-                      <span className="text-sm font-medium font-mono text-foreground mt-0.5 block">
-                        {org?.slug || '-'}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground mt-0.5 block">
-                        Definido no provisionamento e não editável.
-                      </span>
-                    </div>
+              {/* Identificador (slug) e fuso horário em texto de apoio, não editáveis */}
+              <div className="rounded-lg border border-border bg-card p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <span className="eyebrow text-muted-foreground block">Identificador (slug)</span>
+                  <p className="text-xs font-mono text-foreground">{org?.slug || '-'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Definido no provisionamento e não editável.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <span className="eyebrow text-muted-foreground block">Fuso horário</span>
+                  <p className="text-xs font-mono text-foreground">
+                    {org?.timezone || 'America/Bahia'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Horário padrão do sistema (America/Bahia).
+                  </p>
+                </div>
+              </div>
 
-                    <div>
-                      <span className="text-xs font-semibold uppercase text-muted-foreground block">
-                        Fuso horário
-                      </span>
-                      <span className="text-sm font-medium font-mono text-foreground mt-0.5 block">
-                        {org?.timezone || 'America/Bahia'}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground mt-0.5 block">
-                        Horário padrão do sistema (America/Bahia).
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                    <Button type="submit" disabled={submittingOrg} className="gap-2">
-                      {submittingOrg && <Loader2 className="h-4 w-4 animate-spin" />}
-                      <span>Salvar alterações</span>
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="submit"
+                  disabled={submittingOrg}
+                  className="h-10 rounded-full px-6 text-xs font-normal bg-primary text-primary-foreground gap-2"
+                >
+                  {submittingOrg && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar alterações</span>
+                </Button>
+              </div>
+            </form>
+          )}
         </TabsContent>
 
         {/* ═════════════════════════════════════════════════════════════ */}
         {/* ABA 3: AUDITORIA */}
         {/* ═════════════════════════════════════════════════════════════ */}
-        <TabsContent value="auditoria" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Registro de auditoria</h2>
-              <p className="text-xs text-muted-foreground">
-                Rastreabilidade de ações críticas executadas na organização
-              </p>
-            </div>
+        <TabsContent value="auditoria" className="space-y-6">
+          <div>
+            <h2 className="text-[20px] font-normal text-foreground">Registro de auditoria</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Rastreabilidade de ações críticas executadas na organização
+            </p>
           </div>
 
-          {/* Filtros da auditoria */}
-          <Card className="shadow-sm">
-            <CardContent className="p-4 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                {/* Data inicial */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Data inicial (Bahia)</Label>
-                  <Input
-                    type="date"
-                    value={startDateBahia}
-                    onChange={(e) => {
-                      setStartDateBahia(e.target.value)
-                      setAuditPage(1)
-                    }}
-                    className="h-9 text-xs"
-                  />
-                </div>
-
-                {/* Data final */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Data final (Bahia)</Label>
-                  <Input
-                    type="date"
-                    value={endDateBahia}
-                    onChange={(e) => {
-                      setEndDateBahia(e.target.value)
-                      setAuditPage(1)
-                    }}
-                    className="h-9 text-xs"
-                  />
-                </div>
-
-                {/* Ação */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Ação</Label>
-                  <Select
-                    value={selectedAction}
-                    onValueChange={(val) => {
-                      setSelectedAction(val)
-                      setAuditPage(1)
-                    }}
-                  >
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Todas as ações" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as ações</SelectItem>
-                      {Object.entries(AUDIT_ACTION_LABELS).map(([actionKey, actionLabel]) => (
-                        <SelectItem key={actionKey} value={actionKey} className="text-xs">
-                          {actionLabel}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Usuário (quem) */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Usuário</Label>
-                  <Select
-                    value={selectedActor}
-                    onValueChange={(val) => {
-                      setSelectedActor(val)
-                      setAuditPage(1)
-                    }}
-                  >
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Todos os usuários" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os usuários</SelectItem>
-                      {users.map((u) => (
-                        <SelectItem key={u.id} value={u.id} className="text-xs">
-                          {u.name || u.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Coleção */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Coleção</Label>
-                  <Select
-                    value={selectedCollection}
-                    onValueChange={(val) => {
-                      setSelectedCollection(val)
-                      setAuditPage(1)
-                    }}
-                  >
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Todas as coleções" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as coleções</SelectItem>
-                      {KNOWN_COLLECTIONS.map((c) => (
-                        <SelectItem key={c} value={c} className="text-xs">
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          {/* Filtros em pílulas */}
+          <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {/* Data inicial */}
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-normal text-foreground block">
+                  Data inicial (Bahia)
+                </label>
+                <Input
+                  type="date"
+                  value={startDateBahia}
+                  onChange={(e) => {
+                    setStartDateBahia(e.target.value)
+                    setAuditPage(1)
+                  }}
+                  className="h-10 text-xs border-border tabular"
+                />
               </div>
 
-              {hasAuditFilters && (
-                <div className="flex justify-end pt-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearAuditFilters}
-                    className="text-xs h-8 gap-1.5 text-muted-foreground hover:text-foreground"
-                  >
-                    <FilterX className="h-3.5 w-3.5" />
-                    <span>Limpar filtros</span>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              {/* Data final */}
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-normal text-foreground block">
+                  Data final (Bahia)
+                </label>
+                <Input
+                  type="date"
+                  value={endDateBahia}
+                  onChange={(e) => {
+                    setEndDateBahia(e.target.value)
+                    setAuditPage(1)
+                  }}
+                  className="h-10 text-xs border-border tabular"
+                />
+              </div>
 
-          {/* Tabela de logs */}
-          <div className="rounded-lg border bg-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="whitespace-nowrap">Data e hora</TableHead>
-                    <TableHead>Quem</TableHead>
-                    <TableHead>Papel</TableHead>
-                    <TableHead>Ação</TableHead>
-                    <TableHead>Coleção</TableHead>
-                    <TableHead>Campo</TableHead>
-                    <TableHead>Motivo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loadingAudit ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="h-32 text-center">
-                        <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Carregando registros...</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : auditLogs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                        Nenhum registro de auditoria encontrado.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    auditLogs.map((log) => {
-                      const actorName = log.actor_id
-                        ? userMap.get(log.actor_id) || log.actor_id
-                        : 'Sistema'
-                      const actionLabel = AUDIT_ACTION_LABELS[log.action] || log.action
-                      const reasonLabel = log.reason
-                        ? AUDIT_REASON_LABELS[log.reason] || log.reason
-                        : '-'
+              {/* Ação */}
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-normal text-foreground block">Ação</label>
+                <Select
+                  value={selectedAction}
+                  onValueChange={(val) => {
+                    setSelectedAction(val)
+                    setAuditPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-xs border-border rounded-full">
+                    <SelectValue placeholder="Todas as ações" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as ações</SelectItem>
+                    {Object.entries(AUDIT_ACTION_LABELS).map(([actionKey, actionLabel]) => (
+                      <SelectItem key={actionKey} value={actionKey} className="text-xs">
+                        {actionLabel}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                      return (
-                        <TableRow key={log.id} className="text-xs">
-                          <TableCell className="font-mono whitespace-nowrap">
-                            {formatDateTimeBahia(log.occurred_at || log.created)}
-                          </TableCell>
-                          <TableCell className="font-medium text-foreground">{actorName}</TableCell>
-                          <TableCell>
-                            {log.actor_role ? (
-                              <Badge variant="secondary" className="font-normal text-[11px]">
-                                {getRoleLabel(log.actor_role)}
-                              </Badge>
-                            ) : (
-                              '-'
-                            )}
-                          </TableCell>
-                          <TableCell className="font-medium">{actionLabel}</TableCell>
-                          <TableCell className="font-mono text-muted-foreground">
-                            {log.collection_name || '-'}
-                          </TableCell>
-                          <TableCell className="font-mono text-muted-foreground">
-                            {log.field_name || '-'}
-                          </TableCell>
-                          <TableCell
-                            className="text-muted-foreground max-w-[200px] truncate"
-                            title={reasonLabel}
-                          >
-                            {reasonLabel}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
+              {/* Usuário (quem) */}
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-normal text-foreground block">Usuário</label>
+                <Select
+                  value={selectedActor}
+                  onValueChange={(val) => {
+                    setSelectedActor(val)
+                    setAuditPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-xs border-border rounded-full">
+                    <SelectValue placeholder="Todos os usuários" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os usuários</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id} className="text-xs">
+                        {u.name || u.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Coleção */}
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-normal text-foreground block">Coleção</label>
+                <Select
+                  value={selectedCollection}
+                  onValueChange={(val) => {
+                    setSelectedCollection(val)
+                    setAuditPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-xs border-border rounded-full">
+                    <SelectValue placeholder="Todas as coleções" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as coleções</SelectItem>
+                    {KNOWN_COLLECTIONS.map((c) => (
+                      <SelectItem key={c} value={c} className="text-xs">
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {/* Paginação */}
-            {!loadingAudit && auditTotalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
-                <span className="text-xs text-muted-foreground">
-                  Página {auditPage} de {auditTotalPages} ({auditTotalItems} registros)
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
-                    disabled={auditPage <= 1}
-                    className="h-8 text-xs gap-1"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    <span>Anterior</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))}
-                    disabled={auditPage >= auditTotalPages}
-                    className="h-8 text-xs gap-1"
-                  >
-                    <span>Próxima</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+            {hasAuditFilters && (
+              <div className="flex justify-end pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAuditFilters}
+                  className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1.5"
+                >
+                  <FilterX className="h-3 w-3" />
+                  <span>Limpar filtros</span>
+                </Button>
               </div>
             )}
           </div>
+
+          {/* Linhas com divisores de 1px */}
+          {loadingAudit ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-14 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : auditLogs.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-10">
+              Nenhum registro de auditoria encontrado.
+            </p>
+          ) : (
+            <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
+              {auditLogs.map((log) => {
+                const actorName = log.actor_id
+                  ? userMap.get(log.actor_id) || log.actor_id
+                  : 'Sistema'
+                const actionLabel = AUDIT_ACTION_LABELS[log.action] || log.action
+                const reasonLabel = log.reason ? AUDIT_REASON_LABELS[log.reason] || log.reason : '-'
+
+                return (
+                  <div
+                    key={log.id}
+                    className="p-3.5 sm:p-4 text-xs space-y-1 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="tabular text-muted-foreground font-normal">
+                          {formatDateTimeBahia(log.occurred_at || log.created)}
+                        </span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-foreground">{actionLabel}</span>
+                        {log.collection_name && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 font-normal border-border"
+                          >
+                            {log.collection_name}
+                          </Badge>
+                        )}
+                        {log.field_name && (
+                          <span className="text-muted-foreground">campo: {log.field_name}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <span>por</span>
+                        <span className="text-foreground">{actorName}</span>
+                        {log.actor_role && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0 font-normal"
+                          >
+                            {getRoleLabel(log.actor_role)}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    {reasonLabel !== '-' && (
+                      <p className="text-muted-foreground pt-0.5">
+                        Motivo: <span className="text-foreground">{reasonLabel}</span>
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Paginação */}
+          {!loadingAudit && auditTotalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-muted-foreground tabular">
+                Página {auditPage} de {auditTotalPages} ({auditTotalItems} registros)
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                  disabled={auditPage <= 1}
+                  className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                  <span>Anterior</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))}
+                  disabled={auditPage >= auditTotalPages}
+                  className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                >
+                  <span>Próxima</span>
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -1170,22 +1056,26 @@ export default function Admin() {
       <Dialog open={inviteModalOpen} onOpenChange={setInviteModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Convidar usuário</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="font-normal text-lg">Convidar usuário</DialogTitle>
+            <DialogDescription className="text-xs">
               A pessoa receberá um e-mail para criar a própria senha.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleInviteSubmit} className="space-y-4">
             {inviteError && (
-              <Alert variant="destructive" className="py-2.5">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-xs font-medium">{inviteError}</AlertDescription>
-              </Alert>
+              <p className="text-xs text-destructive font-normal" role="alert">
+                {inviteError}
+              </p>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="invite-name">Nome completo</Label>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="invite-name"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Nome completo
+              </label>
               <Input
                 id="invite-name"
                 value={inviteName}
@@ -1193,11 +1083,17 @@ export default function Admin() {
                 placeholder="Ex: Carlos Eduardo"
                 required
                 disabled={submittingInvite}
+                className="h-12 text-sm border-border"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="invite-email">E-mail</Label>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="invite-email"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                E-mail
+              </label>
               <Input
                 id="invite-email"
                 type="email"
@@ -1206,17 +1102,23 @@ export default function Admin() {
                 placeholder="carlos@exemplo.com.br"
                 required
                 disabled={submittingInvite}
+                className="h-12 text-sm border-border"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="invite-role">Papel de acesso</Label>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="invite-role"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Papel de acesso
+              </label>
               <Select
                 value={inviteRole}
                 onValueChange={(val) => setInviteRole(val as 'admin' | 'sdr' | 'corretor')}
                 disabled={submittingInvite}
               >
-                <SelectTrigger id="invite-role">
+                <SelectTrigger id="invite-role" className="h-12 text-sm border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1227,17 +1129,22 @@ export default function Admin() {
               </Select>
             </div>
 
-            <DialogFooter className="pt-2">
+            <DialogFooter className="pt-3 gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setInviteModalOpen(false)}
                 disabled={submittingInvite}
+                className="h-9 rounded-full px-4 text-xs font-normal border-border"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={submittingInvite} className="gap-2">
-                {submittingInvite && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Button
+                type="submit"
+                disabled={submittingInvite}
+                className="h-9 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+              >
+                {submittingInvite && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 <span>Enviar convite</span>
               </Button>
             </DialogFooter>
@@ -1251,22 +1158,23 @@ export default function Admin() {
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar usuário</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="font-normal text-lg">Editar usuário</DialogTitle>
+            <DialogDescription className="text-xs">
               Atualize as informações de nome e papel do colaborador.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleEditSubmit} className="space-y-4">
             {editError && (
-              <Alert variant="destructive" className="py-2.5">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-xs font-medium">{editError}</AlertDescription>
-              </Alert>
+              <p className="text-xs text-destructive font-normal" role="alert">
+                {editError}
+              </p>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Nome completo</Label>
+            <div className="space-y-1.5">
+              <label htmlFor="edit-name" className="text-[13px] font-normal text-foreground block">
+                Nome completo
+              </label>
               <Input
                 id="edit-name"
                 value={editName}
@@ -1274,32 +1182,37 @@ export default function Admin() {
                 placeholder="Ex: Carlos Eduardo"
                 required
                 disabled={submittingEdit}
+                className="h-12 text-sm border-border"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">E-mail</Label>
+            <div className="space-y-1.5">
+              <label htmlFor="edit-email" className="text-[13px] font-normal text-foreground block">
+                E-mail
+              </label>
               <Input
                 id="edit-email"
                 value={editingUser?.email || ''}
                 disabled
-                className="bg-muted cursor-not-allowed"
+                className="h-12 text-sm border-border bg-muted/40 cursor-not-allowed"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 O e-mail é a chave de login e não pode ser alterado aqui.
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-role">Papel de acesso</Label>
+            <div className="space-y-1.5">
+              <label htmlFor="edit-role" className="text-[13px] font-normal text-foreground block">
+                Papel de acesso
+              </label>
               {editingUser?.id === currentUser?.id ? (
                 <div>
                   <Input
                     value={getRoleLabel(editingUser?.role)}
                     disabled
-                    className="bg-muted cursor-not-allowed"
+                    className="h-12 text-sm border-border bg-muted/40 cursor-not-allowed"
                   />
-                  <p className="text-[11px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     O administrador não pode alterar o próprio papel.
                   </p>
                 </div>
@@ -1309,7 +1222,7 @@ export default function Admin() {
                   onValueChange={(val) => setEditRole(val as 'admin' | 'sdr' | 'corretor')}
                   disabled={submittingEdit}
                 >
-                  <SelectTrigger id="edit-role">
+                  <SelectTrigger id="edit-role" className="h-12 text-sm border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1321,17 +1234,22 @@ export default function Admin() {
               )}
             </div>
 
-            <DialogFooter className="pt-2">
+            <DialogFooter className="pt-3 gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setEditModalOpen(false)}
                 disabled={submittingEdit}
+                className="h-9 rounded-full px-4 text-xs font-normal border-border"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={submittingEdit} className="gap-2">
-                {submittingEdit && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Button
+                type="submit"
+                disabled={submittingEdit}
+                className="h-9 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+              >
+                {submittingEdit && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 <span>Salvar alterações</span>
               </Button>
             </DialogFooter>
@@ -1345,41 +1263,51 @@ export default function Admin() {
       <AlertDialog open={deactivateModalOpen} onOpenChange={setDeactivateModalOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Desativar usuário</AlertDialogTitle>
+            <AlertDialogTitle className="font-normal text-lg">Desativar usuário</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="space-y-3 text-xs text-muted-foreground font-normal">
                 {loadingOpenItems ? (
                   <div className="flex items-center gap-2 py-4 justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <Loader2 className="h-4 w-4 animate-spin text-foreground" />
                     <span>Verificando pendências em aberto...</span>
                   </div>
                 ) : (
                   <>
-                    <p>
-                      Esta pessoa tem {openItems?.leads ?? 0} leads, {openItems?.visits ?? 0}{' '}
-                      visitas e {openItems?.tasks ?? 0} tarefas abertos. Eles não mudam sozinhos:
-                      reatribua depois.
-                    </p>
-                    <p className="font-semibold text-foreground">
+                    {/* Aviso com borda attention para itens abertos */}
+                    <div className="p-3.5 rounded-lg border border-attention/40 bg-muted/20 text-foreground text-xs font-normal">
+                      Esta pessoa tem <span className="tabular">{openItems?.leads ?? 0}</span>{' '}
+                      leads, <span className="tabular">{openItems?.visits ?? 0}</span> visitas e{' '}
+                      <span className="tabular">{openItems?.tasks ?? 0}</span> tarefas abertos. Eles
+                      não mudam sozinhos: reatribua depois.
+                    </div>
+                    <p className="text-foreground">
                       Tem certeza de que deseja desativar o acesso de{' '}
-                      {deactivatingUser?.name || deactivatingUser?.email}?
+                      <span className="font-medium">
+                        {deactivatingUser?.name || deactivatingUser?.email}
+                      </span>
+                      ?
                     </p>
                   </>
                 )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={submittingDeactivate}>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel
+              disabled={submittingDeactivate}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border"
+            >
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
                 handleConfirmDeactivate()
               }}
               disabled={loadingOpenItems || submittingDeactivate}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-9 rounded-full px-5 text-xs font-normal bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {submittingDeactivate && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
+              {submittingDeactivate && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
               Desativar
             </AlertDialogAction>
           </AlertDialogFooter>
