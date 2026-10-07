@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { requestPasswordReset } from '@/services/auth'
 import { AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function Login() {
   const { login, isAuthenticated } = useAuth()
@@ -91,17 +92,21 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle size="sm" />
+      </div>
+
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-2xl shadow-sm">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-normal text-2xl">
             I
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Imobdigital</h1>
-          <p className="text-sm text-muted-foreground">Sistema de gestão para imobiliárias</p>
+          <h1 className="text-2xl font-normal tracking-tight text-foreground">Imobdigital</h1>
+          <p className="text-sm text-muted-foreground mt-1">Sistema de gestão para imobiliárias</p>
         </div>
 
-        <Card className="shadow-md">
+        <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl">Acessar conta</CardTitle>
             <CardDescription>Informe seu e-mail e senha para entrar no sistema.</CardDescription>

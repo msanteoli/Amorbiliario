@@ -900,7 +900,7 @@ export default function Leads() {
                               return (
                                 <Card
                                   key={item.id}
-                                  className="cursor-pointer hover:border-primary/50 transition-colors shadow-sm bg-card"
+                                  className="cursor-pointer hover:border-primary/50 transition-colors bg-card"
                                   onClick={() => navigate(`/leads/${item.id}`)}
                                 >
                                   <CardContent className="p-2.5 space-y-1.5">

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute, AdminRoute } from '@/components/ProtectedRoute'
 import { AppLayout } from '@/components/AppLayout'
@@ -28,51 +29,53 @@ import NotFound from '@/pages/NotFound'
 
 const App = () => (
   <BrowserRouter>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          {/* Public login & reset password routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            {/* Public login & reset password routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Public site routes (fora de ProtectedRoute e de AppLayout) */}
-          <Route path="/buscar" element={<BuscarPage />} />
-          <Route path="/buscar/:codigo" element={<ImovelPublicoPage />} />
+            {/* Public site routes (fora de ProtectedRoute e de AppLayout) */}
+            <Route path="/buscar" element={<BuscarPage />} />
+            <Route path="/buscar/:codigo" element={<ImovelPublicoPage />} />
 
-          {/* Root route redirects to /hoje */}
-          <Route path="/" element={<Navigate to="/hoje" replace />} />
+            {/* Root route redirects to /hoje */}
+            <Route path="/" element={<Navigate to="/hoje" replace />} />
 
-          {/* Protected routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppLayout />}>
-              <Route path="/hoje" element={<Hoje />} />
-              <Route path="/leads" element={<Leads />} />
-              <Route path="/leads/novo" element={<NovoLead />} />
-              <Route path="/leads/:id" element={<LeadDetalhe />} />
-              <Route path="/clientes" element={<Clientes />} />
-              <Route path="/clientes/novo" element={<NovoCliente />} />
-              <Route path="/clientes/:id" element={<ClienteDetalhe />} />
-              <Route path="/clientes/:id/editar" element={<EditarCliente />} />
-              <Route path="/imoveis" element={<Imoveis />} />
-              <Route path="/imoveis/novo" element={<NovoImovel />} />
-              <Route path="/imoveis/:id" element={<ImovelDetalhe />} />
-              <Route path="/imoveis/:id/editar" element={<EditarImovel />} />
-              <Route path="/agenda" element={<Agenda />} />
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppLayout />}>
+                <Route path="/hoje" element={<Hoje />} />
+                <Route path="/leads" element={<Leads />} />
+                <Route path="/leads/novo" element={<NovoLead />} />
+                <Route path="/leads/:id" element={<LeadDetalhe />} />
+                <Route path="/clientes" element={<Clientes />} />
+                <Route path="/clientes/novo" element={<NovoCliente />} />
+                <Route path="/clientes/:id" element={<ClienteDetalhe />} />
+                <Route path="/clientes/:id/editar" element={<EditarCliente />} />
+                <Route path="/imoveis" element={<Imoveis />} />
+                <Route path="/imoveis/novo" element={<NovoImovel />} />
+                <Route path="/imoveis/:id" element={<ImovelDetalhe />} />
+                <Route path="/imoveis/:id/editar" element={<EditarImovel />} />
+                <Route path="/agenda" element={<Agenda />} />
 
-              {/* Admin-only route */}
-              <Route element={<AdminRoute />}>
-                <Route path="/admin" element={<Admin />} />
+                {/* Admin-only route */}
+                <Route element={<AdminRoute />}>
+                  <Route path="/admin" element={<Admin />} />
+                </Route>
               </Route>
             </Route>
-          </Route>
 
-          {/* 404 route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </TooltipProvider>
-    </AuthProvider>
+            {/* 404 route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </BrowserRouter>
 )
 

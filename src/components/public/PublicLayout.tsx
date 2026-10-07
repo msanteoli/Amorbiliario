@@ -4,6 +4,7 @@ import { Building2, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PublicContactModal } from './PublicContactModal'
 import { CookieBanner } from './CookieBanner'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 interface PublicLayoutProps {
   children: React.ReactNode
@@ -24,7 +25,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
   const hasMarketingPixels = Boolean(metaId || googleId)
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-background text-foreground antialiased selection:bg-primary/20">
+    <div className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/20">
       {/* Cabeçalho simples com nome da imobiliária */}
       <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
@@ -64,15 +65,18 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
           <p>
             © {new Date().getFullYear()} {orgName}. Todos os direitos reservados.
           </p>
-          {hasMarketingPixels && (
-            <button
-              type="button"
-              onClick={() => setCookiePreferencesOpen(true)}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
-            >
-              Preferências de cookies
-            </button>
-          )}
+          <div className="flex items-center gap-4">
+            <ThemeToggle size="sm" />
+            {hasMarketingPixels && (
+              <button
+                type="button"
+                onClick={() => setCookiePreferencesOpen(true)}
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+              >
+                Preferências de cookies
+              </button>
+            )}
+          </div>
         </div>
       </footer>
 

@@ -752,7 +752,7 @@ export default function ImovelDetalhe() {
                     {/* Etiqueta de Capa na primeira foto */}
                     {isCover && (
                       <div className="absolute top-2 left-2 pointer-events-none">
-                        <Badge className="text-[10px] px-1.5 py-0 bg-primary/95 text-primary-foreground shadow-sm font-semibold">
+                        <Badge className="text-[10px] px-1.5 py-0 bg-primary/95 text-primary-foreground">
                           Capa
                         </Badge>
                       </div>
@@ -776,7 +776,7 @@ export default function ImovelDetalhe() {
                           e.stopPropagation()
                           setPhotoToDelete(photo)
                         }}
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 hover:bg-destructive hover:text-destructive-foreground text-destructive shadow-sm transition-colors opacity-90 sm:opacity-0 sm:group-hover:opacity-100"
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 hover:bg-destructive hover:text-destructive-foreground text-destructive transition-colors opacity-90 sm:opacity-0 sm:group-hover:opacity-100"
                         title="Remover foto"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

@@ -421,7 +421,7 @@ export default function Agenda() {
         {/* ═══════════════════════════════════════════════════════════════ */}
         <TabsContent value="visitas" className="space-y-4 pt-4">
           {/* Barra de Ferramentas / Filtros de Visitas */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 rounded-lg bg-card border shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 rounded-lg bg-card border">
             {/* Seletor de Visão: Semana, Dia, Lista */}
             <div className="flex items-center gap-1.5">
               <Button
@@ -607,7 +607,7 @@ export default function Agenda() {
                                   key={v.id}
                                   type="button"
                                   onClick={() => handleOpenVisitDetail(v)}
-                                  className={`w-full text-left p-2 rounded border text-xs transition-shadow hover:shadow-sm ${
+                                  className={`w-full text-left p-2 rounded-lg border text-xs transition-colors ${
                                     isCancelled
                                       ? 'opacity-40 bg-zinc-100 dark:bg-zinc-900 border-dashed'
                                       : 'bg-background hover:border-primary/50'
@@ -847,7 +847,7 @@ export default function Agenda() {
         {/* ═══════════════════════════════════════════════════════════════ */}
         <TabsContent value="tarefas" className="space-y-4 pt-4">
           {/* Barra de Filtros de Tarefas */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 rounded-lg bg-card border shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 rounded-lg bg-card border">
             <div className="flex flex-wrap items-center gap-2">
               {/* Filtro por Situação (padrão "Abertas") */}
               <div className="w-36">

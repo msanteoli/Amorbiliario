@@ -574,7 +574,7 @@ export default function Admin() {
           ) : (
             <>
               {/* Tabela no desktop */}
-              <div className="hidden md:block rounded-md border bg-card shadow-sm overflow-hidden">
+              <div className="hidden md:block rounded-lg border bg-card overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -712,9 +712,7 @@ export default function Admin() {
                     return (
                       <Card
                         key={u.id}
-                        className={`p-4 space-y-3 shadow-sm ${
-                          !u.active ? 'opacity-60 bg-muted/30' : ''
-                        }`}
+                        className={`p-4 space-y-3 ${!u.active ? 'opacity-60 bg-muted/30' : ''}`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -819,7 +817,7 @@ export default function Admin() {
         {/* ABA 2: ORGANIZAÇÃO */}
         {/* ═════════════════════════════════════════════════════════════ */}
         <TabsContent value="organizacao">
-          <Card className="shadow-sm">
+          <Card>
             <CardHeader>
               <CardTitle className="text-lg">Dados da organização</CardTitle>
               <CardDescription>
@@ -1056,7 +1054,7 @@ export default function Admin() {
           </Card>
 
           {/* Tabela de logs */}
-          <div className="rounded-md border bg-card shadow-sm overflow-hidden">
+          <div className="rounded-lg border bg-card overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>

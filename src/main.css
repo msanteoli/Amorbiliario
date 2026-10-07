@@ -1,7 +1,7 @@
 /* Global styles - Theme, font, utilities, animations and global components */
 
-/* CHANGE THE FONT BELOW TO WHATEVER YOU WANT */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+/* Fontes do Google Fonts: Inter (400) e Geist Mono (400) */
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400&family=Inter:wght@400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,52 +9,50 @@
 
 @layer base {
   :root {
-    /* Change the colors to match the design system */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Tema claro (:root) */
+    --background: 240 5% 96%;
+    --foreground: 0 0% 4%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 4%;
 
-    --primary: 222.2 84% 4.9%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 0% 4%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 98%;
-    --secondary-foreground: 222.2 84% 4.9%;
+    --secondary: 240 5% 93%;
+    --secondary-foreground: 225 6% 26%;
 
-    --muted: 210 40% 98%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 240 5% 93%;
+    --muted-foreground: 213 4% 41%;
 
-    --accent: 210 40% 98%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --accent: 240 5% 93%;
+    --accent-foreground: 0 0% 4%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 3 71% 41%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 225 7% 89%;
+    --input: 0 0% 4% / 0.28;
+    --ring: 0 0% 4%;
+
+    --sidebar-background: 240 5% 96%;
+    --sidebar-foreground: 225 6% 26%;
+    --sidebar-primary: 0 0% 4%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 93%;
+    --sidebar-accent-foreground: 0 0% 4%;
+    --sidebar-border: 225 7% 89%;
+    --sidebar-ring: 0 0% 4%;
+
+    --success: 149 65% 30%;
+    --attention: 22 92% 37%;
+    --info: 212 71% 39%;
+    --line: 0 0% 4% / 0.28;
 
     --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 222.2 84% 4.9%;
-
-    --sidebar-primary: 222.2 84% 4.9%;
-
-    --sidebar-primary-foreground: 0 0% 100%;
-
-    --sidebar-accent: 210 40% 98%;
-
-    --sidebar-accent-foreground: 222.2 84% 4.9%;
-
-    --sidebar-border: 214.3 31.8% 91.4%;
-
-    --sidebar-ring: 222.2 84% 4.9%;
 
     --chart-1: 34 100% 44%;
     --chart-2: 189 100% 38%;
@@ -64,48 +62,63 @@
   }
 
   .dark {
-    /* Change the colors to match the design system consistent with the dark mode */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Tema escuro (.dark) */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 100%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 222.2 84% 4.9%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 10% 11%;
+    --secondary-foreground: 228 7% 86%;
 
-    --muted: 222.2 84% 4.9%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 10% 11%;
+    --muted-foreground: 216 4% 51%;
 
-    --accent: 222.2 84% 4.9%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 220 10% 11%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 91% 71%;
+    --destructive-foreground: 0 0% 4%;
 
-    --border: 222.2 84% 4.9%;
-    --input: 222.2 84% 4.9%;
-    --ring: 214.3 31.8% 91.4%;
-    --sidebar-background: 222.2 84% 4.9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 222.2 84% 4.9%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222.2 84% 4.9%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222.2 84% 4.9%;
-    --sidebar-ring: 222.2 84% 4.9%;
+    --border: 220 8% 14%;
+    --input: 0 0% 100% / 0.25;
+    --ring: 0 0% 100%;
+
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 228 7% 86%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 220 10% 11%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 8% 14%;
+    --sidebar-ring: 0 0% 100%;
+
+    --success: 149 72% 67%;
+    --attention: 26 100% 55%;
+    --info: 212 67% 78%;
+    --line: 0 0% 100% / 0.25;
 
     --chart-1: 270 100% 44%;
     --chart-2: 164 100% 38%;
     --chart-3: 43 100% 32%;
     --chart-4: 340 100% 50%;
     --chart-5: 10 100% 50%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans font-normal;
+    font-weight: 400;
   }
 
   /* NEVER REMOVE THIS */
@@ -116,6 +129,57 @@
 }
 
 @layer utilities {
+  /* Classes tipográficas utilitárias */
+  .display-xl {
+    font-size: 3rem;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    font-weight: 400;
+  }
+  @media (min-width: 768px) {
+    .display-xl {
+      font-size: 6rem;
+    }
+  }
+
+  .display-md {
+    font-size: 3rem;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    font-weight: 400;
+  }
+
+  .display-sm {
+    font-size: 2rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 400;
+  }
+  @media (min-width: 768px) {
+    .display-sm {
+      font-size: 2.25rem;
+    }
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono, 'Geist Mono', ui-monospace, monospace);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 400;
+  }
+
+  .tabular {
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Faixa para texto sobre foto */
+  .on-photo {
+    background: hsl(var(--background) / 0.8);
+    backdrop-filter: blur(8px);
+  }
+
   /* KEEP ALL THE ANIMATIONS CLASSES THAT ARE USED BELOW */
   @keyframes accordion-down {
     from {
@@ -286,5 +350,17 @@
 
   .animate-spotlight {
     animation: spotlight 2s ease forwards;
+  }
+}
+
+/* Respeito a prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

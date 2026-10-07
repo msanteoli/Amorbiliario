@@ -232,7 +232,7 @@ export const BuscarPage: React.FC = () => {
 
         {/* Mensagem de Erro */}
         {searchError && (
-          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm flex items-center justify-between gap-3">
+          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 shrink-0" />
               <span>{searchError}</span>
@@ -252,7 +252,7 @@ export const BuscarPage: React.FC = () => {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-border p-4 space-y-3 bg-card">
+              <div key={i} className="rounded-lg border border-border p-4 space-y-3 bg-card">
                 <Skeleton className="aspect-[4/3] w-full rounded-lg" />
                 <Skeleton className="h-6 w-1/3" />
                 <Skeleton className="h-5 w-3/4" />
@@ -277,7 +277,7 @@ export const BuscarPage: React.FC = () => {
                   size="lg"
                   onClick={handleLoadMore}
                   disabled={loadingMore}
-                  className="px-8 font-medium h-12 shadow-sm"
+                  className="px-8 font-normal h-12"
                 >
                   {loadingMore ? 'Carregando mais imóveis...' : 'Mostrar mais'}
                 </Button>

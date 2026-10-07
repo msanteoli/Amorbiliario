@@ -112,7 +112,7 @@ export const ImovelPublicoPage: React.FC = () => {
       <PublicLayout orgName={orgName} showContactButton={false}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
           <Skeleton className="h-6 w-32" />
-          <Skeleton className="aspect-[16/9] sm:aspect-[21/9] w-full rounded-2xl" />
+          <Skeleton className="aspect-[16/9] sm:aspect-[21/9] w-full rounded-lg" />
           <div className="space-y-3">
             <Skeleton className="h-8 w-2/3" />
             <Skeleton className="h-5 w-1/3" />
@@ -197,7 +197,7 @@ export const ImovelPublicoPage: React.FC = () => {
 
         {/* Galeria de Fotos */}
         <div className="space-y-3">
-          <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-2xl overflow-hidden bg-muted border border-border flex items-center justify-center group shadow-sm">
+          <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-lg overflow-hidden bg-muted border border-border flex items-center justify-center group shadow-none">
             {photos.length > 0 ? (
               <>
                 <img
@@ -285,7 +285,7 @@ export const ImovelPublicoPage: React.FC = () => {
           </div>
 
           {/* Preços e Botão Desktop */}
-          <div className="p-5 bg-card rounded-2xl border border-border shadow-sm space-y-4">
+          <div className="p-5 bg-card rounded-lg border border-border shadow-none space-y-4">
             <div className="space-y-1">
               {salePriceStr && (
                 <div>
@@ -352,7 +352,7 @@ export const ImovelPublicoPage: React.FC = () => {
           <h2 className="text-lg font-semibold text-foreground">Características</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {property.bedrooms > 0 && (
-              <div className="p-3.5 bg-card rounded-xl border border-border flex items-center gap-3">
+              <div className="p-3.5 bg-card rounded-lg border border-border flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10 text-primary">
                   <Bed className="h-5 w-5" />
                 </div>
@@ -438,7 +438,7 @@ export const ImovelPublicoPage: React.FC = () => {
         {/* Descrição do Imóvel: texto simples, quebras preservadas, NUNCA como HTML */}
         <div className="space-y-3 pt-2">
           <h2 className="text-lg font-semibold text-foreground">Sobre o imóvel</h2>
-          <div className="p-5 bg-card rounded-2xl border border-border">
+          <div className="p-5 bg-card rounded-lg border border-border">
             {property.description ? (
               <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm sm:text-base font-normal">
                 {property.description}
@@ -452,10 +452,10 @@ export const ImovelPublicoPage: React.FC = () => {
         </div>
 
         {/* Botão fixo no rodapé do celular: Tenho interesse */}
-        <div className="fixed bottom-0 inset-x-0 z-30 p-3 bg-background/95 backdrop-blur-md border-t border-border shadow-lg md:hidden">
+        <div className="fixed bottom-0 inset-x-0 z-30 p-3 bg-background/95 backdrop-blur-md border-t border-border md:hidden">
           <Button
             size="lg"
-            className="w-full gap-2 font-semibold h-12 shadow-sm"
+            className="w-full gap-2 font-normal h-12"
             onClick={() => setContactOpen(true)}
           >
             <MessageSquare className="h-5 w-5" />

@@ -104,7 +104,7 @@ export default function Hoje() {
     if (!section) return null
 
     return (
-      <Card className="flex flex-col shadow-sm">
+      <Card className="flex flex-col">
         <CardHeader className="pb-3 border-b">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -178,9 +178,7 @@ export default function Hoje() {
 
     return (
       <Card
-        className={`flex flex-col shadow-sm ${
-          options?.fullWidthMobile ? 'col-span-1 md:col-span-2' : ''
-        }`}
+        className={`flex flex-col ${options?.fullWidthMobile ? 'col-span-1 md:col-span-2' : ''}`}
       >
         <CardHeader className="pb-3 border-b">
           <div className="flex items-center justify-between gap-2">
@@ -259,7 +257,7 @@ export default function Hoje() {
     if (!section) return null
 
     return (
-      <Card className="flex flex-col shadow-sm">
+      <Card className="flex flex-col">
         <CardHeader className="pb-3 border-b">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-base font-semibold">{title}</CardTitle>
@@ -318,7 +316,7 @@ export default function Hoje() {
     if (!section) return null
 
     return (
-      <Card className="flex flex-col shadow-sm">
+      <Card className="flex flex-col">
         <CardHeader className="pb-3 border-b">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-base font-semibold">Leads por etapa</CardTitle>
@@ -359,7 +357,7 @@ export default function Hoje() {
     if (!section) return null
 
     return (
-      <Card className="flex flex-col shadow-sm">
+      <Card className="flex flex-col">
         <CardHeader className="pb-3 border-b">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-base font-semibold">Imóveis pendentes de revisão</CardTitle>

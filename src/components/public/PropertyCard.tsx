@@ -33,9 +33,9 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
   return (
     <Link
       to={`/buscar/${encodeURIComponent(property.code)}`}
-      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
     >
-      <Card className="h-full overflow-hidden border border-border/80 hover:border-border transition-all duration-200 hover:shadow-md flex flex-col bg-card">
+      <Card className="h-full overflow-hidden border border-border hover:border-primary/50 transition-colors duration-200 shadow-none flex flex-col bg-card rounded-lg">
         {/* Foto de Capa (Proporção 4:3) */}
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted flex items-center justify-center">
           {coverUrl ? (
@@ -52,14 +52,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
             </div>
           )}
 
-          {/* Badge de tipo */}
+          {/* Badge de tipo com classe on-photo */}
           <div className="absolute top-3 left-3">
-            <Badge
-              variant="secondary"
-              className="bg-background/90 backdrop-blur-sm text-foreground text-xs font-medium shadow-sm"
-            >
+            <span className="on-photo px-2.5 py-1 rounded-full text-[11px] eyebrow text-foreground border border-line">
               {typeLabel}
-            </Badge>
+            </span>
           </div>
         </div>
 
@@ -67,26 +64,26 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
         <CardContent className="p-4 flex-1 flex flex-col justify-between">
           <div>
             {/* Preços */}
-            <div className="mb-2 space-y-0.5">
+            <div className="mb-2 space-y-0.5 tabular">
               {salePriceStr && (
-                <div className="text-lg font-bold text-foreground tracking-tight">
+                <div className="text-lg font-normal text-foreground tracking-tight">
                   {salePriceStr}
                 </div>
               )}
               {rentPriceStr && (
-                <div className="text-base font-semibold text-foreground/90 tracking-tight">
+                <div className="text-base font-normal text-foreground/90 tracking-tight">
                   {rentPriceStr}
                 </div>
               )}
               {!salePriceStr && !rentPriceStr && (
-                <div className="text-base font-medium text-muted-foreground">
+                <div className="text-base font-normal text-muted-foreground">
                   Valor não informado
                 </div>
               )}
             </div>
 
             {/* Título */}
-            <h3 className="font-semibold text-base text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+            <h3 className="font-normal text-base text-foreground line-clamp-1 group-hover:text-primary transition-colors">
               {property.title}
             </h3>
 

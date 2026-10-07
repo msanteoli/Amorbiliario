@@ -59,14 +59,14 @@ export default function ResetPassword() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-2xl shadow-sm">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-normal text-2xl">
             I
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Imobdigital</h1>
-          <p className="text-sm text-muted-foreground">Sistema de gestão para imobiliárias</p>
+          <h1 className="text-2xl font-normal tracking-tight text-foreground">Imobdigital</h1>
+          <p className="text-sm text-muted-foreground">Redefinição de senha</p>
         </div>
 
-        <Card className="shadow-md">
+        <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl">Crie sua senha</CardTitle>
             <CardDescription>

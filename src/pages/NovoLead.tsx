@@ -413,7 +413,7 @@ export default function NovoLead() {
                   </div>
 
                   {propertySearchResults.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto border rounded-md divide-y bg-card shadow-sm">
+                    <div className="max-h-48 overflow-y-auto border border-border rounded-lg divide-y divide-border bg-card">
                       {propertySearchResults.map((p) => (
                         <div
                           key={p.id}
