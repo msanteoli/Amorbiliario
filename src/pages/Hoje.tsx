@@ -13,10 +13,11 @@ import {
 } from '@/services/today'
 import { formatDateBahia, formatTimeBahia, formatDateTimeBahia } from '@/services/visits'
 import { LEAD_STAGE_LABELS, LeadStage } from '@/services/leads'
+import { listOwnersWithoutProperty, OwnerWithoutPropertyItem } from '@/services/properties'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { RefreshCw, ChevronRight, AlertCircle } from 'lucide-react'
+import { RefreshCw, ChevronRight, AlertCircle, AlertTriangle } from 'lucide-react'
 import { getRoleLabel } from '@/lib/roles'
 
 // Mapeamento visual das situações de Lead conforme guia M9a
@@ -47,25 +48,44 @@ export default function Hoje() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [ownersWithoutProp, setOwnersWithoutProp] = useState<OwnerWithoutPropertyItem[]>([])
 
-  const loadData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true)
-    } else {
-      setLoading(true)
-    }
-    setErrorMessage(null)
-
+  const loadOwnersWarning = useCallback(async () => {
     try {
-      const resp = await getTodayData()
-      setData(resp)
-    } catch (err) {
-      setErrorMessage(formatTodayErrorMessage(err))
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
+      const items = await listOwnersWithoutProperty()
+      setOwnersWithoutProp(items || [])
+    } catch {
+      // Requisito: Se a chamada falhar (rede, 403, 5xx), falha silenciosa: nem aviso, nem erro na tela
+      setOwnersWithoutProp([])
     }
   }, [])
+
+  const loadData = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
+      setErrorMessage(null)
+
+      try {
+        const resp = await getTodayData()
+        setData(resp)
+        if (resp.role === 'admin') {
+          loadOwnersWarning()
+        } else {
+          setOwnersWithoutProp([])
+        }
+      } catch (err) {
+        setErrorMessage(formatTodayErrorMessage(err))
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    },
+    [loadOwnersWarning],
+  )
 
   useEffect(() => {
     loadData()
@@ -567,6 +587,38 @@ export default function Hoje() {
           {/* ADMIN */}
           {data.role === 'admin' && (
             <>
+              {/* Aviso de proprietários sem imóvel (M7) */}
+              {ownersWithoutProp.length > 0 && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="rounded-lg border border-attention/30 bg-attention/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <AlertTriangle className="h-5 w-5 text-attention shrink-0 mt-0.5" />
+                    <div className="space-y-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {ownersWithoutProp.length === 1
+                          ? '1 proprietário sem imóvel ligado'
+                          : `${ownersWithoutProp.length} proprietários sem imóvel ligado`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Proprietário é quem tem um imóvel com a imobiliária. Quem vendeu o imóvel
+                        continua como cliente.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/admin?tab=sem-imovel')}
+                    className="rounded-full border-attention/40 text-foreground hover:bg-attention/15 min-h-[44px] h-11 px-5 text-xs font-normal shrink-0 self-start sm:self-auto"
+                  >
+                    Ver lista
+                  </Button>
+                </div>
+              )}
+
               {renderLeadsByStageSection(data.sections.leads_by_stage)}
 
               {renderVisitSection('Visitas da semana', data.sections.visits_week, {
