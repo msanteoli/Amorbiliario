@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getConsent, setConsent } from '@/lib/marketing'
 import { Button } from '@/components/ui/button'
 
@@ -59,7 +60,14 @@ export const CookieBanner: React.FC<CookieBannerProps> = ({ forceOpen, onClose }
       <div className="flex flex-col gap-3">
         <p className="text-sm text-foreground text-left leading-relaxed">
           Usamos cookies de marketing para medir o resultado dos nossos anúncios. Você pode recusar
-          sem perder nada no site.
+          sem perder nada no site.{' '}
+          <Link
+            to="/privacidade"
+            className="text-foreground underline underline-offset-4 hover:opacity-80 transition-opacity whitespace-nowrap"
+          >
+            Saiba mais
+          </Link>
+          .
         </p>
         <div className="flex items-center gap-3 w-full justify-end">
           {/* Duas ações com o mesmo peso visual: "Aceitar" preenchida e "Recusar" de contorno */}

@@ -267,13 +267,25 @@ export const PublicContactModal: React.FC<PublicContactModalProps> = ({
                 disabled={loading}
                 className="mt-1"
               />
-              <Label
-                htmlFor="lead-consent"
-                className="text-xs text-muted-foreground leading-relaxed cursor-pointer font-normal select-none"
-              >
-                Autorizo a imobiliária a entrar em contato comigo por WhatsApp, telefone ou e-mail e
-                a usar as buscas que fiz neste site para me atender melhor.
-              </Label>
+              <div className="text-xs text-muted-foreground leading-relaxed font-normal">
+                <Label
+                  htmlFor="lead-consent"
+                  className="cursor-pointer text-xs font-normal text-muted-foreground inline"
+                >
+                  Autorizo a imobiliária a entrar em contato comigo por WhatsApp, telefone ou e-mail
+                  e a usar as buscas que fiz neste site para me atender melhor.{' '}
+                </Label>
+                <span>Li e aceito a </span>
+                <a
+                  href="/privacidade"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-foreground underline underline-offset-2 hover:text-foreground/80 transition-colors inline-block"
+                >
+                  Política de Privacidade
+                </a>
+                .
+              </div>
             </div>
             {consentError && (
               <p className="text-xs text-destructive font-medium flex items-center gap-1.5 pt-1">

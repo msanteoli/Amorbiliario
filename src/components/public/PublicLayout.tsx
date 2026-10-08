@@ -256,19 +256,25 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
             </Link>
             . Todos os direitos reservados.
           </p>
-          <div className="flex items-center gap-4">
-            <div className="min-h-[44px] inline-flex items-center">
-              <ThemeToggle large />
-            </div>
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-4 gap-y-2">
+            <Link
+              to="/privacidade"
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors min-h-[44px] inline-flex items-center px-1"
+            >
+              Política de Privacidade
+            </Link>
             {hasMarketingPixels && (
               <button
                 type="button"
                 onClick={() => setCookiePreferencesOpen(true)}
-                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors min-h-[44px] inline-flex items-center px-2"
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors min-h-[44px] inline-flex items-center px-1"
               >
                 Preferências de cookies
               </button>
             )}
+            <div className="min-h-[44px] inline-flex items-center">
+              <ThemeToggle large />
+            </div>
           </div>
         </div>
       </footer>

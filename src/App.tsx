@@ -11,6 +11,7 @@ import Login from '@/pages/Login'
 import ResetPassword from '@/pages/ResetPassword'
 import BuscarPage from '@/pages/BuscarPage'
 import ImovelPublicoPage from '@/pages/ImovelPublicoPage'
+import Privacidade from '@/pages/Privacidade'
 import Hoje from '@/pages/Hoje'
 import Leads from '@/pages/Leads'
 import NovoLead from '@/pages/NovoLead'
@@ -45,6 +46,7 @@ const App = () => (
             {/* Public site routes (fora de ProtectedRoute e de AppLayout) */}
             <Route path="/buscar" element={<BuscarPage />} />
             <Route path="/buscar/:codigo" element={<ImovelPublicoPage />} />
+            <Route path="/privacidade" element={<Privacidade />} />
 
             {/* Root route: responde na mesma página inicial pública (/ e /buscar) */}
             <Route path="/" element={<BuscarPage />} />
