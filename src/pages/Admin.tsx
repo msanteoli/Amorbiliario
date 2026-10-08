@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   AdminUserItem,
@@ -69,11 +69,23 @@ import {
 
 export default function Admin() {
   const { user: currentUser } = useAuth()
+  const [searchParams] = useSearchParams()
 
   // Abas
   const [activeTab, setActiveTab] = useState<
     'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel'
-  >('usuarios')
+  >(() => {
+    const tabParam = searchParams.get('tab')
+    if (
+      tabParam === 'usuarios' ||
+      tabParam === 'organizacao' ||
+      tabParam === 'auditoria' ||
+      tabParam === 'sem-imovel'
+    ) {
+      return tabParam
+    }
+    return 'usuarios'
+  })
 
   // Feedback global da página
   const [globalSuccess, setGlobalSuccess] = useState<string | null>(null)
@@ -381,6 +393,18 @@ export default function Admin() {
       setLoadingOwnersWithoutProp(false)
     }
   }, [])
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (
+      tabParam === 'usuarios' ||
+      tabParam === 'organizacao' ||
+      tabParam === 'auditoria' ||
+      tabParam === 'sem-imovel'
+    ) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (activeTab === 'sem-imovel') {
