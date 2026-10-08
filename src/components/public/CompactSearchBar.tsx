@@ -39,7 +39,10 @@ export const CompactSearchBar: React.FC<CompactSearchBarProps> = ({ values, onAl
   const summary = parts.join(' · ')
 
   return (
-    <div className="sticky top-20 z-30 w-full bg-background/95 backdrop-blur-md border-b border-border shadow-sm py-2.5 px-4 sm:px-6 animate-in fade-in slide-in-from-top-2 duration-200">
+    <div
+      id="compact-search-bar"
+      className="sticky top-20 z-30 w-full bg-background/95 backdrop-blur-md border-b border-border shadow-sm py-2.5 px-4 sm:px-6 animate-in fade-in slide-in-from-top-2 duration-200"
+    >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         {/* Resumo com ícone de lupa */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">

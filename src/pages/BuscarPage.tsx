@@ -246,12 +246,42 @@ export const BuscarPage: React.FC = () => {
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+      // Verifica se a busca é ativa com esses novos valores
+      const willBeSearchActive = Boolean(
+        newValues.type ||
+        newValues.neighborhood ||
+        newValues.bedrooms ||
+        newValues.parking ||
+        newValues.min_price ||
+        newValues.max_price ||
+        (newValues.sort && newValues.sort !== 'recent'),
+      )
+
       setTimeout(() => {
-        if (resultsRef.current) {
-          resultsRef.current.scrollIntoView({
-            behavior: prefersReducedMotion ? 'auto' : 'smooth',
-          })
-        }
+        if (!resultsRef.current) return
+
+        // Altura do cabeçalho fixo (h-20 = 80px)
+        const headerEl = document.querySelector('header')
+        const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 80
+
+        // Altura da barra compacta: quando há busca ativa e rola abaixo do hero, ela fica visível
+        const compactBarEl = document.getElementById('compact-search-bar')
+        const compactBarHeight = willBeSearchActive
+          ? compactBarEl
+            ? compactBarEl.getBoundingClientRect().height
+            : 58
+          : 0
+
+        // Margem de rolagem: altura do cabeçalho + a da barra compacta + 16 px (ou só cabeçalho + 16px se sem busca ativa)
+        const totalOffset = headerHeight + compactBarHeight + 16
+
+        const elementPosition = resultsRef.current.getBoundingClientRect().top + window.pageYOffset
+        const targetScroll = Math.max(0, elementPosition - totalOffset)
+
+        window.scrollTo({
+          top: targetScroll,
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        })
       }, 50)
     }
   }
@@ -480,7 +510,11 @@ export const BuscarPage: React.FC = () => {
         }}
       />
 
-      <div ref={resultsRef} className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+      <div
+        ref={resultsRef}
+        id="resultados"
+        className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6 scroll-mt-[154px] sm:scroll-mt-[154px]"
+      >
         {/* Título "Imóveis disponíveis" (peso 600) com contagem em texto de apoio */}
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 pb-1">
           <div className="space-y-1">

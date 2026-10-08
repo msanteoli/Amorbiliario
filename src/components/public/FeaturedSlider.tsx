@@ -87,10 +87,14 @@ export const FeaturedSlider: React.FC<FeaturedSliderProps> = ({ properties }) =>
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}
       onBlur={() => setIsPaused(false)}
-      className="relative w-full h-full flex flex-col justify-center"
+      className="relative w-full flex flex-col justify-center"
     >
-      {/* Contêiner da foto e faixa */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[16px] lg:rounded-[24px] bg-muted shadow-sm group">
+      {/* Contêiner da foto e faixa:
+          - No tablet (768–1023px): limita a 360px de altura (h-[360px])
+          - No celular (<768px): aspect-[4/3] com altura máxima de 300px (max-h-[300px])
+          - No desktop (>=1024px): aspect-[4/3] lg:max-h-none lg:h-auto
+      */}
+      <div className="relative aspect-[4/3] max-h-[300px] md:aspect-auto md:h-[360px] md:max-h-none lg:aspect-[4/3] lg:h-auto w-full overflow-hidden rounded-[16px] lg:rounded-[24px] bg-muted shadow-sm group">
         {/* Renderiza todos os slides empilhados com transição fade de 400ms */}
         {properties.map((prop, idx) => {
           const isCurrent = idx === currentIndex

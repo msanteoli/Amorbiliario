@@ -213,9 +213,9 @@ export const HeroSearchCard: React.FC<HeroSearchCardProps> = ({
         </button>
       </div>
 
-      {/* Campo "Busque por bairro" (altura 56 px, pílula, lupa à esquerda e botão de busca à direita) */}
-      <div ref={wrapperRef} className="relative w-full">
-        <div className="relative flex items-center h-14 w-full rounded-full border border-border bg-background focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all shadow-sm pl-4 pr-1.5">
+      {/* Campo "Busque por bairro": abaixo de 480px, botão largura total abaixo do campo; a partir de 480px, botão dentro do campo */}
+      <div ref={wrapperRef} className="relative w-full space-y-3 min-[480px]:space-y-0">
+        <div className="relative flex items-center h-14 w-full rounded-full border border-border bg-background focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all shadow-sm pl-4 pr-4 min-[480px]:pr-1.5">
           <Search className="h-5 w-5 text-muted-foreground shrink-0 mr-3" aria-hidden="true" />
           <input
             ref={inputRef}
@@ -238,16 +238,26 @@ export const HeroSearchCard: React.FC<HeroSearchCardProps> = ({
             className="w-full h-full bg-transparent text-sm sm:text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
 
-          {/* Botão "Buscar imóveis" dentro do campo, à direita */}
+          {/* Botão "Buscar imóveis" dentro do campo apenas a partir de 480px */}
           <button
             type="button"
             onClick={() => triggerSearch()}
-            className="shrink-0 h-11 px-4 sm:px-6 rounded-full bg-primary text-primary-foreground font-medium text-xs sm:text-sm inline-flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all min-h-[44px]"
+            className="hidden min-[480px]:inline-flex shrink-0 h-11 px-4 sm:px-6 rounded-full bg-primary text-primary-foreground font-medium text-xs sm:text-sm items-center gap-2 hover:opacity-90 active:scale-95 transition-all min-h-[44px]"
           >
             <Search className="h-4 w-4 shrink-0 sm:hidden" />
             <span>Buscar imóveis</span>
           </button>
         </div>
+
+        {/* Abaixo de 480px: botão de largura total (48px de altura, pílula, ação principal) logo abaixo do campo */}
+        <button
+          type="button"
+          onClick={() => triggerSearch()}
+          className="min-[480px]:hidden w-full h-12 rounded-full bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all min-h-[48px] shadow-sm"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          <span>Buscar imóveis</span>
+        </button>
 
         {/* Dropdown de sugestões de bairro */}
         {suggestionsOpen && (

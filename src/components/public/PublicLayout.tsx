@@ -91,7 +91,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
             <div className="flex-1 min-w-0 flex items-center">
               <Link
                 to="/"
-                className="text-lg sm:text-xl font-semibold tracking-tight text-foreground hover:opacity-90 transition-opacity truncate"
+                className="text-lg sm:text-xl font-semibold tracking-tight text-foreground hover:opacity-90 transition-opacity truncate min-h-[44px] inline-flex items-center"
               >
                 {orgName}
               </Link>
@@ -201,7 +201,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
       <FloatingWhatsAppButton className={floatingWaClassName} />
 
       {/* Rodapé: o nome e o ano, o ThemeToggle e, se existir, "Preferências de cookies" */}
-      <footer className="border-t border-border bg-background py-8 px-4 text-center text-sm text-muted-foreground">
+      <footer className="border-t border-border bg-background pt-8 pb-24 px-4 text-center text-sm text-muted-foreground">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground min-h-[44px] inline-flex items-center">
             © {new Date().getFullYear()}{' '}
@@ -215,7 +215,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
           </p>
           <div className="flex items-center gap-4">
             <div className="min-h-[44px] inline-flex items-center">
-              <ThemeToggle size="sm" />
+              <ThemeToggle large />
             </div>
             {hasMarketingPixels && (
               <button
