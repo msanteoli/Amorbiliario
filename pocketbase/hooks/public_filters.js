@@ -46,10 +46,20 @@ routerAdd('GET', '/backend/v1/public/filters', (e) => {
     if (pu === 'locacao' || pu === 'ambos') purposes.locacao += 1
   })
 
+  // link do WhatsApp da imobiliária para o botão do site (o número vem da organização)
+  const waNumber = String(org.getString('whatsapp_number') || '').replace(/\D/g, '')
+  const waUrl = waNumber
+    ? 'https://wa.me/' +
+      waNumber +
+      '?text=' +
+      encodeURIComponent('Olá! Vim pelo site e gostaria de ajuda.')
+    : null
+
   return e.json(200, {
     organization: {
       name: org.getString('name'),
-      whatsapp_enabled: String(org.getString('whatsapp_number') || '') !== '',
+      whatsapp_enabled: waNumber !== '',
+      whatsapp_url: waUrl,
     },
     neighborhoods: Object.keys(hoods)
       .sort((a, b) => a.localeCompare(b, 'pt-BR'))
