@@ -671,6 +671,42 @@ export default function ImovelDetalhe() {
               <Badge variant={statusVariant} className="text-xs">
                 {statusLabel}
               </Badge>
+              {(() => {
+                const hl = (property as any).highlight_level || 'comum'
+                const untilStr = (property as any).highlight_until
+                if (hl === 'destaque' || hl === 'super_destaque') {
+                  const isExpired =
+                    untilStr &&
+                    !isNaN(new Date(untilStr.replace(' ', 'T')).getTime()) &&
+                    new Date(untilStr.replace(' ', 'T')).getTime() < Date.now()
+                  if (isExpired) {
+                    const d = new Date(untilStr.replace(' ', 'T'))
+                    const dd = String(d.getUTCDate()).padStart(2, '0')
+                    const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+                    return (
+                      <Badge
+                        variant="outline"
+                        className="text-xs text-muted-foreground border-border"
+                      >
+                        Comum (destaque vencido em {dd}/{mm})
+                      </Badge>
+                    )
+                  }
+                  return (
+                    <Badge
+                      variant={hl === 'super_destaque' ? 'default' : 'secondary'}
+                      className={`text-xs ${
+                        hl === 'super_destaque'
+                          ? 'bg-primary text-primary-foreground border-primary font-medium'
+                          : 'border-border text-foreground'
+                      }`}
+                    >
+                      {hl === 'super_destaque' ? 'Super-destaque' : 'Destaque'}
+                    </Badge>
+                  )
+                }
+                return null
+              })()}
               {isOutdated && (
                 <Badge variant="attention" className="text-xs">
                   Desatualizado

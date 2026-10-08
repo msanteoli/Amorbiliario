@@ -95,6 +95,8 @@ export default function EditarImovel() {
           description: prop.description || '',
           owner_id: prop.owner_id || '',
           captured_by: prop.captured_by || user.id,
+          highlight_level: (prop.highlight_level as any) || 'comum',
+          highlight_until: prop.highlight_until || '',
         })
 
         if (prop.expand?.owner_id) {
@@ -229,7 +231,9 @@ export default function EditarImovel() {
         owner_id: formData.owner_id,
         // O corretor não pode alterar captured_by; só o admin pode
         captured_by: role === 'admin' ? formData.captured_by : undefined,
-      })
+        highlight_level: formData.highlight_level || 'comum',
+        highlight_until: formData.highlight_until || '',
+      } as any)
 
       // Releitura do imóvel conforme especificação:
       // "depois de salvar, releia o imóvel e mostre 'Este imóvel voltou para Rascunho porque está incompleto.'

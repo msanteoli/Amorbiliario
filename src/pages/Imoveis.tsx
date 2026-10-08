@@ -529,6 +529,42 @@ export default function Imoveis() {
                             Importado
                           </Badge>
                         )}
+                        {(() => {
+                          const hl = (property as any).highlight_level || 'comum'
+                          const untilStr = (property as any).highlight_until
+                          if (hl === 'destaque' || hl === 'super_destaque') {
+                            const isExpired =
+                              untilStr &&
+                              !isNaN(new Date(untilStr.replace(' ', 'T')).getTime()) &&
+                              new Date(untilStr.replace(' ', 'T')).getTime() < Date.now()
+                            if (isExpired) {
+                              const d = new Date(untilStr.replace(' ', 'T'))
+                              const dd = String(d.getUTCDate()).padStart(2, '0')
+                              const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] text-muted-foreground border-border shrink-0"
+                                >
+                                  Comum (destaque vencido em {dd}/{mm})
+                                </Badge>
+                              )
+                            }
+                            return (
+                              <Badge
+                                variant={hl === 'super_destaque' ? 'default' : 'secondary'}
+                                className={`text-[10px] shrink-0 ${
+                                  hl === 'super_destaque'
+                                    ? 'bg-primary text-primary-foreground border-primary font-medium'
+                                    : 'border-border text-foreground'
+                                }`}
+                              >
+                                {hl === 'super_destaque' ? 'Super-destaque' : 'Destaque'}
+                              </Badge>
+                            )
+                          }
+                          return null
+                        })()}
                       </div>
                       <span className="text-xs text-muted-foreground">
                         {PROPERTY_TYPE_LABELS[property.property_type] || property.property_type}
@@ -553,6 +589,42 @@ export default function Imoveis() {
                           Importado
                         </Badge>
                       )}
+                      {(() => {
+                        const hl = (property as any).highlight_level || 'comum'
+                        const untilStr = (property as any).highlight_until
+                        if (hl === 'destaque' || hl === 'super_destaque') {
+                          const isExpired =
+                            untilStr &&
+                            !isNaN(new Date(untilStr.replace(' ', 'T')).getTime()) &&
+                            new Date(untilStr.replace(' ', 'T')).getTime() < Date.now()
+                          if (isExpired) {
+                            const d = new Date(untilStr.replace(' ', 'T'))
+                            const dd = String(d.getUTCDate()).padStart(2, '0')
+                            const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+                            return (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] text-muted-foreground border-border"
+                              >
+                                Comum (destaque vencido em {dd}/{mm})
+                              </Badge>
+                            )
+                          }
+                          return (
+                            <Badge
+                              variant={hl === 'super_destaque' ? 'default' : 'secondary'}
+                              className={`text-[10px] ${
+                                hl === 'super_destaque'
+                                  ? 'bg-primary text-primary-foreground border-primary font-medium'
+                                  : 'border-border text-foreground'
+                              }`}
+                            >
+                              {hl === 'super_destaque' ? 'Super-destaque' : 'Destaque'}
+                            </Badge>
+                          )
+                        }
+                        return null
+                      })()}
                       {isOutdated && (
                         <Badge variant="attention" className="text-[10px]">
                           Desatualizado
@@ -607,7 +679,7 @@ export default function Imoveis() {
                       <span className="eyebrow text-muted-foreground text-[10px]">
                         {property.code}
                       </span>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                         {property.source === 'importacao' && (
                           <Badge
                             variant="outline"
@@ -616,6 +688,42 @@ export default function Imoveis() {
                             Importado
                           </Badge>
                         )}
+                        {(() => {
+                          const hl = (property as any).highlight_level || 'comum'
+                          const untilStr = (property as any).highlight_until
+                          if (hl === 'destaque' || hl === 'super_destaque') {
+                            const isExpired =
+                              untilStr &&
+                              !isNaN(new Date(untilStr.replace(' ', 'T')).getTime()) &&
+                              new Date(untilStr.replace(' ', 'T')).getTime() < Date.now()
+                            if (isExpired) {
+                              const d = new Date(untilStr.replace(' ', 'T'))
+                              const dd = String(d.getUTCDate()).padStart(2, '0')
+                              const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] px-1 py-0 text-muted-foreground border-border"
+                                >
+                                  Comum (destaque vencido em {dd}/{mm})
+                                </Badge>
+                              )
+                            }
+                            return (
+                              <Badge
+                                variant={hl === 'super_destaque' ? 'default' : 'secondary'}
+                                className={`text-[9px] px-1 py-0 ${
+                                  hl === 'super_destaque'
+                                    ? 'bg-primary text-primary-foreground border-primary font-medium'
+                                    : 'border-border text-foreground'
+                                }`}
+                              >
+                                {hl === 'super_destaque' ? 'Super-destaque' : 'Destaque'}
+                              </Badge>
+                            )
+                          }
+                          return null
+                        })()}
                         {isOutdated && (
                           <Badge variant="attention" className="text-[9px] px-1 py-0">
                             Desatualizado

@@ -75,6 +75,10 @@ export interface PropertyFormData {
   // Proprietário e Captador
   owner_id: string
   captured_by: string
+
+  // Destaque no site
+  highlight_level?: 'comum' | 'destaque' | 'super_destaque'
+  highlight_until?: string
 }
 
 interface PropertyFormProps {
@@ -180,6 +184,16 @@ export function PropertyForm({
   const [isSearchingOwners, setIsSearchingOwners] = useState(false)
   const [showOwnerDropdown, setShowOwnerDropdown] = useState(false)
   const searchContainerRef = useRef<HTMLDivElement>(null)
+
+  // Destaque no site
+  const initialHl = initialData?.highlight_level || 'comum'
+  const [isHighlighted, setIsHighlighted] = useState(initialHl !== 'comum')
+  const [highlightLevel, setHighlightLevel] = useState<'destaque' | 'super_destaque'>(
+    initialHl === 'super_destaque' ? 'super_destaque' : 'destaque',
+  )
+  const [highlightUntil, setHighlightUntil] = useState(
+    initialData?.highlight_until ? initialData.highlight_until.slice(0, 10) : '',
+  )
 
   // Erros locais de validação de valor zero
   const [zeroValueError, setZeroValueError] = useState<string | null>(null)
@@ -324,6 +338,21 @@ export function PropertyForm({
 
       if (initialData.description !== undefined) setDescription(initialData.description)
       if (initialData.captured_by !== undefined) setCapturedBy(initialData.captured_by)
+
+      if (initialData.highlight_level !== undefined) {
+        const isHl = initialData.highlight_level !== 'comum'
+        setIsHighlighted(isHl)
+        if (isHl) {
+          setHighlightLevel(
+            initialData.highlight_level === 'super_destaque' ? 'super_destaque' : 'destaque',
+          )
+        }
+      }
+      if (initialData.highlight_until !== undefined) {
+        setHighlightUntil(
+          initialData.highlight_until ? initialData.highlight_until.slice(0, 10) : '',
+        )
+      }
     }
   }, [initialData])
 
@@ -436,6 +465,8 @@ export function PropertyForm({
       description: description.trim(),
       owner_id: selectedOwner?.id || '',
       captured_by: isCorretor ? currentUser.id : capturedBy,
+      highlight_level: isHighlighted ? highlightLevel : 'comum',
+      highlight_until: isHighlighted && highlightUntil ? highlightUntil : '',
     })
   }
 
@@ -1055,7 +1086,148 @@ export function PropertyForm({
 
       <hr className="border-t border-border" />
 
-      {/* 6. SEÇÃO: PROPRIETÁRIO E CAPTADOR */}
+      {/* 6. SEÇÃO: DESTAQUE NO SITE */}
+      {(isAdmin || isCorretor) && (
+        <>
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-[20px] font-normal text-foreground">Destaque no site</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Escolha se e como este imóvel será promovido nas vitrines e páginas de busca do
+                site.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg border border-border bg-card space-y-4">
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <Checkbox
+                  id="prop-highlight-checkbox"
+                  checked={isHighlighted}
+                  onCheckedChange={(c) => {
+                    const checked = Boolean(c)
+                    setIsHighlighted(checked)
+                    if (!checked) {
+                      setHighlightUntil('')
+                    }
+                  }}
+                />
+                <span className="text-sm font-normal text-foreground">Destacar no site</span>
+              </label>
+
+              {isHighlighted && (
+                <div className="pt-2 border-t border-border space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-[13px] font-normal text-foreground block">
+                      Nível de destaque <span className="text-destructive">*</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Opção Destaque */}
+                      <div
+                        onClick={() => setHighlightLevel('destaque')}
+                        className={`p-3.5 rounded-lg border cursor-pointer transition-colors space-y-2.5 ${
+                          highlightLevel === 'destaque'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border bg-card hover:bg-muted/30'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-foreground">
+                            <input
+                              type="radio"
+                              name="highlight-level-choice"
+                              value="destaque"
+                              checked={highlightLevel === 'destaque'}
+                              onChange={() => setHighlightLevel('destaque')}
+                              className="text-primary focus:ring-primary h-4 w-4 border-border"
+                            />
+                            <span>Destaque</span>
+                          </label>
+                          <span className="eyebrow text-[10px] text-muted-foreground">
+                            Retângulo médio
+                          </span>
+                        </div>
+
+                        {/* Miniatura de espaço reservado (placeholder fácil de trocar) */}
+                        <div className="w-full h-24 rounded-lg border border-dashed border-border bg-muted/40 flex flex-col items-center justify-center p-2 text-center">
+                          <span className="text-xs font-medium text-foreground">
+                            Quadro Destaque
+                          </span>
+                          <span className="text-[11px] text-muted-foreground mt-0.5">
+                            tamanho final a definir
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Opção Super-destaque */}
+                      <div
+                        onClick={() => setHighlightLevel('super_destaque')}
+                        className={`p-3.5 rounded-lg border cursor-pointer transition-colors space-y-2.5 ${
+                          highlightLevel === 'super_destaque'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border bg-card hover:bg-muted/30'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-foreground">
+                            <input
+                              type="radio"
+                              name="highlight-level-choice"
+                              value="super_destaque"
+                              checked={highlightLevel === 'super_destaque'}
+                              onChange={() => setHighlightLevel('super_destaque')}
+                              className="text-primary focus:ring-primary h-4 w-4 border-border"
+                            />
+                            <span>Super-destaque</span>
+                          </label>
+                          <span className="eyebrow text-[10px] text-muted-foreground">
+                            Retângulo grande
+                          </span>
+                        </div>
+
+                        {/* Miniatura de espaço reservado (placeholder fácil de trocar) */}
+                        <div className="w-full h-36 rounded-lg border border-dashed border-border bg-muted/40 flex flex-col items-center justify-center p-2 text-center">
+                          <span className="text-xs font-medium text-foreground">
+                            Quadro Super-destaque
+                          </span>
+                          <span className="text-[11px] text-muted-foreground mt-0.5">
+                            tamanho final a definir
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Campo opcional: Destacar até */}
+                  <div className="space-y-1.5 max-w-sm">
+                    <label
+                      htmlFor="prop-highlight-until"
+                      className="text-[13px] font-normal text-foreground block"
+                    >
+                      Destacar até (opcional)
+                    </label>
+                    <Input
+                      id="prop-highlight-until"
+                      type="date"
+                      value={highlightUntil}
+                      onChange={(e) => setHighlightUntil(e.target.value)}
+                      className="h-12 text-sm border-border tabular"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Deixe em branco para destaque por tempo indeterminado. Se informado, precisa
+                      ser uma data futura.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <hr className="border-t border-border" />
+        </>
+      )}
+
+      {/* 7. SEÇÃO: PROPRIETÁRIO E CAPTADOR */}
       <section className="space-y-6">
         <div>
           <h2 className="text-[20px] font-normal text-foreground">Proprietário e Captador</h2>

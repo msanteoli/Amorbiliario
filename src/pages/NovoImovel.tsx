@@ -107,7 +107,9 @@ export default function NovoImovel() {
           description: formData.description || undefined,
           owner_id: formData.owner_id || undefined,
           captured_by: role === 'corretor' ? user.id : formData.captured_by || user.id,
-        },
+          highlight_level: formData.highlight_level || 'comum',
+          highlight_until: formData.highlight_until || undefined,
+        } as any,
         user,
       )
 
