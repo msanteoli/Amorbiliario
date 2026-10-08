@@ -46,8 +46,8 @@ const App = () => (
             <Route path="/buscar" element={<BuscarPage />} />
             <Route path="/buscar/:codigo" element={<ImovelPublicoPage />} />
 
-            {/* Root route redirects to /hoje */}
-            <Route path="/" element={<Navigate to="/hoje" replace />} />
+            {/* Root route: responde na mesma página inicial pública (/ e /buscar) */}
+            <Route path="/" element={<BuscarPage />} />
 
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>

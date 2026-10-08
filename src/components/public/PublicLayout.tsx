@@ -1,96 +1,227 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MessageSquare } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { PublicContactModal } from './PublicContactModal'
 import { CookieBanner } from './CookieBanner'
+import { FloatingWhatsAppButton } from './FloatingWhatsAppButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
+
+/**
+ * Itens de menu configuráveis no topo para facilitar a manutenção pela equipe
+ */
+export interface HeaderMenuItem {
+  label: string
+  actionKey: 'comprar' | 'alugar' | 'contato'
+}
+
+export const HEADER_MENU_ITEMS: HeaderMenuItem[] = [
+  { label: 'Comprar', actionKey: 'comprar' },
+  { label: 'Alugar', actionKey: 'alugar' },
+  { label: 'Falar com a imobiliária', actionKey: 'contato' },
+]
 
 interface PublicLayoutProps {
   children: React.ReactNode
   orgName?: string
   showContactButton?: boolean
-  headerCenterSlot?: React.ReactNode
-  mobileSubHeaderSlot?: React.ReactNode
+  onSelectPurpose?: (purpose: 'venda' | 'locacao') => void
+  onOpenContact?: () => void
+  floatingWaClassName?: string
 }
 
 export const PublicLayout: React.FC<PublicLayoutProps> = ({
   children,
   orgName = 'Imobdigital',
   showContactButton = true,
-  headerCenterSlot,
-  mobileSubHeaderSlot,
+  onSelectPurpose,
+  onOpenContact,
+  floatingWaClassName,
 }) => {
-  const [contactOpen, setContactOpen] = useState(false)
+  const [internalContactOpen, setInternalContactOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [cookiePreferencesOpen, setCookiePreferencesOpen] = useState(false)
 
   const metaId = (import.meta.env.VITE_META_PIXEL_ID || '').trim()
   const googleId = (import.meta.env.VITE_GOOGLE_ADS_ID || '').trim()
   const hasMarketingPixels = Boolean(metaId || googleId)
 
+  const handleOpenContactModal = () => {
+    if (onOpenContact) {
+      onOpenContact()
+    } else {
+      setInternalContactOpen(true)
+    }
+  }
+
+  const handleMenuItemClick = (item: HeaderMenuItem) => {
+    setMobileMenuOpen(false)
+
+    if (item.actionKey === 'comprar') {
+      if (onSelectPurpose) {
+        onSelectPurpose('venda')
+      } else {
+        const heroEl = document.getElementById('hero-search-card')
+        if (heroEl) {
+          heroEl.scrollIntoView({ behavior: 'smooth' })
+        }
+      }
+    } else if (item.actionKey === 'alugar') {
+      if (onSelectPurpose) {
+        onSelectPurpose('locacao')
+      } else {
+        const heroEl = document.getElementById('hero-search-card')
+        if (heroEl) {
+          heroEl.scrollIntoView({ behavior: 'smooth' })
+        }
+      }
+    } else if (item.actionKey === 'contato') {
+      handleOpenContactModal()
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/20">
-      {/* Cabeçalho estilo Airbnb: barra fixa no topo com divisor de 1 px */}
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      {/* Cabeçalho estilo Airbnb: barra fixa no topo com divisor de 1 px e fundo opaco sem transparência */}
+      <header className="sticky top-0 z-40 w-full border-b border-border bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="h-20 flex items-center justify-between gap-3 sm:gap-4">
-            {/* À esquerda: nome da imobiliária em texto (peso 600, sem ícone nem quadro colorido) */}
+            {/* À esquerda: nome da imobiliária em texto (peso 600, sem logo) */}
             <div className="flex-1 min-w-0 flex items-center">
               <Link
-                to="/buscar"
+                to="/"
                 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground hover:opacity-90 transition-opacity truncate"
               >
                 {orgName}
               </Link>
             </div>
 
-            {/* No centro (desktop): a busca em pílula */}
-            {headerCenterSlot && (
-              <div className="hidden md:flex flex-1 items-center justify-center px-4 max-w-2xl">
-                {headerCenterSlot}
-              </div>
-            )}
+            {/* No desktop (a partir de md): Comprar, Alugar e a pílula de contorno Falar com a imobiliária */}
+            <nav
+              className="hidden md:flex items-center gap-2 lg:gap-3 shrink-0"
+              aria-label="Menu principal"
+            >
+              {HEADER_MENU_ITEMS.map((item) => {
+                if (item.actionKey === 'contato') {
+                  if (!showContactButton) return null
+                  return (
+                    <Button
+                      key={item.actionKey}
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleMenuItemClick(item)}
+                      aria-label={item.label}
+                      className="font-medium text-sm rounded-full border-border hover:bg-muted text-foreground h-11 px-5 min-h-[44px] inline-flex items-center justify-center transition-colors shrink-0"
+                    >
+                      {item.label}
+                    </Button>
+                  )
+                }
 
-            {/* À direita: botão "Falar com a imobiliária" (de contorno, raio 8 px) */}
-            <div className="shrink-0 flex items-center">
-              {showContactButton && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setContactOpen(true)}
-                  aria-label="Falar com a imobiliária"
-                  className="font-medium text-sm rounded-[8px] border-border hover:bg-muted text-foreground h-11 px-3 sm:px-4 min-h-[44px] min-w-[44px] inline-flex items-center justify-center transition-colors shrink-0"
-                >
-                  <MessageSquare className="h-4 w-4 sm:hidden shrink-0" aria-hidden="true" />
-                  <span className="hidden sm:inline">Falar com a imobiliária</span>
-                </Button>
-              )}
+                return (
+                  <button
+                    key={item.actionKey}
+                    type="button"
+                    onClick={() => handleMenuItemClick(item)}
+                    className="text-sm font-medium text-foreground hover:text-muted-foreground transition-colors px-3 py-2 min-h-[44px] inline-flex items-center"
+                  >
+                    {item.label}
+                  </button>
+                )
+              })}
+            </nav>
+
+            {/* No celular: botão de menu (ícone, 44 px) à direita */}
+            <div className="md:hidden shrink-0 flex items-center">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="Abrir menu de navegação"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-[8px] border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
             </div>
           </div>
-
-          {/* No celular: a pílula de busca ocupa a largura toda numa segunda linha abaixo do nome */}
-          {mobileSubHeaderSlot && (
-            <div className="pb-3 md:hidden w-full">{mobileSubHeaderSlot}</div>
-          )}
         </div>
       </header>
+
+      {/* Folha móvel de navegação para celular */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent
+          side="right"
+          className="w-[280px] sm:w-[320px] p-6 flex flex-col justify-between"
+        >
+          <div className="space-y-6">
+            <SheetHeader className="text-left">
+              <SheetTitle className="text-lg font-semibold text-foreground">{orgName}</SheetTitle>
+            </SheetHeader>
+            <nav className="flex flex-col gap-2" aria-label="Menu móvel">
+              {HEADER_MENU_ITEMS.map((item) => {
+                if (item.actionKey === 'contato') {
+                  if (!showContactButton) return null
+                  return (
+                    <Button
+                      key={item.actionKey}
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleMenuItemClick(item)}
+                      className="w-full justify-start rounded-full font-medium text-sm border-border h-11 min-h-[44px] mt-2"
+                    >
+                      {item.label}
+                    </Button>
+                  )
+                }
+
+                return (
+                  <button
+                    key={item.actionKey}
+                    type="button"
+                    onClick={() => handleMenuItemClick(item)}
+                    className="w-full text-left py-3 px-3 text-base font-medium text-foreground hover:bg-muted rounded-[8px] transition-colors min-h-[44px] flex items-center"
+                  >
+                    {item.label}
+                  </button>
+                )
+              })}
+            </nav>
+          </div>
+          <div className="pt-6 border-t border-border flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Tema</span>
+            <ThemeToggle size="sm" />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Conteúdo da página */}
       <main className="flex-1">{children}</main>
 
-      {/* Rodapé: o nome e o ano, o ThemeToggle e, se existir, "Preferências de cookies" em texto simples, num divisor de 1 px */}
+      {/* Botão flutuante de WhatsApp (sempre visível, canto inferior direito) */}
+      <FloatingWhatsAppButton className={floatingWaClassName} />
+
+      {/* Rodapé: o nome e o ano, o ThemeToggle e, se existir, "Preferências de cookies" */}
       <footer className="border-t border-border bg-background py-8 px-4 text-center text-sm text-muted-foreground">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} {orgName}. Todos os direitos reservados.
+          <p className="text-sm text-muted-foreground min-h-[44px] inline-flex items-center">
+            © {new Date().getFullYear()}{' '}
+            <Link
+              to="/"
+              className="font-semibold text-foreground hover:underline ml-1 min-h-[44px] inline-flex items-center px-1"
+            >
+              {orgName}
+            </Link>
+            . Todos os direitos reservados.
           </p>
           <div className="flex items-center gap-4">
-            <ThemeToggle size="sm" />
+            <div className="min-h-[44px] inline-flex items-center">
+              <ThemeToggle size="sm" />
+            </div>
             {hasMarketingPixels && (
               <button
                 type="button"
                 onClick={() => setCookiePreferencesOpen(true)}
-                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors min-h-[44px] inline-flex items-center"
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors min-h-[44px] inline-flex items-center px-2"
               >
                 Preferências de cookies
               </button>
@@ -100,7 +231,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
       </footer>
 
       {/* Modal de contato */}
-      <PublicContactModal open={contactOpen} onOpenChange={setContactOpen} />
+      <PublicContactModal open={internalContactOpen} onOpenChange={setInternalContactOpen} />
 
       {/* Banner de cookies */}
       <CookieBanner

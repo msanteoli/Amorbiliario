@@ -1,17 +1,21 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   getFilters,
   searchProperties,
   PublicFiltersResponse,
   PublicPropertyListItem,
 } from '@/services/publicSite'
-import { PUBLIC_PROPERTY_TYPE_LABELS, formatCurrencyBR } from '@/lib/publicSiteUtils'
+import { PUBLIC_PROPERTY_TYPE_LABELS } from '@/lib/publicSiteUtils'
 import { setFilters as saveFiltersToMemory } from '@/lib/searchMemory'
 import { initCampaignFromUrl } from '@/lib/campaign'
 import { initMarketingScripts } from '@/lib/marketing'
+import { useAuth } from '@/contexts/AuthContext'
 import { PublicLayout } from '@/components/public/PublicLayout'
 import { PropertyCard } from '@/components/public/PropertyCard'
+import { HeroSearchCard } from '@/components/public/HeroSearchCard'
+import { FeaturedSlider } from '@/components/public/FeaturedSlider'
+import { CompactSearchBar } from '@/components/public/CompactSearchBar'
 import { SearchFilterBar, FilterValues } from '@/components/public/SearchFilterBar'
 import { CategoryBar } from '@/components/public/CategoryBar'
 import { PublicContactModal } from '@/components/public/PublicContactModal'
@@ -20,13 +24,26 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { AlertCircle, RotateCcw, X, MessageSquare } from 'lucide-react'
 
 export const BuscarPage: React.FC = () => {
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // Se o usuário está em "/" e autenticado, redireciona para "/hoje"
+  useEffect(() => {
+    if (location.pathname === '/' && !authLoading && isAuthenticated) {
+      navigate('/hoje', { replace: true })
+    }
+  }, [location.pathname, authLoading, isAuthenticated, navigate])
 
   // Filtros dinâmicos obtidos de /public/filters
   const [filterMeta, setFilterMeta] = useState<PublicFiltersResponse | null>(null)
   const [metaError, setMetaError] = useState<string | null>(null)
 
-  // Lista de imóveis e paginação
+  // Imóveis em destaque para o slide do hero (searchProperties sort 'recent', per_page 8, até 5 com capa)
+  const [featuredProperties, setFeaturedProperties] = useState<PublicPropertyListItem[]>([])
+
+  // Lista de imóveis e paginação da grade
   const [items, setItems] = useState<PublicPropertyListItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -35,8 +52,14 @@ export const BuscarPage: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
 
-  // Modal de contato para estado vazio
-  const [emptyContactOpen, setEmptyContactOpen] = useState(false)
+  // Modais de contato e filtros completos
+  const [contactOpen, setContactOpen] = useState(false)
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
+
+  // Controle da barra compacta ao rolar para baixo com busca ativa
+  const [showCompactBar, setShowCompactBar] = useState(false)
+  const heroRef = useRef<HTMLDivElement>(null)
+  const resultsRef = useRef<HTMLDivElement>(null)
 
   // Lê parâmetros da URL
   const getFilterValuesFromUrl = useCallback((): FilterValues => {
@@ -66,7 +89,17 @@ export const BuscarPage: React.FC = () => {
 
   const [currentFilters, setCurrentFilters] = useState<FilterValues>(getFilterValuesFromUrl)
 
-  // Guarda campanha e inicializa scripts na primeira carga
+  // Atualiza título da página
+  const orgName = filterMeta?.organization?.name || 'Imobdigital'
+  useEffect(() => {
+    const prevTitle = document.title
+    document.title = `Imóveis para comprar e alugar | ${orgName}`
+    return () => {
+      document.title = prevTitle
+    }
+  }, [orgName])
+
+  // Campanha e scripts
   useEffect(() => {
     initCampaignFromUrl()
     initMarketingScripts()
@@ -91,12 +124,32 @@ export const BuscarPage: React.FC = () => {
     }
   }, [])
 
-  // Quando o searchParams mudar (ex: back/forward do navegador), sincroniza currentFilters
+  // Carrega destaques do slider: searchProperties sort 'recent', per_page 8, até 5 com capa
+  useEffect(() => {
+    let mounted = true
+    searchProperties({
+      sort: 'recent',
+      per_page: 8,
+    })
+      .then((res) => {
+        if (!mounted) return
+        const withCover = res.items.filter((p) => Boolean(p.cover)).slice(0, 5)
+        setFeaturedProperties(withCover)
+      })
+      .catch(() => {
+        // slider vazio é tratado escondendo o slide e centralizando a busca
+      })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  // Sincroniza currentFilters com a URL
   useEffect(() => {
     setCurrentFilters(getFilterValuesFromUrl())
   }, [getFilterValuesFromUrl])
 
-  // Executa busca sempre que currentFilters mudar (reinicia página 1)
+  // Busca imóveis na grade
   useEffect(() => {
     let active = true
     setLoading(true)
@@ -143,8 +196,38 @@ export const BuscarPage: React.FC = () => {
     }
   }, [currentFilters])
 
-  // Handler para atualizar filtros e sincronizar com URL
-  const handleFiltersChange = (newValues: FilterValues) => {
+  // Verifica se há busca ativa (filtros além da finalidade padrão)
+  const isSearchActive = Boolean(
+    currentFilters.type ||
+    currentFilters.neighborhood ||
+    currentFilters.bedrooms ||
+    currentFilters.parking ||
+    currentFilters.min_price ||
+    currentFilters.max_price ||
+    (currentFilters.sort && currentFilters.sort !== 'recent'),
+  )
+
+  // Observa rolagem para exibir barra compacta quando rolar abaixo do hero com busca ativa
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!heroRef.current) return
+      const rect = heroRef.current.getBoundingClientRect()
+      // Se passou da base do hero e há busca ativa
+      if (rect.bottom < 80 && isSearchActive) {
+        setShowCompactBar(true)
+      } else {
+        setShowCompactBar(false)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [isSearchActive])
+
+  // Handler para aplicar novos filtros
+  const handleFiltersChange = (newValues: FilterValues, shouldScroll = false) => {
     const params = new URLSearchParams()
     params.set('purpose', newValues.purpose)
     if (newValues.type) params.set('type', newValues.type)
@@ -157,9 +240,22 @@ export const BuscarPage: React.FC = () => {
 
     setSearchParams(params, { replace: true })
     setCurrentFilters(newValues)
+
+    if (shouldScroll) {
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+      setTimeout(() => {
+        if (resultsRef.current) {
+          resultsRef.current.scrollIntoView({
+            behavior: prefersReducedMotion ? 'auto' : 'smooth',
+          })
+        }
+      }, 50)
+    }
   }
 
-  // Limpa todos os filtros mantendo apenas a finalidade Comprar (padrão)
   const handleClearFilters = () => {
     const cleared: FilterValues = {
       purpose: 'venda',
@@ -177,7 +273,6 @@ export const BuscarPage: React.FC = () => {
     setCurrentFilters(cleared)
   }
 
-  // Remove um filtro específico a partir de sua chip
   const handleRemoveSingleFilter = (key: keyof FilterValues) => {
     const updated = { ...currentFilters }
     if (key === 'purpose') {
@@ -190,7 +285,6 @@ export const BuscarPage: React.FC = () => {
     handleFiltersChange(updated)
   }
 
-  // Carrega mais imóveis (paginação)
   const handleLoadMore = async () => {
     if (loadingMore || page >= totalPages) return
     setLoadingMore(true)
@@ -220,6 +314,43 @@ export const BuscarPage: React.FC = () => {
     } finally {
       setLoadingMore(false)
     }
+  }
+
+  // Se o visitante acessou / e o auth ainda está carregando, mostra o esqueleto
+  if (location.pathname === '/' && authLoading) {
+    return (
+      <PublicLayout orgName={orgName} showContactButton={true}>
+        <div className="w-full bg-muted py-8 sm:py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-7 bg-card rounded-[24px] p-6 sm:p-8 space-y-4">
+                <Skeleton className="h-12 w-3/4 rounded-[8px]" />
+                <Skeleton className="h-6 w-1/2 rounded-[8px]" />
+                <Skeleton className="h-14 w-full rounded-full mt-4" />
+                <div className="flex gap-2 pt-2">
+                  <Skeleton className="h-10 w-24 rounded-full" />
+                  <Skeleton className="h-10 w-24 rounded-full" />
+                </div>
+              </div>
+              <div className="lg:col-span-5 hidden lg:block">
+                <Skeleton className="aspect-[4/3] w-full rounded-[24px]" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton className="aspect-[4/3] w-full rounded-[12px]" />
+                <Skeleton className="h-5 w-3/4 rounded-[8px]" />
+                <Skeleton className="h-4 w-1/2 rounded-[8px]" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </PublicLayout>
+    )
   }
 
   // Gera a lista de chips de filtros ativos
@@ -271,36 +402,100 @@ export const BuscarPage: React.FC = () => {
     })
   }
 
-  const orgName = filterMeta?.organization?.name || 'Imobdigital'
-
-  const searchFilterBarComponent = (
-    <SearchFilterBar
-      values={currentFilters}
-      neighborhoods={filterMeta?.neighborhoods || []}
-      types={filterMeta?.types || []}
-      onChange={handleFiltersChange}
-      onClear={handleClearFilters}
-    />
-  )
+  const hasFeatured = featuredProperties.length > 0
 
   return (
     <PublicLayout
       orgName={orgName}
       showContactButton={true}
-      headerCenterSlot={searchFilterBarComponent}
-      mobileSubHeaderSlot={searchFilterBarComponent}
+      onSelectPurpose={(p) => {
+        handleFiltersChange({ ...currentFilters, purpose: p }, false)
+        const heroEl = document.getElementById('hero-search-card')
+        if (heroEl) {
+          heroEl.scrollIntoView({ behavior: 'smooth' })
+        }
+      }}
+      onOpenContact={() => setContactOpen(true)}
     >
-      {/* Faixa de Categorias (logo abaixo do cabeçalho) */}
+      {/* 3) ÁREA DE DESTAQUE (HERO): largura total, cerca de 520 px no desktop, fundo muted */}
+      <section
+        ref={heroRef}
+        aria-label="Destaque da página inicial"
+        className="w-full bg-muted py-6 sm:py-8 lg:py-12 border-b border-border overflow-hidden"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          {hasFeatured ? (
+            /* Em duas colunas no desktop (a partir de 1024 px: ~55% busca, ~45% slider). No tablet/celular: 1 coluna */
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+              {/* Cartão de busca (~55%) */}
+              <div className="lg:col-span-7 w-full flex items-center">
+                <HeroSearchCard
+                  values={currentFilters}
+                  neighborhoods={filterMeta?.neighborhoods || []}
+                  types={filterMeta?.types || []}
+                  onSearch={(newVals) => handleFiltersChange(newVals, true)}
+                  onOpenMoreFilters={() => setMoreFiltersOpen(true)}
+                />
+              </div>
+
+              {/* Slide de destaques (~45%) */}
+              <div className="lg:col-span-5 w-full flex items-center justify-center">
+                <FeaturedSlider properties={featuredProperties} />
+              </div>
+            </div>
+          ) : (
+            /* Sem imóveis com foto: cartão de busca centralizado (largura máx 720 px) */
+            <div className="max-w-[720px] mx-auto">
+              <HeroSearchCard
+                values={currentFilters}
+                neighborhoods={filterMeta?.neighborhoods || []}
+                types={filterMeta?.types || []}
+                onSearch={(newVals) => handleFiltersChange(newVals, true)}
+                onOpenMoreFilters={() => setMoreFiltersOpen(true)}
+              />
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Barra de busca compacta fixa logo abaixo do cabeçalho quando rolar com busca ativa */}
+      {showCompactBar && (
+        <CompactSearchBar
+          values={currentFilters}
+          onAlterarClick={() => {
+            const heroEl = document.getElementById('hero-search-card')
+            if (heroEl) {
+              heroEl.scrollIntoView({ behavior: 'smooth' })
+            }
+          }}
+        />
+      )}
+
+      {/* 6) CATEGORIAS E RESULTADOS: faixa de categorias com 44 px de altura */}
       <CategoryBar
         types={filterMeta?.types || []}
         selectedType={currentFilters.type}
         onSelectType={(newType) => {
-          handleFiltersChange({ ...currentFilters, type: newType })
+          handleFiltersChange({ ...currentFilters, type: newType }, true)
         }}
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Abaixo do cabeçalho: os filtros ativos aparecem como pílulas de contorno removíveis ('x' com 44 px de toque) */}
+      <div ref={resultsRef} className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* Título "Imóveis disponíveis" (peso 600) com contagem em texto de apoio */}
+        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 pb-1">
+          <div className="space-y-1">
+            <h2 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
+              Imóveis disponíveis
+            </h2>
+            {!loading && !searchError && (
+              <p className="text-sm text-muted-foreground">
+                {total === 1 ? '1 imóvel disponível' : `${total} imóveis disponíveis`}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Filtros ativos como pílulas removíveis (o "x" com 44 px de toque) */}
         {activeChips.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <span className="text-xs font-medium text-muted-foreground mr-1">Filtros ativos:</span>
@@ -314,32 +509,23 @@ export const BuscarPage: React.FC = () => {
                   type="button"
                   onClick={() => handleRemoveSingleFilter(chip.id)}
                   aria-label={`Remover filtro ${chip.label}`}
-                  className="inline-flex items-center justify-center w-7 h-7 sm:w-6 sm:h-6 min-w-[44px] min-h-[44px] sm:min-w-[28px] sm:min-h-[28px] rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="inline-flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-4 w-4" />
                 </button>
               </span>
             ))}
             <button
               type="button"
               onClick={handleClearFilters}
-              className="text-xs font-medium text-muted-foreground hover:text-foreground underline underline-offset-4 ml-2 min-h-[44px] inline-flex items-center px-1"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground underline underline-offset-4 ml-2 min-h-[44px] inline-flex items-center px-2"
             >
               Limpar todos
             </button>
           </div>
         )}
 
-        {/* Contagem ("12 imóveis") em texto de apoio */}
-        {!loading && !searchError && items.length > 0 && (
-          <div className="pt-2">
-            <p className="text-sm text-muted-foreground">
-              {total === 1 ? '1 imóvel' : `${total} imóveis`}
-            </p>
-          </div>
-        )}
-
-        {/* Mensagem de Erro: mensagem do servidor e "Tentar novamente" */}
+        {/* Mensagem de Erro */}
         {searchError && (
           <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-[8px] text-destructive text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -357,7 +543,7 @@ export const BuscarPage: React.FC = () => {
           </div>
         )}
 
-        {/* Grade de Resultados ou Esqueleto de Carregamento imitador */}
+        {/* Grade de Resultados ou Esqueleto de Carregamento */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -381,7 +567,7 @@ export const BuscarPage: React.FC = () => {
               ))}
             </div>
 
-            {/* "Mostrar mais" como pílula de contorno centralizada */}
+            {/* "Mostrar mais" */}
             {page < totalPages && (
               <div className="flex justify-center pt-6 pb-4">
                 <Button
@@ -396,7 +582,7 @@ export const BuscarPage: React.FC = () => {
             )}
           </div>
         ) : (
-          /* Estado vazio: "Nenhum imóvel com esses filtros." com a linha "Remova um filtro ou fale com a imobiliária." e as pílulas "Limpar filtros" e "Falar com a imobiliária" */
+          /* Estado vazio */
           <div className="py-20 text-center space-y-4 max-w-md mx-auto">
             <h3 className="text-xl font-semibold text-foreground tracking-tight">
               Nenhum imóvel com esses filtros.
@@ -415,7 +601,7 @@ export const BuscarPage: React.FC = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setEmptyContactOpen(true)}
+                onClick={() => setContactOpen(true)}
                 className="rounded-full px-5 py-2.5 text-sm font-medium border-border min-h-[44px]"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
@@ -426,9 +612,21 @@ export const BuscarPage: React.FC = () => {
         )}
       </div>
 
-      {/* Modal de contato acionado pelo estado vazio */}
-      <PublicContactModal open={emptyContactOpen} onOpenChange={setEmptyContactOpen} />
+      {/* Painel Completo de Filtros (Sheet no celular com rodapé fixo / Dialog no desktop) */}
+      <SearchFilterBar
+        open={moreFiltersOpen}
+        onOpenChange={setMoreFiltersOpen}
+        values={currentFilters}
+        neighborhoods={filterMeta?.neighborhoods || []}
+        types={filterMeta?.types || []}
+        onChange={(newVals) => handleFiltersChange(newVals, true)}
+        onClear={handleClearFilters}
+      />
+
+      {/* Modal de contato */}
+      <PublicContactModal open={contactOpen} onOpenChange={setContactOpen} />
     </PublicLayout>
   )
 }
+
 export default BuscarPage

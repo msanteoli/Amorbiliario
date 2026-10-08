@@ -31,12 +31,12 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({ types, selectedType, o
     <div className="w-full border-b border-border bg-background py-3">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Fileira de pílulas de contorno com rolagem horizontal (sem barra visível) */}
-        <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-none py-1">
+        <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-none py-1 h-[44px]">
           {/* Opção Todos */}
           <button
             type="button"
             onClick={() => onSelectType('')}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-medium border transition-all shrink-0 min-h-[44px] ${
+            className={`inline-flex items-center gap-2 px-4 h-[44px] rounded-full text-xs sm:text-sm font-medium border transition-all shrink-0 min-h-[44px] ${
               !selectedType
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-foreground/30'
@@ -57,7 +57,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({ types, selectedType, o
                 key={t.value}
                 type="button"
                 onClick={() => onSelectType(isSelected ? '' : t.value)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-medium border transition-all shrink-0 min-h-[44px] ${
+                className={`inline-flex items-center gap-2 px-4 h-[44px] rounded-full text-xs sm:text-sm font-medium border transition-all shrink-0 min-h-[44px] ${
                   isSelected
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-foreground/30'

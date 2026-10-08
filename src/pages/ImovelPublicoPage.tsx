@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { getProperty, getFilters, PublicPropertyDetail } from '@/services/publicSite'
 import { addViewed } from '@/lib/searchMemory'
@@ -20,10 +20,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
-  Bed,
-  Bath,
-  Car,
-  Maximize2,
   Building,
   Receipt,
   MessageCircle,
@@ -31,6 +27,12 @@ import {
   AlertCircle,
   Grid,
 } from 'lucide-react'
+
+interface DayGroup {
+  dateKey: string // YYYY-MM-DD
+  dayLabel: string // "qui 08/10"
+  slots: Array<{ start: string; end: string; timeLabel: string }>
+}
 
 export const ImovelPublicoPage: React.FC = () => {
   const { codigo } = useParams<{ codigo: string }>()
@@ -50,8 +52,8 @@ export const ImovelPublicoPage: React.FC = () => {
 
   // Horários de visita disponíveis
   const [slots, setSlots] = useState<Array<{ start: string; end: string }>>([])
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
-  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
+  const [selectedSlotStart, setSelectedSlotStart] = useState<string | null>(null)
 
   useEffect(() => {
     initCampaignFromUrl()
@@ -91,7 +93,6 @@ export const ImovelPublicoPage: React.FC = () => {
 
         // Busca slots de visita
         const backendUrl = (import.meta.env.VITE_POCKETBASE_URL || '').replace(/\/$/, '')
-        setLoadingSlots(true)
         fetch(`${backendUrl}/backend/v1/public/properties/${encodeURIComponent(data.code)}/slots`)
           .then((res) => (res.ok ? res.json() : null))
           .then((slotsData) => {
@@ -101,9 +102,6 @@ export const ImovelPublicoPage: React.FC = () => {
           })
           .catch(() => {
             // slots são opcionais caso dê erro
-          })
-          .finally(() => {
-            setLoadingSlots(false)
           })
       })
       .catch((err: unknown) => {
@@ -116,10 +114,91 @@ export const ImovelPublicoPage: React.FC = () => {
         }
       })
       .finally(() => {
-        setLoadingSlots(false)
         setLoading(false)
       })
   }, [codigo])
+
+  // Agrupamento de horários por dia (faixa horizontal de dias + horários do dia em 2 colunas)
+  const dayGroups: DayGroup[] = useMemo(() => {
+    if (!slots || slots.length === 0) return []
+
+    const dias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+    const map = new Map<string, DayGroup>()
+
+    for (const slot of slots) {
+      try {
+        const d = new Date(slot.start)
+        const year = d.getFullYear()
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        const dateKey = `${year}-${month}-${day}`
+
+        const diaSemana = dias[d.getDay()]
+        const dayLabel = `${diaSemana} ${day}/${month}`
+
+        const hour = String(d.getHours()).padStart(2, '0')
+        const min = String(d.getMinutes()).padStart(2, '0')
+        const timeLabel = `${hour}:${min}`
+
+        if (!map.has(dateKey)) {
+          map.set(dateKey, {
+            dateKey,
+            dayLabel,
+            slots: [],
+          })
+        }
+        map.get(dateKey)!.slots.push({
+          start: slot.start,
+          end: slot.end,
+          timeLabel,
+        })
+      } catch {
+        // Ignora slot inválido
+      }
+    }
+
+    return Array.from(map.values())
+  }, [slots])
+
+  // Seleciona automaticamente o primeiro dia com horários
+  useEffect(() => {
+    if (dayGroups.length > 0 && !selectedDayKey) {
+      setSelectedDayKey(dayGroups[0].dateKey)
+    }
+  }, [dayGroups, selectedDayKey])
+
+  // Atualiza document.title e meta description da ficha
+  useEffect(() => {
+    const prevTitle = document.title
+    let metaDescriptionEl = document.querySelector('meta[name="description"]')
+    const prevMetaDesc = metaDescriptionEl ? metaDescriptionEl.getAttribute('content') : null
+
+    if (notFound) {
+      document.title = `Imóvel indisponível | ${orgName}`
+    } else if (property) {
+      const loc = [property.neighborhood, property.city].filter(Boolean).join(', ')
+      document.title = `${property.title}${loc ? ` — ${loc}` : ''} | ${orgName}`
+
+      // Meta descrição com os primeiros 150 caracteres da descrição em texto puro
+      if (property.description) {
+        const pureDesc = property.description.replace(/\s+/g, ' ').trim().slice(0, 150)
+
+        if (!metaDescriptionEl) {
+          metaDescriptionEl = document.createElement('meta')
+          metaDescriptionEl.setAttribute('name', 'description')
+          document.head.appendChild(metaDescriptionEl)
+        }
+        metaDescriptionEl.setAttribute('content', pureDesc)
+      }
+    }
+
+    return () => {
+      document.title = prevTitle
+      if (prevMetaDesc !== null && metaDescriptionEl) {
+        metaDescriptionEl.setAttribute('content', prevMetaDesc)
+      }
+    }
+  }, [property, notFound, orgName])
 
   const photos = property?.photos || []
 
@@ -128,13 +207,9 @@ export const ImovelPublicoPage: React.FC = () => {
     setPhotoViewerOpen(true)
   }
 
-  const handleWhatsAppClick = () => {
-    if (!property) return
-    trackWhatsapp(property.code)
-    const msg = `Olá! Vi o imóvel ${property.code} no site e gostaria de mais informações.`
-    // Abre contato pelo modal se não houver link direto ou abre wa.me padrão
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`
-    window.open(waUrl, '_blank', 'noopener,noreferrer')
+  // O botão "Falar no WhatsApp" da ficha abre o formulário de contato (que cria o lead)
+  const handleFichaWhatsAppClick = () => {
+    setContactOpen(true)
   }
 
   // Identificador de transição único por imóvel (mesmo do PropertyCard)
@@ -226,7 +301,6 @@ export const ImovelPublicoPage: React.FC = () => {
   const salePriceStr = property.sale ? formatPrice(property.sale, 'sale') : null
   const rentPriceStr = property.rent ? formatPrice(property.rent, 'rent') : null
 
-  // Dados formatados para linha separada por pontos
   const specsItems: string[] = []
   if (property.bedrooms > 0) {
     specsItems.push(`${property.bedrooms} ${property.bedrooms === 1 ? 'quarto' : 'quartos'}`)
@@ -241,24 +315,14 @@ export const ImovelPublicoPage: React.FC = () => {
     specsItems.push(`${property.area} m²`)
   }
 
-  // Formata slot para pílula
-  const formatSlotLabel = (isoStart: string) => {
-    try {
-      const d = new Date(isoStart)
-      const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-      const diaSemana = dias[d.getDay()]
-      const dia = String(d.getDate()).padStart(2, '0')
-      const mes = String(d.getMonth() + 1).padStart(2, '0')
-      const hora = String(d.getHours()).padStart(2, '0')
-      const min = String(d.getMinutes()).padStart(2, '0')
-      return `${diaSemana}, ${dia}/${mes} às ${hora}h${min !== '00' ? min : ''}`
-    } catch {
-      return isoStart
-    }
-  }
+  const activeDayGroup = dayGroups.find((g) => g.dateKey === selectedDayKey) || dayGroups[0]
 
   return (
-    <PublicLayout orgName={orgName} showContactButton={true}>
+    <PublicLayout
+      orgName={orgName}
+      showContactButton={true}
+      floatingWaClassName="bottom-20 lg:bottom-4"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 pb-28 md:pb-16">
         {/* Navegação de volta e código */}
         <div className="flex items-center justify-between">
@@ -274,12 +338,11 @@ export const ImovelPublicoPage: React.FC = () => {
           </span>
         </div>
 
-        {/* Mosaico de fotos: no desktop, uma foto grande à esquerda (metade da largura) e quatro menores à direita em grade 2x2, raio 12 px nos cantos externos, com a pílula "Ver todas as fotos" no canto da grade. No celular, uma foto grande com contador "1 / N" e deslizar para as outras. */}
+        {/* Mosaico de fotos: desktop 1 grande + 4 menores em grade 2x2. Celular: foto única com 1/N */}
         {photos.length > 0 ? (
           <div>
             {/* Desktop: Mosaico 1 grande + 4 menores em grade 2x2 */}
             <div className="hidden md:relative md:grid md:grid-cols-2 gap-2.5 h-[420px] lg:h-[480px] rounded-[12px] overflow-hidden select-none">
-              {/* Foto Principal à esquerda */}
               <div
                 role="button"
                 tabIndex={0}
@@ -300,7 +363,6 @@ export const ImovelPublicoPage: React.FC = () => {
                 />
               </div>
 
-              {/* 4 Fotos menores à direita em grade 2x2 */}
               <div className="grid grid-cols-2 grid-rows-2 gap-2.5 h-full">
                 {Array.from({ length: 4 }).map((_, i) => {
                   const photoIdx = i + 1
@@ -339,7 +401,7 @@ export const ImovelPublicoPage: React.FC = () => {
                 })}
               </div>
 
-              {/* Pílula "Ver todas as fotos" no canto da grade */}
+              {/* Pílula "Ver todas as fotos" */}
               <button
                 type="button"
                 onClick={() => openViewer(0)}
@@ -350,7 +412,7 @@ export const ImovelPublicoPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Celular: Uma foto grande com contador "1 / N" e deslizar para as outras */}
+            {/* Celular: Uma foto grande com contador "1 / N" */}
             <div className="md:hidden relative aspect-[4/3] w-full rounded-[12px] overflow-hidden bg-muted border border-border">
               <img
                 src={getFullPhotoUrl(photos[mobilePhotoIndex]) || ''}
@@ -372,7 +434,7 @@ export const ImovelPublicoPage: React.FC = () => {
                       setMobilePhotoIndex((prev) => (prev - 1 + photos.length) % photos.length)
                     }
                     aria-label="Foto anterior"
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow min-h-[44px] min-w-[44px]"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow min-h-[44px] min-w-[44px]"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
@@ -380,7 +442,7 @@ export const ImovelPublicoPage: React.FC = () => {
                     type="button"
                     onClick={() => setMobilePhotoIndex((prev) => (prev + 1) % photos.length)}
                     aria-label="Próxima foto"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow min-h-[44px] min-w-[44px]"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow min-h-[44px] min-w-[44px]"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
@@ -398,22 +460,20 @@ export const ImovelPublicoPage: React.FC = () => {
           </div>
         )}
 
-        {/* Layout Principal: Coluna de Conteúdo (esquerda) e Cartão de Ação Fixo (direita no desktop) */}
+        {/* Layout Principal: Coluna de Conteúdo (esquerda) e Cartão de Ação (direita no desktop) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start pt-2">
           {/* Conteúdo textual da ficha */}
           <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-            {/* Título: peso 600 (26 px no celular, 32 px no desktop) */}
+            {/* Título: peso 600 */}
             <div className="space-y-2">
               <h1 className="text-[26px] sm:text-[32px] font-semibold text-foreground tracking-tight leading-tight">
                 {property.title}
               </h1>
 
-              {/* "tipo em bairro, cidade" em texto de apoio */}
               <p className="text-base text-muted-foreground font-normal">
                 {typeLabel} em {[property.neighborhood, property.city].filter(Boolean).join(', ')}
               </p>
 
-              {/* Fileira de dados (quartos, banheiros, vagas, área) separada por pontos */}
               {specsItems.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2 pt-1 text-sm font-medium text-foreground">
                   {specsItems.map((spec, i) => (
@@ -428,10 +488,9 @@ export const ImovelPublicoPage: React.FC = () => {
               )}
             </div>
 
-            {/* Divisor de 1 px */}
             <hr className="border-t border-border" />
 
-            {/* Descrição: em 16 px (peso 400, até 70 caracteres por linha), texto simples, quebras preservadas */}
+            {/* Descrição: até 70 caracteres por linha, texto simples */}
             <div className="space-y-3">
               <h2 className="text-lg font-semibold text-foreground">Sobre este imóvel</h2>
               {property.description ? (
@@ -445,7 +504,7 @@ export const ImovelPublicoPage: React.FC = () => {
               )}
             </div>
 
-            {/* Condomínio e IPTU quando houver */}
+            {/* Condomínio e IPTU */}
             {(property.condo_fee > 0 || property.iptu > 0) && (
               <>
                 <hr className="border-t border-border" />
@@ -479,12 +538,12 @@ export const ImovelPublicoPage: React.FC = () => {
               </>
             )}
 
-            {/* No celular: "Falar no WhatsApp" fica no corpo da página */}
+            {/* No celular: "Falar no WhatsApp" no corpo da página */}
             <div className="pt-4 md:hidden">
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleWhatsAppClick}
+                onClick={handleFichaWhatsAppClick}
                 className="w-full rounded-[8px] h-12 text-sm font-medium border-border min-h-[44px] gap-2"
               >
                 <MessageCircle className="h-4 w-4" />
@@ -493,10 +552,10 @@ export const ImovelPublicoPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Cartão de ação fixo (desktop): à direita, acompanhando a rolagem (sticky) */}
+          {/* Cartão de ação fixo (desktop) */}
           <div className="hidden lg:block lg:col-span-5 xl:col-span-4 sticky top-28">
             <div className="rounded-[16px] border border-border bg-card p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)] dark:shadow-none space-y-6">
-              {/* Preço em peso 600 (venda e locação) */}
+              {/* Preço em peso 600 */}
               <div className="space-y-1 tabular">
                 {salePriceStr && (
                   <div>
@@ -521,46 +580,76 @@ export const ImovelPublicoPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Escolha de horário de visita em pílulas selecionáveis (se houver slots) */}
-              {slots.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-border">
+              {/* Escolha de horário de visita:
+                  Faixa horizontal de dias ("qui 08/10", rolagem horizontal sem barra)
+                  Abaixo, os horários do dia escolhido em chips de 44 px e 2 colunas, sem rolagem interna. */}
+              {dayGroups.length > 0 && (
+                <div className="space-y-3 pt-3 border-t border-border">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground">
-                      Horários para visita
+                      Escolha o dia e horário da visita
                     </span>
-                    {selectedSlot && (
+                    {selectedSlotStart && (
                       <button
                         type="button"
-                        onClick={() => setSelectedSlot(null)}
+                        onClick={() => setSelectedSlotStart(null)}
                         className="text-[11px] text-muted-foreground hover:text-foreground underline min-h-[44px] inline-flex items-center"
                       >
                         Desmarcar
                       </button>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1">
-                    {slots.slice(0, 12).map((slot) => {
-                      const isSel = selectedSlot === slot.start
+
+                  {/* Faixa horizontal de dias com rolagem sem barra */}
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
+                    {dayGroups.map((group) => {
+                      const isSel = group.dateKey === selectedDayKey
                       return (
                         <button
-                          key={slot.start}
+                          key={group.dateKey}
                           type="button"
-                          onClick={() => setSelectedSlot(isSel ? null : slot.start)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all min-h-[36px] ${
+                          onClick={() => {
+                            setSelectedDayKey(group.dateKey)
+                            setSelectedSlotStart(null)
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all shrink-0 min-h-[44px] ${
                             isSel
-                              ? 'bg-primary text-primary-foreground border-primary'
+                              ? 'bg-primary text-primary-foreground border-primary font-semibold'
                               : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/30'
                           }`}
                         >
-                          {formatSlotLabel(slot.start)}
+                          {group.dayLabel}
                         </button>
                       )
                     })}
                   </div>
+
+                  {/* Horários do dia escolhido em chips de 44 px e 2 colunas, SEM rolagem interna */}
+                  {activeDayGroup && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      {activeDayGroup.slots.map((slot) => {
+                        const isSlotSel = selectedSlotStart === slot.start
+                        return (
+                          <button
+                            key={slot.start}
+                            type="button"
+                            onClick={() => setSelectedSlotStart(isSlotSel ? null : slot.start)}
+                            className={`h-11 px-3 rounded-[8px] text-xs font-medium border transition-all min-h-[44px] flex items-center justify-center ${
+                              isSlotSel
+                                ? 'bg-primary text-primary-foreground border-primary font-semibold'
+                                : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/30'
+                            }`}
+                          >
+                            {slot.timeLabel}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Botão "Agendar visita" (ação principal, preenchido, raio 8 px, 48 px de altura) */}
+              {/* Botões de Ação */}
               <div className="space-y-3 pt-2">
                 <Button
                   type="button"
@@ -571,11 +660,11 @@ export const ImovelPublicoPage: React.FC = () => {
                   <span>Agendar visita</span>
                 </Button>
 
-                {/* "Falar no WhatsApp" (contorno) */}
+                {/* "Falar no WhatsApp" (abre modal de contato, criando o lead) */}
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleWhatsAppClick}
+                  onClick={handleFichaWhatsAppClick}
                   className="w-full rounded-[8px] h-12 text-sm font-medium border-border min-h-[48px] gap-2"
                 >
                   <MessageCircle className="h-4 w-4" />
@@ -586,10 +675,9 @@ export const ImovelPublicoPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Celular: o cartão vira barra fixa no rodapé com o preço à esquerda e "Agendar visita" à direita. Espaço reservado no fim da página (pb-28) */}
+        {/* Celular: barra fixa no rodapé */}
         <div className="fixed bottom-0 inset-x-0 z-30 px-4 py-3 bg-background/95 backdrop-blur-md border-t border-border lg:hidden shadow-lg">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            {/* Preço à esquerda */}
             <div className="tabular min-w-0 flex-1">
               {salePriceStr && (
                 <div className="text-base font-semibold text-foreground truncate">
@@ -607,7 +695,6 @@ export const ImovelPublicoPage: React.FC = () => {
               <div className="text-[11px] text-muted-foreground truncate">Cód. {property.code}</div>
             </div>
 
-            {/* "Agendar visita" à direita */}
             <Button
               type="button"
               onClick={() => setContactOpen(true)}
@@ -618,7 +705,7 @@ export const ImovelPublicoPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Modal do visualizador de fotos em tela cheia */}
+        {/* Modal de foto em tela cheia */}
         <PhotoViewerModal
           open={photoViewerOpen}
           onOpenChange={setPhotoViewerOpen}
@@ -637,4 +724,5 @@ export const ImovelPublicoPage: React.FC = () => {
     </PublicLayout>
   )
 }
+
 export default ImovelPublicoPage
