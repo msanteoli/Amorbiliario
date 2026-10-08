@@ -80,6 +80,22 @@ onRecordUpdateRequest((e) => {
   rec.set('source', orig.getString('source'))
   rec.set('import_batch_id', orig.getString('import_batch_id'))
 
+  // destaque no site: só valida quando o destaque muda (editar outro campo de um destaque
+  // vencido não pode falhar)
+  const hlNew = rec.getString('highlight_level') || 'comum'
+  const hlOld = orig.getString('highlight_level') || 'comum'
+  const untilNew = rec.getString('highlight_until')
+  if (hlNew !== hlOld || untilNew !== orig.getString('highlight_until')) {
+    if (hlNew === 'comum') {
+      rec.set('highlight_until', '')
+    } else if (untilNew) {
+      const until = new Date(untilNew.replace(' ', 'T'))
+      if (isNaN(until.getTime()) || until.getTime() <= Date.now()) {
+        throw new BadRequestError('A data de fim do destaque precisa ser futura.')
+      }
+    }
+  }
+
   const missingItems = (r, photoCount) => {
     const m = []
     const num = (k) => Number(r.get(k) || 0)
@@ -156,6 +172,8 @@ onRecordUpdateRequest((e) => {
     'use_type',
     'in_condominium',
     'condominium_id',
+    'highlight_level',
+    'highlight_until',
   ]
   const changed = watched.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
   // só uma edição de verdade renova a data; o valor enviado pelo cliente nunca vale

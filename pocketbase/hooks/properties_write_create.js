@@ -87,6 +87,17 @@ onRecordCreateRequest((e) => {
   rec.set('source', 'manual')
   rec.set('import_batch_id', '')
 
+  // destaque no site: nível opcional; data de fim, se houver, precisa ser futura
+  const hl = rec.getString('highlight_level') || 'comum'
+  if (hl === 'comum') {
+    rec.set('highlight_until', '')
+  } else if (rec.getString('highlight_until')) {
+    const until = new Date(rec.getString('highlight_until').replace(' ', 'T'))
+    if (isNaN(until.getTime()) || until.getTime() <= Date.now()) {
+      throw new BadRequestError('A data de fim do destaque precisa ser futura.')
+    }
+  }
+
   rec.set('status', 'rascunho')
   rec.set('last_reviewed_at', new Date().toISOString())
 
