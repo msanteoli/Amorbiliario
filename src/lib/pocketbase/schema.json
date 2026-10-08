@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T19:08:34.410Z",
+  "generatedAt": "2026-10-08T19:12:13.399Z",
   "collections": [
     {
       "name": "users",
@@ -157,7 +157,7 @@
       "type": "base",
       "apiRules": {
         "list": "@request.auth.active = true && @request.auth.role = 'admin' && organization_id = @request.auth.organization_id",
-        "view": "@request.auth.active = true && @request.auth.role = 'admin' && organization_id = @request.auth.organization_id",
+        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id",
         "create": null,
         "update": null,
         "delete": null
