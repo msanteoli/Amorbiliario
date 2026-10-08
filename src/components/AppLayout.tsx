@@ -18,6 +18,7 @@ import {
   Building2,
   CalendarDays,
   CheckSquare,
+  Database,
   Home,
   LogOut,
   Settings,
@@ -40,6 +41,7 @@ function getScreenTitle(pathname: string): string {
   if (pathname === '/clientes' || pathname.startsWith('/clientes/')) return 'Clientes'
   if (pathname === '/imoveis' || pathname.startsWith('/imoveis/')) return 'Imóveis'
   if (pathname === '/condominios' || pathname.startsWith('/condominios/')) return 'Condomínios'
+  if (pathname === '/backup' || pathname.startsWith('/backup/')) return 'Backup'
   if (pathname === '/admin/importar-imoveis') return 'Importar imóveis'
   if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'Administração'
   return 'Imobdigital'
@@ -52,10 +54,11 @@ export function AppLayout() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  // Navigation items defined by specification:
-  // admin: Hoje, Leads, Clientes, Imóveis, Condomínios, Agenda, Administração
-  // sdr: Hoje, Leads, Clientes, Imóveis, Condomínios, Agenda
-  // corretor: Hoje, Leads, Clientes, Imóveis, Condomínios, Agenda
+  // Itens de navegação:
+  // Base (para todos): Hoje, Leads, Clientes, Imóveis, Condomínios, Agenda
+  // Admin e SDR: inclui Backup
+  // Admin: inclui também Administração
+  // Outros papéis (corretor, etc): não veem Backup nem Administração
   const baseItems: NavItem[] = [
     { title: 'Hoje', url: '/hoje', icon: CheckSquare },
     { title: 'Leads', url: '/leads', icon: Users },
@@ -65,10 +68,13 @@ export function AppLayout() {
     { title: 'Agenda', url: '/agenda', icon: CalendarDays },
   ]
 
-  const navItems: NavItem[] =
-    role === 'admin'
-      ? [...baseItems, { title: 'Administração', url: '/admin', icon: Settings }]
-      : baseItems
+  const canSeeBackup = role === 'admin' || role === 'sdr'
+
+  const navItems: NavItem[] = [
+    ...baseItems,
+    ...(canSeeBackup ? [{ title: 'Backup', url: '/backup', icon: Database }] : []),
+    ...(role === 'admin' ? [{ title: 'Administração', url: '/admin', icon: Settings }] : []),
+  ]
 
   const currentScreenTitle = getScreenTitle(location.pathname)
 

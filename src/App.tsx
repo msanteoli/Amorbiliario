@@ -4,7 +4,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AuthProvider } from '@/contexts/AuthContext'
-import { ProtectedRoute, AdminRoute } from '@/components/ProtectedRoute'
+import { ProtectedRoute, AdminRoute, BackupRoute } from '@/components/ProtectedRoute'
 import { AppLayout } from '@/components/AppLayout'
 
 import Login from '@/pages/Login'
@@ -27,6 +27,7 @@ import EditarImovel from '@/pages/EditarImovel'
 import Condominios from '@/pages/Condominios'
 import CondominioDetalhe from '@/pages/CondominioDetalhe'
 import Agenda from '@/pages/Agenda'
+import Backup from '@/pages/Backup'
 import Admin from '@/pages/Admin'
 import ImportarImoveis from '@/pages/ImportarImoveis'
 import NotFound from '@/pages/NotFound'
@@ -69,6 +70,10 @@ const App = () => (
                 <Route path="/condominios" element={<Condominios />} />
                 <Route path="/condominios/:id" element={<CondominioDetalhe />} />
                 <Route path="/agenda" element={<Agenda />} />
+                {/* Backup: Admin & SDR route */}
+                <Route element={<BackupRoute />}>
+                  <Route path="/backup" element={<Backup />} />
+                </Route>
                 {/* Admin-only route */}
                 <Route element={<AdminRoute />}>
                   <Route path="/admin" element={<Admin />} />
