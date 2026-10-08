@@ -110,9 +110,10 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
                       key={item.actionKey}
                       type="button"
                       variant="outline"
+                      size="default"
                       onClick={() => handleMenuItemClick(item)}
                       aria-label={item.label}
-                      className="font-medium text-sm rounded-full border-border hover:bg-muted text-foreground h-11 px-5 min-h-[44px] inline-flex items-center justify-center transition-colors shrink-0"
+                      className="font-medium text-sm rounded-full border-border hover:bg-muted text-foreground h-11 md:h-11 min-h-[44px] md:min-h-[44px] px-5 py-2.5 inline-flex items-center justify-center transition-colors shrink-0"
                     >
                       {item.label}
                     </Button>
@@ -203,12 +204,9 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
       {/* Rodapé: o nome e o ano, o ThemeToggle e, se existir, "Preferências de cookies" */}
       <footer className="border-t border-border bg-background pt-8 pb-24 px-4 text-center text-sm text-muted-foreground">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground min-h-[44px] inline-flex items-center">
+          <p className="text-sm text-muted-foreground leading-normal py-2">
             © {new Date().getFullYear()}{' '}
-            <Link
-              to="/"
-              className="font-semibold text-foreground hover:underline ml-1 min-h-[44px] inline-flex items-center px-1"
-            >
+            <Link to="/" className="font-semibold text-foreground hover:underline inline">
               {orgName}
             </Link>
             . Todos os direitos reservados.
