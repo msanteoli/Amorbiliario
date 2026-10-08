@@ -103,6 +103,23 @@ routerAdd(
       return { street: noNumber, number: 'S/N', sn: true, extra: '' }
     }
 
+    // captador padrão (opcional): quem não for achado pelo nome fica com este usuário
+    let defaultCaptor = null
+    const defaultId = text(body.default_captor_id)
+    if (defaultId) {
+      try {
+        defaultCaptor = $app.findRecordById('users', defaultId)
+      } catch (_) {}
+      if (
+        !defaultCaptor ||
+        defaultCaptor.get('organization_id') !== orgId ||
+        defaultCaptor.get('active') !== true ||
+        ['corretor', 'admin'].indexOf(String(defaultCaptor.get('role'))) < 0
+      ) {
+        throw new BadRequestError('Captador padrão inválido: escolha um corretor ou admin ativo.')
+      }
+    }
+
     const users = $app.findRecordsByFilter(
       'users',
       'organization_id = {:o} && active = true',
@@ -186,8 +203,13 @@ routerAdd(
       const capKey = key(r['Captador(es)'])
       let captor = byName[capKey]
       if (!captor) {
-        captor = actor.id
-        out.notas.push('captador_nao_encontrado')
+        if (defaultCaptor) {
+          captor = defaultCaptor.id
+          out.notas.push('captador_padrao')
+        } else {
+          captor = actor.id
+          out.notas.push('captador_nao_encontrado')
+        }
       }
 
       const prop = {

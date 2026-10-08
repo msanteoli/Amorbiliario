@@ -22,6 +22,13 @@ routerAdd(
     const role = String(body.role || '')
     if (['admin', 'sdr', 'corretor'].indexOf(role) < 0) throw new BadRequestError('Papel inválido.')
 
+    // convite: por padrão envia o e-mail; send_invite=false cria a conta sem enviar nada (a pessoa
+    // só entra depois que o admin reenviar o convite)
+    if (body.send_invite !== undefined && typeof body.send_invite !== 'boolean') {
+      throw new BadRequestError('send_invite deve ser verdadeiro ou falso.')
+    }
+    const invite = body.send_invite !== false
+
     const same = $app.findRecordsByFilter('users', 'email = {:m}', '', 1, 0, { m: email })
     if (same.length) throw new BadRequestError('Já existe um usuário com este e-mail.')
 
@@ -36,11 +43,13 @@ routerAdd(
     $app.save(user)
 
     let sent = false
-    try {
-      $mails.sendRecordPasswordReset($app, user)
-      sent = true
-    } catch (err) {
-      $app.logger().error('invite_email_failed', 'err', String((err && err.message) || err))
+    if (invite) {
+      try {
+        $mails.sendRecordPasswordReset($app, user)
+        sent = true
+      } catch (err) {
+        $app.logger().error('invite_email_failed', 'err', String((err && err.message) || err))
+      }
     }
 
     try {
@@ -52,13 +61,13 @@ routerAdd(
       audit.set('collection_name', 'users')
       audit.set('record_id', user.id)
       audit.set('field_name', 'role')
-      audit.set('reason', 'papel: ' + role)
+      audit.set('reason', 'papel: ' + role + (invite ? '' : '; sem convite'))
       audit.set('occurred_at', new Date().toISOString())
       $app.save(audit)
     } catch (err) {
       $app.logger().error('invite_audit_failed', 'err', String((err && err.message) || err))
     }
-    return e.json(200, { id: user.id, email_sent: sent })
+    return e.json(200, { id: user.id, email_sent: sent, invited: invite })
   },
   $apis.requireAuth(),
 )
