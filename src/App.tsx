@@ -23,6 +23,8 @@ import Imoveis from '@/pages/Imoveis'
 import NovoImovel from '@/pages/NovoImovel'
 import ImovelDetalhe from '@/pages/ImovelDetalhe'
 import EditarImovel from '@/pages/EditarImovel'
+import Condominios from '@/pages/Condominios'
+import CondominioDetalhe from '@/pages/CondominioDetalhe'
 import Agenda from '@/pages/Agenda'
 import Admin from '@/pages/Admin'
 import NotFound from '@/pages/NotFound'
@@ -61,8 +63,9 @@ const App = () => (
                 <Route path="/imoveis/novo" element={<NovoImovel />} />
                 <Route path="/imoveis/:id" element={<ImovelDetalhe />} />
                 <Route path="/imoveis/:id/editar" element={<EditarImovel />} />
+                <Route path="/condominios" element={<Condominios />} />
+                <Route path="/condominios/:id" element={<CondominioDetalhe />} />
                 <Route path="/agenda" element={<Agenda />} />
-
                 {/* Admin-only route */}
                 <Route element={<AdminRoute />}>
                   <Route path="/admin" element={<Admin />} />

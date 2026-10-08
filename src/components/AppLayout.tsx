@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { getRoleLabel } from '@/lib/roles'
 import {
+  Building2,
   CalendarDays,
   CheckSquare,
   Home,
@@ -38,6 +39,7 @@ function getScreenTitle(pathname: string): string {
   if (pathname === '/leads' || pathname.startsWith('/leads/')) return 'Leads'
   if (pathname === '/clientes' || pathname.startsWith('/clientes/')) return 'Clientes'
   if (pathname === '/imoveis' || pathname.startsWith('/imoveis/')) return 'Imóveis'
+  if (pathname === '/condominios' || pathname.startsWith('/condominios/')) return 'Condomínios'
   if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'Administração'
   return 'Imobdigital'
 }
@@ -50,14 +52,15 @@ export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Navigation items defined by specification:
-  // admin: Hoje, Leads, Clientes, Imóveis, Agenda, Administração
-  // sdr: Hoje, Leads, Clientes, Imóveis, Agenda
-  // corretor: Hoje, Leads, Clientes, Imóveis, Agenda
+  // admin: Hoje, Leads, Clientes, Imóveis, Condomínios, Agenda, Administração
+  // sdr: Hoje, Leads, Clientes, Imóveis, Condomínios, Agenda
+  // corretor: Hoje, Leads, Clientes, Imóveis, Condomínios, Agenda
   const baseItems: NavItem[] = [
     { title: 'Hoje', url: '/hoje', icon: CheckSquare },
     { title: 'Leads', url: '/leads', icon: Users },
     { title: 'Clientes', url: '/clientes', icon: UserCheck },
     { title: 'Imóveis', url: '/imoveis', icon: Home },
+    { title: 'Condomínios', url: '/condominios', icon: Building2 },
     { title: 'Agenda', url: '/agenda', icon: CalendarDays },
   ]
 
