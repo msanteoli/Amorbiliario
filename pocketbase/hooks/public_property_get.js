@@ -72,6 +72,10 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
     } catch (_) {}
   }
 
+  let highlight = p.getString('highlight_level') || 'comum'
+  const hlUntil = p.getString('highlight_until')
+  if (hlUntil && new Date(hlUntil.replace(' ', 'T')).getTime() < Date.now()) highlight = 'comum'
+
   return e.json(200, {
     code: p.getString('code'),
     title: p.getString('title'),
@@ -89,6 +93,7 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
     rent: price('rent_price', pu === 'locacao' || pu === 'ambos'),
     description: p.getString('description'),
     condominium: condominium,
+    highlight: highlight,
     photos: photos,
     cover: photos.length ? photos[0] : null,
   })

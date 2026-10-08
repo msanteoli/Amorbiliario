@@ -56,6 +56,9 @@ routerAdd('GET', '/backend/v1/public/properties', (e) => {
     throw new BadRequestError('Ordenação inválida.')
   if (sort !== 'recent' && !purpose)
     throw new BadRequestError('Informe a finalidade para ordenar por preço.')
+  const featuredRaw = String(q.get('featured') || '')
+  if (featuredRaw && featuredRaw !== '1' && featuredRaw !== '0')
+    throw new BadRequestError('Valor inválido em featured.')
 
   const pageRaw = String(q.get('page') || '1')
   if (!/^\d{1,6}$/.test(pageRaw) || Number(pageRaw) < 1)
@@ -69,6 +72,11 @@ routerAdd('GET', '/backend/v1/public/properties', (e) => {
   const priceField = purpose === 'locacao' ? 'rent_price' : 'sale_price'
   const conds = ['organization_id = {:o}', "status = 'disponivel'"]
   const params = { o: org.id }
+  if (featuredRaw === '1') {
+    conds.push(
+      "highlight_level != '' && highlight_level != 'comum' && (highlight_until = '' || highlight_until >= @now)",
+    )
+  }
   if (purpose === 'venda') conds.push("(purpose = 'venda' || purpose = 'ambos')")
   if (purpose === 'locacao') conds.push("(purpose = 'locacao' || purpose = 'ambos')")
   if (type) {
@@ -162,6 +170,13 @@ routerAdd('GET', '/backend/v1/public/properties', (e) => {
       sale: price(p, 'sale_price', pu === 'venda' || pu === 'ambos'),
       rent: price(p, 'rent_price', pu === 'locacao' || pu === 'ambos'),
       cover: ph.length ? ph[0] : null,
+      highlight: (() => {
+        const lv = p.getString('highlight_level')
+        if (!lv || lv === 'comum') return 'comum'
+        const until = p.getString('highlight_until')
+        if (until && new Date(until.replace(' ', 'T')).getTime() < Date.now()) return 'comum'
+        return lv
+      })(),
     }
   })
 
