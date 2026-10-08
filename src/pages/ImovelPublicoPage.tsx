@@ -8,7 +8,7 @@ import {
 } from '@/services/publicSite'
 import { addViewed } from '@/lib/searchMemory'
 import { initCampaignFromUrl } from '@/lib/campaign'
-import { initMarketingScripts, trackWhatsapp } from '@/lib/marketing'
+import { initMarketingScripts } from '@/lib/marketing'
 import {
   formatPrice,
   formatCurrencyBR,
@@ -17,7 +17,8 @@ import {
 } from '@/lib/publicSiteUtils'
 import { PublicLayout } from '@/components/public/PublicLayout'
 import { PublicContactModal } from '@/components/public/PublicContactModal'
-import { PhotoViewerModal } from '@/components/public/PhotoViewerModal'
+import { PhotoZoom } from '@/components/public/PhotoZoom'
+import { Enter } from '@/components/public/Enter'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -48,10 +49,28 @@ export const ImovelPublicoPage: React.FC = () => {
   const [notFound, setNotFound] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Galeria de fotos
-  const [photoViewerOpen, setPhotoViewerOpen] = useState(false)
-  const [photoViewerInitialIndex, setPhotoViewerInitialIndex] = useState(0)
+  // Galeria de fotos / Zoom
+  const [photoZoomOpen, setPhotoZoomOpen] = useState(false)
+  const [photoZoomIndex, setPhotoZoomIndex] = useState(0)
   const [mobilePhotoIndex, setMobilePhotoIndex] = useState(0)
+  const [zoomSourceEl, setZoomSourceEl] = useState<HTMLElement | null>(null)
+
+  const openZoom = (idx: number, e?: React.MouseEvent | React.KeyboardEvent) => {
+    setPhotoZoomIndex(idx)
+    if (e && e.currentTarget) {
+      setZoomSourceEl(e.currentTarget as HTMLElement)
+    } else {
+      // Se chamado sem evento direto (ex: botão ver todas as fotos), usa a foto principal do mosaico se existir
+      const mainPhotoEl = document.getElementById('property-main-photo')
+      setZoomSourceEl(mainPhotoEl)
+    }
+    setPhotoZoomOpen(true)
+  }
+
+  // O botão "Falar no WhatsApp" da ficha abre o formulário de contato (que cria o lead)
+  const handleFichaWhatsAppClick = () => {
+    setContactOpen(true)
+  }
 
   // Modal de contato / agendar visita
   const [contactOpen, setContactOpen] = useState(false)
@@ -211,21 +230,6 @@ export const ImovelPublicoPage: React.FC = () => {
 
   const photos = property?.photos || []
 
-  const openViewer = (idx: number) => {
-    setPhotoViewerInitialIndex(idx)
-    setPhotoViewerOpen(true)
-  }
-
-  // O botão "Falar no WhatsApp" da ficha abre o formulário de contato (que cria o lead)
-  const handleFichaWhatsAppClick = () => {
-    setContactOpen(true)
-  }
-
-  // Identificador de transição único por imóvel (mesmo do PropertyCard)
-  const transitionName = property
-    ? `property-hero-${property.code.replace(/[^a-zA-Z0-9_-]/g, '_')}`
-    : undefined
-
   if (loading) {
     return (
       <PublicLayout
@@ -267,7 +271,7 @@ export const ImovelPublicoPage: React.FC = () => {
         whatsappEnabled={orgData?.whatsapp_enabled}
         showContactButton={false}
       >
-        <div className="max-w-md mx-auto px-4 py-24 text-center space-y-5">
+        <Enter step={0} className="max-w-md mx-auto px-4 py-24 text-center space-y-5">
           <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
             <AlertCircle className="h-8 w-8" />
           </div>
@@ -287,7 +291,7 @@ export const ImovelPublicoPage: React.FC = () => {
               </Link>
             </Button>
           </div>
-        </div>
+        </Enter>
       </PublicLayout>
     )
   }
@@ -299,7 +303,7 @@ export const ImovelPublicoPage: React.FC = () => {
         whatsappEnabled={orgData?.whatsapp_enabled}
         showContactButton={false}
       >
-        <div className="max-w-md mx-auto px-4 py-24 text-center space-y-4">
+        <Enter step={0} className="max-w-md mx-auto px-4 py-24 text-center space-y-4">
           <div className="h-14 w-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
             <AlertCircle className="h-7 w-7" />
           </div>
@@ -313,7 +317,7 @@ export const ImovelPublicoPage: React.FC = () => {
               Voltar para busca
             </Link>
           </Button>
-        </div>
+        </Enter>
       </PublicLayout>
     )
   }
@@ -346,8 +350,8 @@ export const ImovelPublicoPage: React.FC = () => {
       floatingWaClassName="bottom-20 lg:bottom-4"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6 pb-28 md:pb-16">
-        {/* Navegação de volta e código */}
-        <div className="flex items-center justify-between">
+        {/* Passo 0: Linha "Voltar para a busca" e código */}
+        <Enter step={0} className="flex items-center justify-between">
           <Link
             to="/buscar"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
@@ -358,136 +362,148 @@ export const ImovelPublicoPage: React.FC = () => {
           <span className="text-xs font-mono font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
             Cód. {property.code}
           </span>
-        </div>
+        </Enter>
 
-        {/* Mosaico de fotos: desktop 1 grande + 4 menores em grade 2x2. Celular: foto única com 1/N */}
-        {photos.length > 0 ? (
-          <div>
-            {/* Desktop: Mosaico 1 grande + 4 menores em grade 2x2 */}
-            <div className="hidden md:relative md:grid md:grid-cols-2 gap-2.5 h-[420px] lg:h-[480px] rounded-[12px] overflow-hidden select-none">
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => openViewer(0)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    openViewer(0)
-                  }
-                }}
-                className="relative h-full w-full cursor-pointer overflow-hidden bg-muted group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <img
-                  src={getFullPhotoUrl(photos[0]) || ''}
-                  alt={property.title}
-                  style={transitionName ? { viewTransitionName: transitionName } : undefined}
-                  className="h-full w-full object-cover group-hover:opacity-95 transition-opacity"
-                />
-              </div>
+        {/* Passo 1: O bloco de fotos (mosaico no desktop, foto única no celular) */}
+        <Enter step={1}>
+          {photos.length > 0 ? (
+            <div>
+              {/* Desktop: Mosaico 1 grande + 4 menores em grade 2x2 */}
+              <div className="hidden md:relative md:grid md:grid-cols-2 gap-2.5 h-[420px] lg:h-[480px] rounded-[12px] overflow-hidden select-none">
+                <div
+                  id="property-main-photo"
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => openZoom(0, e)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      openZoom(0, e)
+                    }
+                  }}
+                  className="relative h-full w-full cursor-zoom-in overflow-hidden bg-muted group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.97] transition-transform duration-100"
+                >
+                  <img
+                    src={getFullPhotoUrl(photos[0]) || ''}
+                    alt={property.title}
+                    className="h-full w-full object-cover group-hover:opacity-95 transition-opacity"
+                  />
+                </div>
 
-              <div className="grid grid-cols-2 grid-rows-2 gap-2.5 h-full">
-                {Array.from({ length: 4 }).map((_, i) => {
-                  const photoIdx = i + 1
-                  const photoItem = photos[photoIdx]
-                  if (!photoItem) {
+                <div className="grid grid-cols-2 grid-rows-2 gap-2.5 h-full">
+                  {Array.from({ length: 4 }).map((_, i) => {
+                    const photoIdx = i + 1
+                    const photoItem = photos[photoIdx]
+                    if (!photoItem) {
+                      return (
+                        <div
+                          key={i}
+                          className="h-full w-full bg-muted/60 flex items-center justify-center text-muted-foreground/40"
+                        >
+                          <Home className="h-8 w-8 stroke-[1.5]" />
+                        </div>
+                      )
+                    }
                     return (
                       <div
                         key={i}
-                        className="h-full w-full bg-muted/60 flex items-center justify-center text-muted-foreground/40"
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => openZoom(photoIdx, e)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            openZoom(photoIdx, e)
+                          }
+                        }}
+                        className="relative h-full w-full cursor-zoom-in overflow-hidden bg-muted group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.97] transition-transform duration-100"
                       >
-                        <Home className="h-8 w-8 stroke-[1.5]" />
+                        <img
+                          src={getFullPhotoUrl(photoItem) || ''}
+                          alt={`${property.title} - Foto ${photoIdx + 1}`}
+                          className="h-full w-full object-cover group-hover:opacity-95 transition-opacity"
+                        />
                       </div>
                     )
-                  }
-                  return (
-                    <div
-                      key={i}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => openViewer(photoIdx)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          openViewer(photoIdx)
-                        }
-                      }}
-                      className="relative h-full w-full cursor-pointer overflow-hidden bg-muted group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <img
-                        src={getFullPhotoUrl(photoItem) || ''}
-                        alt={`${property.title} - Foto ${photoIdx + 1}`}
-                        className="h-full w-full object-cover group-hover:opacity-95 transition-opacity"
-                      />
-                    </div>
-                  )
-                })}
+                  })}
+                </div>
+
+                {/* Pílula "Ver todas as fotos" (abre pela foto grande) */}
+                <button
+                  type="button"
+                  onClick={() => openZoom(0)}
+                  className="absolute bottom-4 right-4 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card/95 hover:bg-card text-foreground text-xs font-semibold shadow-md backdrop-blur transition-all min-h-[44px]"
+                >
+                  <Grid className="h-3.5 w-3.5" />
+                  <span>Ver todas as fotos ({photos.length})</span>
+                </button>
               </div>
 
-              {/* Pílula "Ver todas as fotos" */}
-              <button
-                type="button"
-                onClick={() => openViewer(0)}
-                className="absolute bottom-4 right-4 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card/95 hover:bg-card text-foreground text-xs font-semibold shadow-md backdrop-blur transition-all min-h-[44px]"
+              {/* Celular: Uma foto grande com contador "1 / N" */}
+              <div
+                id="property-mobile-photo"
+                role="button"
+                tabIndex={0}
+                onClick={(e) => openZoom(mobilePhotoIndex, e)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    openZoom(mobilePhotoIndex, e)
+                  }
+                }}
+                className="md:hidden relative aspect-[4/3] w-full rounded-[12px] overflow-hidden bg-muted border border-border active:scale-[0.97] transition-transform duration-100 cursor-zoom-in"
               >
-                <Grid className="h-3.5 w-3.5" />
-                <span>Ver todas as fotos ({photos.length})</span>
-              </button>
-            </div>
+                <img
+                  src={getFullPhotoUrl(photos[mobilePhotoIndex]) || ''}
+                  alt={`${property.title} - Foto ${mobilePhotoIndex + 1}`}
+                  className="h-full w-full object-cover"
+                />
 
-            {/* Celular: Uma foto grande com contador "1 / N" */}
-            <div className="md:hidden relative aspect-[4/3] w-full rounded-[12px] overflow-hidden bg-muted border border-border">
-              <img
-                src={getFullPhotoUrl(photos[mobilePhotoIndex]) || ''}
-                alt={`${property.title} - Foto ${mobilePhotoIndex + 1}`}
-                style={
-                  mobilePhotoIndex === 0 && transitionName
-                    ? { viewTransitionName: transitionName }
-                    : undefined
-                }
-                className="h-full w-full object-cover"
-                onClick={() => openViewer(mobilePhotoIndex)}
-              />
-
-              {photos.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setMobilePhotoIndex((prev) => (prev - 1 + photos.length) % photos.length)
-                    }
-                    aria-label="Foto anterior"
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow min-h-[44px] min-w-[44px]"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMobilePhotoIndex((prev) => (prev + 1) % photos.length)}
-                    aria-label="Próxima foto"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow min-h-[44px] min-w-[44px]"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                  <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full font-medium">
-                    {mobilePhotoIndex + 1} / {photos.length}
-                  </div>
-                </>
-              )}
+                {photos.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setMobilePhotoIndex((prev) => (prev - 1 + photos.length) % photos.length)
+                      }}
+                      aria-label="Foto anterior"
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow min-h-[44px] min-w-[44px]"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setMobilePhotoIndex((prev) => (prev + 1) % photos.length)
+                      }}
+                      aria-label="Próxima foto"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-background/80 text-foreground flex items-center justify-center shadow min-h-[44px] min-w-[44px]"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full font-medium">
+                      {mobilePhotoIndex + 1} / {photos.length}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="aspect-[16/9] md:h-[380px] w-full rounded-[12px] bg-muted border border-border flex flex-col items-center justify-center text-muted-foreground/60 p-6">
-            <Home className="h-16 w-16 stroke-[1.5]" />
-            <span className="text-sm mt-2 font-medium">Sem fotos cadastradas</span>
-          </div>
-        )}
+          ) : (
+            <div className="aspect-[16/9] md:h-[380px] w-full rounded-[12px] bg-muted border border-border flex flex-col items-center justify-center text-muted-foreground/60 p-6">
+              <Home className="h-16 w-16 stroke-[1.5]" />
+              <span className="text-sm mt-2 font-medium">Sem fotos cadastradas</span>
+            </div>
+          )}
+        </Enter>
 
         {/* Layout Principal: Coluna de Conteúdo (esquerda) e Cartão de Ação (direita no desktop) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start pt-2">
           {/* Conteúdo textual da ficha */}
           <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-            {/* Título: peso 600 */}
-            <div className="space-y-2">
+            {/* Passo 2: Título, tipo/bairro e dados */}
+            <Enter step={2} className="space-y-2">
               <h1 className="text-[26px] sm:text-[32px] font-semibold text-foreground tracking-tight leading-tight">
                 {property.title}
               </h1>
@@ -508,125 +524,128 @@ export const ImovelPublicoPage: React.FC = () => {
                   ))}
                 </div>
               )}
-            </div>
+            </Enter>
 
             <hr className="border-t border-border" />
 
-            {/* Descrição: até 70 caracteres por linha, texto simples */}
-            <div className="space-y-3">
-              <h2 className="text-lg font-semibold text-foreground">Sobre este imóvel</h2>
-              {property.description ? (
-                <p className="text-base font-normal text-muted-foreground whitespace-pre-wrap leading-relaxed max-w-[70ch]">
-                  {property.description}
-                </p>
-              ) : (
-                <p className="text-base font-normal text-muted-foreground italic">
-                  Nenhuma descrição informada.
-                </p>
-              )}
-            </div>
+            {/* Passo 3: "Sobre este imóvel", condomínio, taxas e encargos */}
+            <Enter step={3} className="space-y-6">
+              {/* Descrição: até 70 caracteres por linha, texto simples */}
+              <div className="space-y-3">
+                <h2 className="text-lg font-semibold text-foreground">Sobre este imóvel</h2>
+                {property.description ? (
+                  <p className="text-base font-normal text-muted-foreground whitespace-pre-wrap leading-relaxed max-w-[70ch]">
+                    {property.description}
+                  </p>
+                ) : (
+                  <p className="text-base font-normal text-muted-foreground italic">
+                    Nenhuma descrição informada.
+                  </p>
+                )}
+              </div>
 
-            {/* Seção Condomínio (quando condominium não for nulo) */}
-            {property.condominium && (
-              <>
-                <hr className="border-t border-border" />
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Building className="h-5 w-5 text-muted-foreground" />
-                    <h2 className="text-lg font-semibold text-foreground">Condomínio</h2>
-                  </div>
-
-                  <div className="rounded-[8px] border border-border bg-card p-5 space-y-4">
-                    {/* Nome do condomínio */}
-                    <div>
-                      <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-1">
-                        Nome
-                      </span>
-                      <p className="text-base font-semibold text-foreground">
-                        {property.condominium.name}
-                      </p>
+              {/* Seção Condomínio (quando condominium não for nulo) */}
+              {property.condominium && (
+                <>
+                  <hr className="border-t border-border" />
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Building className="h-5 w-5 text-muted-foreground" />
+                      <h2 className="text-lg font-semibold text-foreground">Condomínio</h2>
                     </div>
 
-                    {/* Itens de lazer (um por linha, como lista) */}
-                    {property.condominium.amenities &&
-                      property.condominium.amenities
-                        .split('\n')
-                        .map((item) => item.trim())
-                        .filter(Boolean).length > 0 && (
-                        <div className="pt-3 border-t border-border space-y-2">
-                          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground block">
-                            Itens de lazer
-                          </span>
-                          <ul className="space-y-1.5 text-sm text-foreground">
-                            {property.condominium.amenities
-                              .split('\n')
-                              .map((item) => item.trim())
-                              .filter(Boolean)
-                              .map((amenity, idx) => (
-                                <li key={idx} className="flex items-start gap-2">
-                                  <span
-                                    className="h-1.5 w-1.5 rounded-full bg-primary mt-2 shrink-0"
-                                    aria-hidden="true"
-                                  />
-                                  <span>{amenity}</span>
-                                </li>
-                              ))}
-                          </ul>
-                        </div>
-                      )}
-
-                    {/* Regras do condomínio (texto) */}
-                    {property.condominium.rules && property.condominium.rules.trim() && (
-                      <div className="pt-3 border-t border-border space-y-2">
-                        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground block">
-                          Regras
+                    <div className="rounded-[8px] border border-border bg-card p-5 space-y-4">
+                      {/* Nome do condomínio */}
+                      <div>
+                        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-1">
+                          Nome
                         </span>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed max-w-[70ch]">
-                          {property.condominium.rules.trim()}
+                        <p className="text-base font-semibold text-foreground">
+                          {property.condominium.name}
                         </p>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
 
-            {/* Condomínio e IPTU */}
-            {(property.condo_fee > 0 || property.iptu > 0) && (
-              <>
-                <hr className="border-t border-border" />
-                <div className="space-y-3">
-                  <h2 className="text-lg font-semibold text-foreground">Taxas e encargos</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
-                    {property.condo_fee > 0 && (
-                      <div className="p-4 rounded-[12px] border border-border bg-card space-y-1">
-                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                          <Building className="h-4 w-4" />
-                          <span>Condomínio</span>
-                        </div>
-                        <div className="text-base font-semibold text-foreground tabular">
-                          {formatCurrencyBR(property.condo_fee)}/mês
-                        </div>
-                      </div>
-                    )}
-                    {property.iptu > 0 && (
-                      <div className="p-4 rounded-[12px] border border-border bg-card space-y-1">
-                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                          <Receipt className="h-4 w-4" />
-                          <span>IPTU</span>
-                        </div>
-                        <div className="text-base font-semibold text-foreground tabular">
-                          {formatCurrencyBR(property.iptu)}/ano
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+                      {/* Itens de lazer (um por linha, como lista) */}
+                      {property.condominium.amenities &&
+                        property.condominium.amenities
+                          .split('\n')
+                          .map((item) => item.trim())
+                          .filter(Boolean).length > 0 && (
+                          <div className="pt-3 border-t border-border space-y-2">
+                            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground block">
+                              Itens de lazer
+                            </span>
+                            <ul className="space-y-1.5 text-sm text-foreground">
+                              {property.condominium.amenities
+                                .split('\n')
+                                .map((item) => item.trim())
+                                .filter(Boolean)
+                                .map((amenity, idx) => (
+                                  <li key={idx} className="flex items-start gap-2">
+                                    <span
+                                      className="h-1.5 w-1.5 rounded-full bg-primary mt-2 shrink-0"
+                                      aria-hidden="true"
+                                    />
+                                    <span>{amenity}</span>
+                                  </li>
+                                ))}
+                            </ul>
+                          </div>
+                        )}
 
-            {/* No celular: "Falar no WhatsApp" no corpo da página */}
-            <div className="pt-4 md:hidden">
+                      {/* Regras do condomínio (texto) */}
+                      {property.condominium.rules && property.condominium.rules.trim() && (
+                        <div className="pt-3 border-t border-border space-y-2">
+                          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground block">
+                            Regras
+                          </span>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed max-w-[70ch]">
+                            {property.condominium.rules.trim()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Condomínio e IPTU */}
+              {(property.condo_fee > 0 || property.iptu > 0) && (
+                <>
+                  <hr className="border-t border-border" />
+                  <div className="space-y-3">
+                    <h2 className="text-lg font-semibold text-foreground">Taxas e encargos</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+                      {property.condo_fee > 0 && (
+                        <div className="p-4 rounded-[12px] border border-border bg-card space-y-1">
+                          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                            <Building className="h-4 w-4" />
+                            <span>Condomínio</span>
+                          </div>
+                          <div className="text-base font-semibold text-foreground tabular">
+                            {formatCurrencyBR(property.condo_fee)}/mês
+                          </div>
+                        </div>
+                      )}
+                      {property.iptu > 0 && (
+                        <div className="p-4 rounded-[12px] border border-border bg-card space-y-1">
+                          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                            <Receipt className="h-4 w-4" />
+                            <span>IPTU</span>
+                          </div>
+                          <div className="text-base font-semibold text-foreground tabular">
+                            {formatCurrencyBR(property.iptu)}/ano
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </Enter>
+
+            {/* Passo 4: No celular: "Falar no WhatsApp" no corpo da página */}
+            <Enter step={4} className="pt-4 md:hidden">
               <Button
                 type="button"
                 variant="outline"
@@ -636,133 +655,135 @@ export const ImovelPublicoPage: React.FC = () => {
                 <MessageCircle className="h-4 w-4" />
                 Falar no WhatsApp
               </Button>
-            </div>
+            </Enter>
           </div>
 
-          {/* Cartão de ação fixo (desktop) */}
+          {/* Cartão de ação fixo (desktop) - A animação vai no div de DENTRO do contêiner sticky, não no próprio sticky */}
           <div className="hidden lg:block lg:col-span-5 xl:col-span-4 sticky top-28">
-            <div className="rounded-[16px] border border-border bg-card p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)] dark:shadow-none space-y-6">
-              {/* Preço em peso 600 */}
-              <div className="space-y-1 tabular">
-                {salePriceStr && (
-                  <div>
-                    <span className="text-xs text-muted-foreground uppercase font-medium tracking-wider">
-                      Venda
-                    </span>
-                    <div className="text-2xl font-semibold text-foreground">{salePriceStr}</div>
-                  </div>
-                )}
-                {rentPriceStr && (
-                  <div className={salePriceStr ? 'pt-2 border-t border-border/80' : ''}>
-                    <span className="text-xs text-muted-foreground uppercase font-medium tracking-wider">
-                      Locação
-                    </span>
-                    <div className="text-2xl font-semibold text-foreground">{rentPriceStr}</div>
-                  </div>
-                )}
-                {!salePriceStr && !rentPriceStr && (
-                  <div className="text-xl font-semibold text-muted-foreground">
-                    Valor não informado
-                  </div>
-                )}
-              </div>
+            <Enter step={3}>
+              <div className="rounded-[16px] border border-border bg-card p-6 shadow-[0_6px_16px_rgba(0,0,0,0.12)] dark:shadow-none space-y-6">
+                {/* Preço em peso 600 */}
+                <div className="space-y-1 tabular">
+                  {salePriceStr && (
+                    <div>
+                      <span className="text-xs text-muted-foreground uppercase font-medium tracking-wider">
+                        Venda
+                      </span>
+                      <div className="text-2xl font-semibold text-foreground">{salePriceStr}</div>
+                    </div>
+                  )}
+                  {rentPriceStr && (
+                    <div className={salePriceStr ? 'pt-2 border-t border-border/80' : ''}>
+                      <span className="text-xs text-muted-foreground uppercase font-medium tracking-wider">
+                        Locação
+                      </span>
+                      <div className="text-2xl font-semibold text-foreground">{rentPriceStr}</div>
+                    </div>
+                  )}
+                  {!salePriceStr && !rentPriceStr && (
+                    <div className="text-xl font-semibold text-muted-foreground">
+                      Valor não informado
+                    </div>
+                  )}
+                </div>
 
-              {/* Escolha de horário de visita:
-                  Faixa horizontal de dias ("qui 08/10", rolagem horizontal sem barra)
-                  Abaixo, os horários do dia escolhido em chips de 44 px e 2 colunas, sem rolagem interna. */}
-              {dayGroups.length > 0 && (
-                <div className="space-y-3 pt-3 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-foreground">
-                      Escolha o dia e horário da visita
-                    </span>
-                    {selectedSlotStart && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSlotStart(null)}
-                        className="text-[11px] text-muted-foreground hover:text-foreground underline min-h-[44px] inline-flex items-center"
-                      >
-                        Desmarcar
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Faixa horizontal de dias com rolagem sem barra */}
-                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
-                    {dayGroups.map((group) => {
-                      const isSel = group.dateKey === selectedDayKey
-                      return (
+                {/* Escolha de horário de visita:
+                    Faixa horizontal de dias ("qui 08/10", rolagem horizontal sem barra)
+                    Abaixo, os horários do dia escolhido em chips de 44 px e 2 colunas, sem rolagem interna. */}
+                {dayGroups.length > 0 && (
+                  <div className="space-y-3 pt-3 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground">
+                        Escolha o dia e horário da visita
+                      </span>
+                      {selectedSlotStart && (
                         <button
-                          key={group.dateKey}
                           type="button"
-                          onClick={() => {
-                            setSelectedDayKey(group.dateKey)
-                            setSelectedSlotStart(null)
-                          }}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all shrink-0 min-h-[44px] ${
-                            isSel
-                              ? 'bg-primary text-primary-foreground border-primary font-semibold'
-                              : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/30'
-                          }`}
+                          onClick={() => setSelectedSlotStart(null)}
+                          className="text-[11px] text-muted-foreground hover:text-foreground underline min-h-[44px] inline-flex items-center"
                         >
-                          {group.dayLabel}
+                          Desmarcar
                         </button>
-                      )
-                    })}
-                  </div>
+                      )}
+                    </div>
 
-                  {/* Horários do dia escolhido em chips de 44 px e 2 colunas, SEM rolagem interna */}
-                  {activeDayGroup && (
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      {activeDayGroup.slots.map((slot) => {
-                        const isSlotSel = selectedSlotStart === slot.start
+                    {/* Faixa horizontal de dias com rolagem sem barra */}
+                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
+                      {dayGroups.map((group) => {
+                        const isSel = group.dateKey === selectedDayKey
                         return (
                           <button
-                            key={slot.start}
+                            key={group.dateKey}
                             type="button"
-                            onClick={() => setSelectedSlotStart(isSlotSel ? null : slot.start)}
-                            className={`h-11 px-3 rounded-[8px] text-xs font-medium border transition-all min-h-[44px] flex items-center justify-center ${
-                              isSlotSel
+                            onClick={() => {
+                              setSelectedDayKey(group.dateKey)
+                              setSelectedSlotStart(null)
+                            }}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all shrink-0 min-h-[44px] ${
+                              isSel
                                 ? 'bg-primary text-primary-foreground border-primary font-semibold'
                                 : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/30'
                             }`}
                           >
-                            {slot.timeLabel}
+                            {group.dayLabel}
                           </button>
                         )
                       })}
                     </div>
-                  )}
+
+                    {/* Horários do dia escolhido em chips de 44 px e 2 colunas, SEM rolagem interna */}
+                    {activeDayGroup && (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        {activeDayGroup.slots.map((slot) => {
+                          const isSlotSel = selectedSlotStart === slot.start
+                          return (
+                            <button
+                              key={slot.start}
+                              type="button"
+                              onClick={() => setSelectedSlotStart(isSlotSel ? null : slot.start)}
+                              className={`h-11 px-3 rounded-[8px] text-xs font-medium border transition-all min-h-[44px] flex items-center justify-center ${
+                                isSlotSel
+                                  ? 'bg-primary text-primary-foreground border-primary font-semibold'
+                                  : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/30'
+                              }`}
+                            >
+                              {slot.timeLabel}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Botões de Ação */}
+                <div className="space-y-3 pt-2">
+                  <Button
+                    type="button"
+                    onClick={() => setContactOpen(true)}
+                    className="w-full rounded-[8px] h-12 text-sm font-medium min-h-[48px] gap-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span>Agendar visita</span>
+                  </Button>
+
+                  {/* "Falar no WhatsApp" (abre modal de contato, criando o lead) */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleFichaWhatsAppClick}
+                    className="w-full rounded-[8px] h-12 text-sm font-medium border-border min-h-[48px] gap-2"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span>Falar no WhatsApp</span>
+                  </Button>
                 </div>
-              )}
-
-              {/* Botões de Ação */}
-              <div className="space-y-3 pt-2">
-                <Button
-                  type="button"
-                  onClick={() => setContactOpen(true)}
-                  className="w-full rounded-[8px] h-12 text-sm font-medium min-h-[48px] gap-2"
-                >
-                  <Calendar className="h-4 w-4" />
-                  <span>Agendar visita</span>
-                </Button>
-
-                {/* "Falar no WhatsApp" (abre modal de contato, criando o lead) */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleFichaWhatsAppClick}
-                  className="w-full rounded-[8px] h-12 text-sm font-medium border-border min-h-[48px] gap-2"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  <span>Falar no WhatsApp</span>
-                </Button>
               </div>
-            </div>
+            </Enter>
           </div>
         </div>
 
-        {/* Celular: barra fixa no rodapé */}
+        {/* Celular: barra fixa no rodapé (não anima) */}
         <div className="fixed bottom-0 inset-x-0 z-30 px-4 py-3 bg-background/95 backdrop-blur-md border-t border-border lg:hidden shadow-lg">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
             <div className="tabular min-w-0 flex-1">
@@ -792,16 +813,22 @@ export const ImovelPublicoPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Modal de foto em tela cheia */}
-        <PhotoViewerModal
-          open={photoViewerOpen}
-          onOpenChange={setPhotoViewerOpen}
+        {/* Zoom de fotos na ficha (PhotoZoom no lugar de PhotoViewerModal) */}
+        <PhotoZoom
+          open={photoZoomOpen}
+          onOpenChange={setPhotoZoomOpen}
           photos={photos}
-          initialIndex={photoViewerInitialIndex}
+          currentIndex={photoZoomIndex}
+          onIndexChange={(newIdx) => {
+            setPhotoZoomIndex(newIdx)
+            // No celular, ao navegar no zoom, atualiza a foto única da página
+            setMobilePhotoIndex(newIdx)
+          }}
           propertyTitle={property.title}
+          sourceElement={zoomSourceEl}
         />
 
-        {/* Modal de Contato / Agendar visita */}
+        {/* Modal de Contato / Agendar visita (não anima) */}
         <PublicContactModal
           open={contactOpen}
           onOpenChange={setContactOpen}

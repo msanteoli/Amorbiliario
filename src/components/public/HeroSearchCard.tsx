@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useId } from 'react'
 import { Home, DoorOpen, Search, ChevronDown, SlidersHorizontal } from 'lucide-react'
+import { Enter } from './Enter'
 import { PublicNeighborhoodOption, PublicTypeOption } from '@/services/publicSite'
 import { PUBLIC_PROPERTY_TYPE_LABELS } from '@/lib/publicSiteUtils'
 import { FilterValues } from './SearchFilterBar'
@@ -164,16 +165,32 @@ export const HeroSearchCard: React.FC<HeroSearchCardProps> = ({
     >
       {/* Título e Subtítulo (sem nome de nenhuma cidade no texto) */}
       <div className="space-y-2 text-left">
-        <h1 className="text-[30px] sm:text-[48px] font-semibold tracking-tight leading-[1.1] text-foreground">
+        {/* Passo 0: título "Encontre seu imóvel" (classe pequena) */}
+        <Enter
+          as="h1"
+          step={0}
+          small
+          className="text-[30px] sm:text-[48px] font-semibold tracking-tight leading-[1.1] text-foreground"
+        >
           Encontre seu imóvel
-        </h1>
-        <p className="text-base sm:text-lg text-muted-foreground font-normal">
+        </Enter>
+        {/* Passo 1: subtítulo (classe pequena) */}
+        <Enter
+          as="p"
+          step={1}
+          small
+          className="text-base sm:text-lg text-muted-foreground font-normal"
+        >
           Casas, apartamentos e terrenos para comprar e alugar.
-        </p>
+        </Enter>
       </div>
 
-      {/* Abas "Comprar" e "Alugar" com ícone, ativa com traço de 2 px na cor primary */}
-      <div className="flex items-center gap-6 border-b border-border text-sm font-medium">
+      {/* Passo 2: Abas "Comprar" e "Alugar" com ícone, ativa com traço de 2 px na cor primary (classe pequena) */}
+      <Enter
+        step={2}
+        small
+        className="flex items-center gap-6 border-b border-border text-sm font-medium"
+      >
         <button
           type="button"
           onClick={() => {
@@ -211,94 +228,100 @@ export const HeroSearchCard: React.FC<HeroSearchCardProps> = ({
             <span className="absolute bottom-0 inset-x-0 h-[2px] bg-primary rounded-t" />
           )}
         </button>
-      </div>
+      </Enter>
 
-      {/* Campo "Busque por bairro": abaixo de 480px, botão largura total abaixo do campo; a partir de 480px, botão dentro do campo */}
-      <div ref={wrapperRef} className="relative w-full space-y-3 min-[480px]:space-y-0">
-        <div className="relative flex items-center h-14 w-full rounded-full border border-border bg-background focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all shadow-sm pl-4 pr-4 min-[480px]:pr-1.5">
-          <Search className="h-5 w-5 text-muted-foreground shrink-0 mr-3" aria-hidden="true" />
-          <input
-            ref={inputRef}
-            type="text"
-            role="combobox"
-            aria-expanded={suggestionsOpen}
-            aria-controls={listboxId}
-            aria-autocomplete="list"
-            placeholder="Busque por bairro"
-            value={neighborhoodInput}
-            onChange={(e) => {
-              setNeighborhoodInput(e.target.value)
-              setSuggestionsOpen(true)
-              setHighlightedIndex(-1)
-            }}
-            onFocus={() => {
-              setSuggestionsOpen(true)
-            }}
-            onKeyDown={handleKeyDown}
-            className="w-full h-full bg-transparent text-sm sm:text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
-          />
+      {/* Passo 3: Campo "Busque por bairro" (classe pequena) */}
+      <Enter step={3} small>
+        <div ref={wrapperRef} className="relative w-full space-y-3 min-[480px]:space-y-0">
+          <div className="relative flex items-center h-14 w-full rounded-full border border-border bg-background focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all shadow-sm pl-4 pr-4 min-[480px]:pr-1.5">
+            <Search className="h-5 w-5 text-muted-foreground shrink-0 mr-3" aria-hidden="true" />
+            <input
+              ref={inputRef}
+              type="text"
+              role="combobox"
+              aria-expanded={suggestionsOpen}
+              aria-controls={listboxId}
+              aria-autocomplete="list"
+              placeholder="Busque por bairro"
+              value={neighborhoodInput}
+              onChange={(e) => {
+                setNeighborhoodInput(e.target.value)
+                setSuggestionsOpen(true)
+                setHighlightedIndex(-1)
+              }}
+              onFocus={() => {
+                setSuggestionsOpen(true)
+              }}
+              onKeyDown={handleKeyDown}
+              className="w-full h-full bg-transparent text-sm sm:text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
 
-          {/* Botão "Buscar imóveis" dentro do campo apenas a partir de 480px */}
+            {/* Botão "Buscar imóveis" dentro do campo apenas a partir de 480px */}
+            <button
+              type="button"
+              onClick={() => triggerSearch()}
+              className="hidden min-[480px]:inline-flex shrink-0 h-11 px-4 sm:px-6 rounded-full bg-primary text-primary-foreground font-medium text-xs sm:text-sm items-center gap-2 hover:opacity-90 active:scale-95 transition-all min-h-[44px]"
+            >
+              <Search className="h-4 w-4 shrink-0 sm:hidden" />
+              <span>Buscar imóveis</span>
+            </button>
+          </div>
+
+          {/* Abaixo de 480px: botão de largura total (48px de altura, pílula, ação principal) logo abaixo do campo */}
           <button
             type="button"
             onClick={() => triggerSearch()}
-            className="hidden min-[480px]:inline-flex shrink-0 h-11 px-4 sm:px-6 rounded-full bg-primary text-primary-foreground font-medium text-xs sm:text-sm items-center gap-2 hover:opacity-90 active:scale-95 transition-all min-h-[44px]"
+            className="min-[480px]:hidden w-full h-12 rounded-full bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all min-h-[48px] shadow-sm"
           >
-            <Search className="h-4 w-4 shrink-0 sm:hidden" />
+            <Search className="h-4 w-4 shrink-0" />
             <span>Buscar imóveis</span>
           </button>
+
+          {/* Dropdown de sugestões de bairro */}
+          {suggestionsOpen && (
+            <div
+              id={listboxId}
+              role="listbox"
+              className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-card rounded-[16px] border border-border p-2 shadow-[0_6px_16px_rgba(0,0,0,0.12)] dark:shadow-none max-h-60 overflow-y-auto"
+            >
+              {filteredNeighborhoods.length > 0 ? (
+                filteredNeighborhoods.map((n, idx) => {
+                  const isHighlighted = idx === highlightedIndex
+                  return (
+                    <div
+                      key={n.name}
+                      role="option"
+                      aria-selected={isHighlighted}
+                      onMouseEnter={() => setHighlightedIndex(idx)}
+                      onClick={() => {
+                        setNeighborhoodInput(n.name)
+                        triggerSearch(n.name)
+                      }}
+                      className={`px-3 py-2.5 rounded-[8px] text-sm cursor-pointer flex items-center justify-between transition-colors min-h-[44px] ${
+                        isHighlighted
+                          ? 'bg-muted text-foreground'
+                          : 'text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      <span>{n.name}</span>
+                      <span className="text-xs text-muted-foreground tabular">
+                        {n.count} imóveis
+                      </span>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="px-3 py-3 text-sm text-muted-foreground text-center">
+                  Nenhum bairro com esse nome.
+                </div>
+              )}
+            </div>
+          )}
         </div>
+      </Enter>
 
-        {/* Abaixo de 480px: botão de largura total (48px de altura, pílula, ação principal) logo abaixo do campo */}
-        <button
-          type="button"
-          onClick={() => triggerSearch()}
-          className="min-[480px]:hidden w-full h-12 rounded-full bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all min-h-[48px] shadow-sm"
-        >
-          <Search className="h-4 w-4 shrink-0" />
-          <span>Buscar imóveis</span>
-        </button>
-
-        {/* Dropdown de sugestões de bairro */}
-        {suggestionsOpen && (
-          <div
-            id={listboxId}
-            role="listbox"
-            className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-card rounded-[16px] border border-border p-2 shadow-[0_6px_16px_rgba(0,0,0,0.12)] dark:shadow-none max-h-60 overflow-y-auto"
-          >
-            {filteredNeighborhoods.length > 0 ? (
-              filteredNeighborhoods.map((n, idx) => {
-                const isHighlighted = idx === highlightedIndex
-                return (
-                  <div
-                    key={n.name}
-                    role="option"
-                    aria-selected={isHighlighted}
-                    onMouseEnter={() => setHighlightedIndex(idx)}
-                    onClick={() => {
-                      setNeighborhoodInput(n.name)
-                      triggerSearch(n.name)
-                    }}
-                    className={`px-3 py-2.5 rounded-[8px] text-sm cursor-pointer flex items-center justify-between transition-colors min-h-[44px] ${
-                      isHighlighted ? 'bg-muted text-foreground' : 'text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    <span>{n.name}</span>
-                    <span className="text-xs text-muted-foreground tabular">{n.count} imóveis</span>
-                  </div>
-                )
-              })
-            ) : (
-              <div className="px-3 py-3 text-sm text-muted-foreground text-center">
-                Nenhum bairro com esse nome.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Abaixo do campo: Pílulas de contorno "Tipo", "Quartos", "Até R$" e o link "Mais filtros" */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 text-sm">
+      {/* Passo 4: Pílulas Tipo, Quartos, Até R$ e "Mais filtros" (classe pequena) */}
+      <Enter step={4} small className="flex flex-wrap items-center gap-2 pt-1 text-sm">
         {/* Dropdown Tipo */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -455,7 +478,7 @@ export const HeroSearchCard: React.FC<HeroSearchCardProps> = ({
           <SlidersHorizontal className="h-3.5 w-3.5" />
           <span>Mais filtros</span>
         </button>
-      </div>
+      </Enter>
     </div>
   )
 }

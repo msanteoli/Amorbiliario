@@ -129,7 +129,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/20">
       {/* Cabeçalho estilo Airbnb: barra fixa no topo com divisor de 1 px e fundo opaco sem transparência */}
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-background">
+      <header className="pub-enter-header sticky top-0 z-40 w-full border-b border-border bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="h-20 flex items-center justify-between gap-3 sm:gap-4">
             {/* À esquerda: nome da imobiliária em texto (peso 600, sem logo) */}

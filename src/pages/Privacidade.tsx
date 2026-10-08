@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { PublicLayout } from '@/components/public/PublicLayout'
+import { Enter } from '@/components/public/Enter'
 
 /**
  * Controle de aviso de rascunho / revisão jurídica no topo da página.
@@ -18,7 +19,7 @@ export const Privacidade: React.FC = () => {
 
   return (
     <PublicLayout showContactButton={true}>
-      <div className="w-full py-8 sm:py-12 px-4 sm:px-6">
+      <Enter step={0} className="w-full py-8 sm:py-12 px-4 sm:px-6">
         <article className="max-w-[720px] mx-auto w-full text-foreground break-words">
           {PRIVACY_IS_DRAFT && (
             <aside
@@ -197,7 +198,7 @@ export const Privacidade: React.FC = () => {
             </footer>
           </div>
         </article>
-      </div>
+      </Enter>
     </PublicLayout>
   )
 }

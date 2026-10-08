@@ -16,6 +16,7 @@ import { PropertyCard } from '@/components/public/PropertyCard'
 import { HeroSearchCard } from '@/components/public/HeroSearchCard'
 import { FeaturedSlider } from '@/components/public/FeaturedSlider'
 import { CompactSearchBar } from '@/components/public/CompactSearchBar'
+import { Enter } from '@/components/public/Enter'
 import { SearchFilterBar, FilterValues } from '@/components/public/SearchFilterBar'
 import { CategoryBar } from '@/components/public/CategoryBar'
 import { PublicContactModal } from '@/components/public/PublicContactModal'
@@ -42,6 +43,7 @@ export const BuscarPage: React.FC = () => {
 
   // Imóveis em destaque para o slide do hero (searchProperties sort 'recent', per_page 8, até 5 com capa)
   const [featuredProperties, setFeaturedProperties] = useState<PublicPropertyListItem[]>([])
+  const [featuredLoading, setFeaturedLoading] = useState(true)
 
   // Lista de imóveis e paginação da grade
   const [items, setItems] = useState<PublicPropertyListItem[]>([])
@@ -127,6 +129,7 @@ export const BuscarPage: React.FC = () => {
   // Carrega destaques do slider: searchProperties sort 'recent', per_page 8, até 5 com capa
   useEffect(() => {
     let mounted = true
+    setFeaturedLoading(true)
     searchProperties({
       sort: 'recent',
       per_page: 8,
@@ -138,6 +141,9 @@ export const BuscarPage: React.FC = () => {
       })
       .catch(() => {
         // slider vazio é tratado escondendo o slide e centralizando a busca
+      })
+      .finally(() => {
+        if (mounted) setFeaturedLoading(false)
       })
     return () => {
       mounted = false
@@ -437,6 +443,7 @@ export const BuscarPage: React.FC = () => {
   }
 
   const hasFeatured = featuredProperties.length > 0
+  const showTwoColumns = featuredLoading || hasFeatured
 
   return (
     <PublicLayout
@@ -458,29 +465,16 @@ export const BuscarPage: React.FC = () => {
         aria-label="Destaque da página inicial"
         className="w-full bg-muted py-6 sm:py-8 lg:py-12 border-b border-border overflow-hidden"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          {hasFeatured ? (
-            /* Em duas colunas no desktop (a partir de 1024 px: ~55% busca, ~45% slider). No tablet/celular: 1 coluna */
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-              {/* Cartão de busca (~55%) */}
-              <div className="lg:col-span-7 w-full flex items-center">
-                <HeroSearchCard
-                  values={currentFilters}
-                  neighborhoods={filterMeta?.neighborhoods || []}
-                  types={filterMeta?.types || []}
-                  onSearch={(newVals) => handleFiltersChange(newVals, true)}
-                  onOpenMoreFilters={() => setMoreFiltersOpen(true)}
-                />
-              </div>
-
-              {/* Slide de destaques (~45%) */}
-              <div className="lg:col-span-5 w-full flex items-center justify-center">
-                <FeaturedSlider properties={featuredProperties} />
-              </div>
-            </div>
-          ) : (
-            /* Sem imóveis com foto: cartão de busca centralizado (largura máx 720 px) */
-            <div className="max-w-[720px] mx-auto">
+        <div key={location.pathname} className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div
+            className={
+              showTwoColumns
+                ? 'grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center'
+                : 'max-w-[720px] mx-auto'
+            }
+          >
+            {/* Cartão de busca: NUNCA desmonta, permanece na mesma posição da árvore */}
+            <div className={showTwoColumns ? 'lg:col-span-7 w-full flex items-center' : 'w-full'}>
               <HeroSearchCard
                 values={currentFilters}
                 neighborhoods={filterMeta?.neighborhoods || []}
@@ -489,11 +483,28 @@ export const BuscarPage: React.FC = () => {
                 onOpenMoreFilters={() => setMoreFiltersOpen(true)}
               />
             </div>
-          )}
+
+            {/* Slide de destaques (ou esqueleto enquanto carrega) */}
+            {showTwoColumns && (
+              <div className="lg:col-span-5 w-full flex items-center justify-center">
+                {featuredLoading ? (
+                  /* Esqueleto reservando a vaga do slide: desktop à direita, celular abaixo do cartão */
+                  <div className="w-full">
+                    <Skeleton className="aspect-[4/3] max-h-[300px] md:aspect-auto md:h-[360px] md:max-h-none lg:aspect-[4/3] lg:h-auto w-full rounded-[16px] lg:rounded-[24px]" />
+                  </div>
+                ) : (
+                  /* Slide com classe de entrada normal no passo 2 */
+                  <Enter step={2} className="w-full">
+                    <FeaturedSlider properties={featuredProperties} />
+                  </Enter>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* Barra de busca compacta fixa logo abaixo do cabeçalho quando rolar com busca ativa */}
+      {/* Barra de busca compacta fixa logo abaixo do cabeçalho quando rolar com busca ativa (não anima) */}
       {showCompactBar && (
         <CompactSearchBar
           values={currentFilters}
@@ -506,14 +517,16 @@ export const BuscarPage: React.FC = () => {
         />
       )}
 
-      {/* 6) CATEGORIAS E RESULTADOS: faixa de categorias com 44 px de altura */}
-      <CategoryBar
-        types={filterMeta?.types || []}
-        selectedType={currentFilters.type}
-        onSelectType={(newType) => {
-          handleFiltersChange({ ...currentFilters, type: newType }, true)
-        }}
-      />
+      {/* 6) CATEGORIAS E RESULTADOS: faixa de categorias com 44 px de altura. Passo 5 da entrada (no contêiner de fora) */}
+      <Enter key={`cat-${location.pathname}`} step={5}>
+        <CategoryBar
+          types={filterMeta?.types || []}
+          selectedType={currentFilters.type}
+          onSelectType={(newType) => {
+            handleFiltersChange({ ...currentFilters, type: newType }, true)
+          }}
+        />
+      </Enter>
 
       <div
         ref={resultsRef}

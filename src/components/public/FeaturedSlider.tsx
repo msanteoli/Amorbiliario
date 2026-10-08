@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { PublicPropertyListItem } from '@/services/publicSite'
 import { formatPrice, getFullPhotoUrl } from '@/lib/publicSiteUtils'
@@ -9,7 +9,6 @@ interface FeaturedSliderProps {
 }
 
 export const FeaturedSlider: React.FC<FeaturedSliderProps> = ({ properties }) => {
-  const navigate = useNavigate()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const timerRef = useRef<number | null>(null)
@@ -48,36 +47,6 @@ export const FeaturedSlider: React.FC<FeaturedSliderProps> = ({ properties }) =>
 
   if (count === 0) return null
 
-  const currentProperty = properties[currentIndex]
-  const coverUrl = getFullPhotoUrl(currentProperty.cover)
-  const targetUrl = `/buscar/${encodeURIComponent(currentProperty.code)}`
-  const transitionName = `property-hero-${currentProperty.code.replace(/[^a-zA-Z0-9_-]/g, '_')}`
-
-  const salePriceStr = currentProperty.sale ? formatPrice(currentProperty.sale, 'sale') : null
-  const rentPriceStr = currentProperty.rent ? formatPrice(currentProperty.rent, 'rent') : null
-  const priceDisplay = salePriceStr || rentPriceStr || 'Consulte'
-
-  const handleSlideClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
-      return
-    }
-
-    if (
-      !prefersReducedMotion &&
-      typeof document !== 'undefined' &&
-      'startViewTransition' in document &&
-      typeof (document as unknown as { startViewTransition: (cb: () => void) => void })
-        .startViewTransition === 'function'
-    ) {
-      e.preventDefault()
-      ;(
-        document as unknown as { startViewTransition: (cb: () => void) => void }
-      ).startViewTransition(() => {
-        navigate(targetUrl)
-      })
-    }
-  }
-
   return (
     <section
       role="region"
@@ -103,7 +72,6 @@ export const FeaturedSlider: React.FC<FeaturedSliderProps> = ({ properties }) =>
           const propRent = prop.rent ? formatPrice(prop.rent, 'rent') : null
           const propPrice = propSale || propRent || 'Consulte'
           const propTargetUrl = `/buscar/${encodeURIComponent(prop.code)}`
-          const propTransName = `property-hero-${prop.code.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
           return (
             <div
@@ -112,13 +80,12 @@ export const FeaturedSlider: React.FC<FeaturedSliderProps> = ({ properties }) =>
               aria-roledescription="slide"
               aria-label={`Imóvel ${idx + 1} de ${count}`}
               aria-hidden={!isCurrent}
-              className={`absolute inset-0 transition-opacity duration-400 ease-in-out ${
+              className={`absolute inset-0 transition-opacity duration-[400ms] ease-in-out ${
                 isCurrent ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
               }`}
             >
               <Link
                 to={propTargetUrl}
-                onClick={handleSlideClick}
                 tabIndex={isCurrent ? 0 : -1}
                 className="block w-full h-full relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-[16px] lg:rounded-[24px]"
               >
@@ -126,7 +93,6 @@ export const FeaturedSlider: React.FC<FeaturedSliderProps> = ({ properties }) =>
                   <img
                     src={propCoverUrl}
                     alt={prop.title}
-                    style={isCurrent ? { viewTransitionName: propTransName } : undefined}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                   />
                 ) : (
