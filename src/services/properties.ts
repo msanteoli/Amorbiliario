@@ -3,6 +3,10 @@ import { ClientResponseError, RecordModel } from 'pocketbase'
 
 export type PropertyPurpose = 'venda' | 'locacao' | 'ambos'
 
+export type PropertyUseType = 'residencial' | 'comercial' | 'rural' | 'temporada'
+
+export type PropertySource = 'manual' | 'importacao'
+
 export type PropertyType =
   | 'casa'
   | 'apartamento'
@@ -28,6 +32,13 @@ export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   galpao: 'Galpão',
   chacara: 'Chácara ou sítio',
   outro: 'Outro',
+}
+
+export const PROPERTY_USE_TYPE_LABELS: Record<PropertyUseType, string> = {
+  residencial: 'Residencial',
+  comercial: 'Comercial',
+  rural: 'Rural',
+  temporada: 'Temporada',
 }
 
 export const PROPERTY_PURPOSE_LABELS: Record<PropertyPurpose, string> = {
@@ -75,12 +86,33 @@ export interface PropertyHistoryItem {
   actor: string
 }
 
+export interface PropertyCondominiumRecord extends RecordModel {
+  name: string
+  amenities?: string
+  rules?: string
+  street?: string
+  neighborhood?: string
+  city?: string
+  expand?: {
+    condominium_photos_via_condominium_id?: {
+      id: string
+      file: string
+      is_active: boolean
+    }[]
+  }
+}
+
 export interface PropertyRecord extends RecordModel {
   organization_id: string
   code: string
   title: string
   purpose: PropertyPurpose
   property_type: PropertyType
+  use_type?: PropertyUseType
+  in_condominium?: boolean
+  condominium_id?: string
+  source?: PropertySource
+  import_batch_id?: string
   status: PropertyStatus
   street?: string
   street_number?: string
@@ -103,6 +135,7 @@ export interface PropertyRecord extends RecordModel {
   expand?: {
     captured_by?: PropertyUserRecord
     owner_id?: PropertyOwnerRecord
+    condominium_id?: PropertyCondominiumRecord
     property_photos_via_property_id?: PropertyPhotoRecord[]
   }
 }
@@ -112,6 +145,9 @@ export interface CreatePropertyInput {
   title: string
   purpose: PropertyPurpose
   property_type: PropertyType
+  use_type?: PropertyUseType
+  in_condominium?: boolean
+  condominium_id?: string
   street?: string
   street_number?: string
   complement?: string
@@ -136,6 +172,9 @@ export interface UpdatePropertyInput {
   title?: string
   purpose?: PropertyPurpose
   property_type?: PropertyType
+  use_type?: PropertyUseType
+  in_condominium?: boolean
+  condominium_id?: string
   status?: PropertyStatus
   street?: string
   street_number?: string
@@ -435,9 +474,9 @@ export async function listProperties(params: ListPropertiesParams = {}) {
   const filter = filterParts.join(' && ')
 
   return await pb.collection('properties').getList<PropertyRecord>(page, perPage, {
-    filter: filter || undefined,
+    filter: filterParts.join(' && '),
     sort,
-    expand: 'property_photos_via_property_id,captured_by',
+    expand: 'property_photos_via_property_id,captured_by,owner_id,condominium_id',
   })
 }
 
@@ -446,7 +485,8 @@ export async function listProperties(params: ListPropertiesParams = {}) {
  */
 export async function getPropertyById(id: string): Promise<PropertyRecord> {
   return await pb.collection('properties').getOne<PropertyRecord>(id, {
-    expand: 'property_photos_via_property_id,captured_by,owner_id',
+    expand:
+      'property_photos_via_property_id,captured_by,owner_id,condominium_id.condominium_photos_via_condominium_id',
   })
 }
 
@@ -471,12 +511,17 @@ export async function createProperty(
     captured_by: input.captured_by,
   }
 
+  if (input.use_type) payload.use_type = input.use_type
+  payload.in_condominium = Boolean(input.in_condominium)
+  if (input.in_condominium && input.condominium_id) {
+    payload.condominium_id = input.condominium_id
+  }
+
   if (input.street?.trim()) payload.street = input.street.trim()
   if (input.street_number?.trim()) payload.street_number = input.street_number.trim()
   if (input.complement?.trim()) payload.complement = input.complement.trim()
   if (input.neighborhood?.trim()) payload.neighborhood = input.neighborhood.trim()
   if (input.city?.trim()) payload.city = input.city.trim()
-
   if (typeof input.bedrooms === 'number' && input.bedrooms > 0) payload.bedrooms = input.bedrooms
   if (typeof input.bathrooms === 'number' && input.bathrooms > 0)
     payload.bathrooms = input.bathrooms
@@ -518,6 +563,9 @@ export async function updateProperty(
   if (input.title !== undefined) payload.title = input.title.trim()
   if (input.purpose !== undefined) payload.purpose = input.purpose
   if (input.property_type !== undefined) payload.property_type = input.property_type
+  if (input.use_type !== undefined) payload.use_type = input.use_type
+  if (input.in_condominium !== undefined) payload.in_condominium = input.in_condominium
+  if (input.condominium_id !== undefined) payload.condominium_id = input.condominium_id
   if (input.status !== undefined) payload.status = input.status
 
   if (input.street !== undefined) payload.street = input.street.trim()
@@ -662,4 +710,99 @@ export async function searchOwners(term: string): Promise<PropertyOwnerRecord[]>
     email: (item.email as string) || '',
     kind: (item.kind as string[]) || [],
   }))
+}
+
+/**
+ * Sugere títulos com IA chamando POST /backend/v1/properties/{id}/suggest-title
+ */
+export async function suggestPropertyTitles(propertyId: string): Promise<string[]> {
+  try {
+    const res = await pb.send<{ suggestions: string[] }>(
+      `/backend/v1/properties/${propertyId}/suggest-title`,
+      {
+        method: 'POST',
+      },
+    )
+    return res.suggestions || []
+  } catch (err) {
+    if (err instanceof ClientResponseError && err.status === 503) {
+      throw new Error('A sugestão está indisponível agora.')
+    }
+    throw err
+  }
+}
+
+/**
+ * Vincula proprietário existente ao imóvel
+ */
+export async function linkExistingPropertyOwner(
+  propertyId: string,
+  clientId: string,
+): Promise<{ client_id: string }> {
+  return await pb.send<{ client_id: string }>(`/backend/v1/properties/${propertyId}/owner`, {
+    method: 'POST',
+    body: { client_id: clientId },
+  })
+}
+
+/**
+ * Vincula novo proprietário ao imóvel com tratamento de 409
+ */
+export interface LinkNewOwnerResult {
+  client_id?: string
+  existing_client_id?: string
+  message?: string
+}
+
+export async function linkNewPropertyOwner(
+  propertyId: string,
+  newOwner: { name: string; phone?: string; email?: string },
+): Promise<LinkNewOwnerResult> {
+  try {
+    return await pb.send<{ client_id: string }>(`/backend/v1/properties/${propertyId}/owner`, {
+      method: 'POST',
+      body: { new: newOwner },
+    })
+  } catch (err) {
+    if (err instanceof ClientResponseError && err.status === 409) {
+      const data = err.response as { message?: string; existing_client_id?: string }
+      return {
+        existing_client_id: data.existing_client_id,
+        message: data.message || 'Já existe um cliente com este contato.',
+      }
+    }
+    throw err
+  }
+}
+
+/**
+ * Publica um imóvel (atualiza status para 'disponivel')
+ */
+export async function publishProperty(propertyId: string): Promise<PropertyRecord> {
+  return await pb.collection('properties').update<PropertyRecord>(
+    propertyId,
+    { status: 'disponivel' },
+    {
+      expand: 'property_photos_via_property_id,captured_by,owner_id,condominium_id',
+    },
+  )
+}
+
+/**
+ * Retorna os proprietários sem imóvel vinculado
+ * GET /backend/v1/admin/owners-without-property
+ */
+export interface OwnerWithoutPropertyItem {
+  id: string
+  name: string
+}
+
+export async function listOwnersWithoutProperty(): Promise<OwnerWithoutPropertyItem[]> {
+  const res = await pb.send<{ items: OwnerWithoutPropertyItem[] }>(
+    '/backend/v1/admin/owners-without-property',
+    {
+      method: 'GET',
+    },
+  )
+  return res.items || []
 }

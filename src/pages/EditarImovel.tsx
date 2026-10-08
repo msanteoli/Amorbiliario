@@ -72,9 +72,12 @@ export default function EditarImovel() {
         setInitialFormData({
           code: prop.code || '',
           title: prop.title || '',
-          purpose: prop.purpose,
-          property_type: prop.property_type,
-          status: prop.status,
+          purpose: prop.purpose || 'venda',
+          property_type: prop.property_type || 'apartamento',
+          use_type: prop.use_type || 'residencial',
+          in_condominium: Boolean(prop.in_condominium),
+          condominium_id: prop.condominium_id || '',
+          status: prop.status || 'rascunho',
           street: prop.street || '',
           street_number: prop.street_number || '',
           complement: prop.complement || '',
@@ -204,6 +207,9 @@ export default function EditarImovel() {
         title: formData.title,
         purpose: formData.purpose,
         property_type: formData.property_type,
+        use_type: formData.use_type,
+        in_condominium: formData.in_condominium,
+        condominium_id: formData.in_condominium ? formData.condominium_id : undefined,
         status: intendedStatus,
         street: formData.street,
         street_number: formData.street_number,
@@ -294,6 +300,7 @@ export default function EditarImovel() {
 
       {initialFormData && (
         <PropertyForm
+          propertyId={id}
           isEditing={true}
           initialData={initialFormData}
           initialOwner={initialOwner}

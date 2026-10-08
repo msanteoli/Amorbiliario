@@ -21,7 +21,10 @@ import {
   PROPERTY_PURPOSE_LABELS,
   PROPERTY_STATUS_LABELS,
   PropertyStatus,
+  publishProperty,
 } from '@/services/properties'
+import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
+import { getCondoPhotoUrl } from '@/services/condominiums'
 import { formatPhoneNumber, formatDate } from '@/lib/clientUtils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +57,7 @@ import {
   DollarSign,
   FileText,
   UserCheck,
+  UserPlus,
   CheckCircle2,
   Copy,
   UploadCloud,
@@ -155,6 +159,13 @@ export default function ImovelDetalhe() {
 
   // Visualização de foto ampliada
   const [viewingPhotoIndex, setViewingPhotoIndex] = useState<number | null>(null)
+
+  // Modal de vincular proprietário
+  const [linkOwnerModalOpen, setLinkOwnerModalOpen] = useState(false)
+
+  // Ação de publicar imóvel (para imóveis rascunho/importados)
+  const [publishing, setPublishing] = useState(false)
+  const [publishErrors, setPublishErrors] = useState<string[]>([])
 
   // Diálogo de confirmação para remoção de foto
   const [photoToDelete, setPhotoToDelete] = useState<PropertyPhotoRecord | null>(null)
@@ -431,6 +442,44 @@ export default function ImovelDetalhe() {
     }
   }
 
+  // Ação: Publicar imóvel (PATCH status = "disponivel")
+  const handlePublishProperty = async () => {
+    if (!property) return
+    setPublishing(true)
+    setPublishErrors([])
+
+    try {
+      const updated = await publishProperty(property.id)
+      setProperty(updated)
+      toast({
+        title: 'Imóvel publicado!',
+        description: 'A situação do imóvel agora é Disponível.',
+      })
+      await loadData(property.id)
+    } catch (err: unknown) {
+      // Se o servidor listar o que falta, mostra a lista
+      const anyErr = err as {
+        data?: { data?: Record<string, { message?: string }> }
+        response?: { data?: Record<string, { message?: string }>; message?: string }
+      }
+      const errorsObj = anyErr?.data?.data || anyErr?.response?.data
+      if (errorsObj && typeof errorsObj === 'object') {
+        const msgs = Object.entries(errorsObj).map(
+          ([field, val]) =>
+            `${field}: ${(val as { message?: string })?.message || 'campo inválido'}`,
+        )
+        if (msgs.length > 0) {
+          setPublishErrors(msgs)
+          return
+        }
+      }
+      const genericMsg = formatErrorMessage(err)
+      setPublishErrors([genericMsg])
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   // Formata ação do histórico em português
   const formatHistoryEntry = (item: PropertyHistoryItem) => {
     let actionText = ''
@@ -492,12 +541,108 @@ export default function ImovelDetalhe() {
   const showSalePrice = property.purpose === 'venda' || property.purpose === 'ambos'
   const showRentPrice = property.purpose === 'locacao' || property.purpose === 'ambos'
 
+  // Pendências do imóvel importado
+  const isImported = property.source === 'importacao'
+  const importMissingItems: string[] = []
+  if (!property.owner_id) importMissingItems.push('Sem proprietário')
+  if (!property.title || !property.title.trim()) importMissingItems.push('Sem título')
+  if (photos.length < 5) importMissingItems.push(`Faltam fotos (${photos.length} de 5)`)
+
+  const hasImportMissing = importMissingItems.length > 0
+  const canPublish = !hasImportMissing
+
+  // Título de exibição de fallback
+  const displayTitle =
+    property.title && property.title.trim()
+      ? property.title
+      : `${PROPERTY_TYPE_LABELS[property.property_type] || property.property_type} · ${property.neighborhood || 'Sem bairro'} · ${property.code}`
+
+  // Condomínio
+  const condoRecord = property.expand?.condominium_id
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Alerta de aviso (ex: voltou para Rascunho por falta de fotos) */}
       {warningMessage && (
         <div className="p-4 rounded-lg border border-attention/40 bg-muted/20 text-xs text-foreground font-normal">
           {warningMessage}
+        </div>
+      )}
+
+      {/* Caixa de pendências do imóvel importado */}
+      {isImported && (
+        <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className="text-xs bg-muted/60 text-foreground border-border"
+              >
+                Importado
+              </Badge>
+              <h2 className="text-sm font-normal text-foreground">
+                {hasImportMissing ? 'Pendências para ativação' : 'Imóvel pronto para publicação'}
+              </h2>
+            </div>
+
+            {canManage && property.status !== 'disponivel' && (
+              <Button
+                type="button"
+                onClick={handlePublishProperty}
+                disabled={!canPublish || publishing}
+                size="sm"
+                className="h-8 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground gap-1.5 self-start sm:self-auto"
+                title={
+                  !canPublish
+                    ? 'Resolva as pendências antes de publicar.'
+                    : 'Publicar imóvel no catálogo'
+                }
+              >
+                {publishing && <Loader2 className="h-3 w-3 animate-spin" />}
+                <span>Publicar</span>
+              </Button>
+            )}
+          </div>
+
+          {hasImportMissing ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Complete os requisitos abaixo para poder publicar o imóvel como Disponível:
+              </p>
+              <ul className="space-y-1 text-xs">
+                {importMissingItems.map((item, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-attention-foreground">
+                    <AlertCircle className="h-3.5 w-3.5 text-attention shrink-0" />
+                    <span>{item}</span>
+                    {item === 'Sem proprietário' && canManage && (
+                      <button
+                        type="button"
+                        onClick={() => setLinkOwnerModalOpen(true)}
+                        className="text-primary underline hover:opacity-80 text-xs ml-1"
+                      >
+                        Vincular agora
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Todas as informações obrigatórias foram preenchidas. O imóvel pode ser publicado.
+            </p>
+          )}
+
+          {publishErrors.length > 0 && (
+            <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 space-y-1">
+              <p className="font-medium">O servidor indicou pendências para publicação:</p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                {publishErrors.map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -515,6 +660,14 @@ export default function ImovelDetalhe() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="eyebrow text-muted-foreground">{property.code}</span>
+              {isImported && (
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-muted/60 text-foreground border-border"
+                >
+                  Importado
+                </Badge>
+              )}
               <Badge variant={statusVariant} className="text-xs">
                 {statusLabel}
               </Badge>
@@ -524,7 +677,7 @@ export default function ImovelDetalhe() {
                 </Badge>
               )}
             </div>
-            <h1 className="display-sm text-foreground mt-0.5">{property.title}</h1>
+            <h1 className="display-sm text-foreground mt-0.5">{displayTitle}</h1>
           </div>
         </div>
 
@@ -729,6 +882,69 @@ export default function ImovelDetalhe() {
                 </p>
               </div>
             </div>
+
+            {/* Dados do Condomínio (abaixo do endereço) */}
+            {property.in_condominium && condoRecord && (
+              <div className="pt-3 border-t border-border space-y-2">
+                <span className="eyebrow text-muted-foreground block">Dados do condomínio</span>
+                <div className="p-3.5 rounded-lg bg-muted/20 border border-border space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <p className="font-normal text-sm text-foreground">{condoRecord.name}</p>
+                    <Badge variant="outline" className="text-[10px] border-border">
+                      Condomínio
+                    </Badge>
+                  </div>
+
+                  {condoRecord.amenities && (
+                    <div className="space-y-0.5">
+                      <span className="eyebrow text-muted-foreground block text-[10px]">
+                        Lazer e Comodidades
+                      </span>
+                      <p className="text-foreground whitespace-pre-line leading-relaxed">
+                        {condoRecord.amenities}
+                      </p>
+                    </div>
+                  )}
+
+                  {condoRecord.rules && (
+                    <div className="space-y-0.5">
+                      <span className="eyebrow text-muted-foreground block text-[10px]">
+                        Regras do condomínio
+                      </span>
+                      <p className="text-muted-foreground whitespace-pre-line leading-relaxed">
+                        {condoRecord.rules}
+                      </p>
+                    </div>
+                  )}
+
+                  {condoRecord.expand?.condominium_photos_via_condominium_id &&
+                    condoRecord.expand.condominium_photos_via_condominium_id.length > 0 && (
+                      <div className="space-y-1 pt-1">
+                        <span className="eyebrow text-muted-foreground block text-[10px]">
+                          Fotos do condomínio
+                        </span>
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                          {condoRecord.expand.condominium_photos_via_condominium_id.map(
+                            (cPhoto) => (
+                              <div
+                                key={cPhoto.id}
+                                className="w-16 h-16 rounded-lg overflow-hidden border border-border shrink-0 bg-muted"
+                              >
+                                <img
+                                  src={getCondoPhotoUrl(cPhoto as any, '100x100')}
+                                  alt="Condomínio"
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -846,7 +1062,21 @@ export default function ImovelDetalhe() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           {/* Proprietário */}
           <div className="space-y-1.5">
-            <span className="eyebrow text-muted-foreground block">Proprietário</span>
+            <div className="flex items-center justify-between">
+              <span className="eyebrow text-muted-foreground block">Proprietário</span>
+              {!hasOwner && canManage && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLinkOwnerModalOpen(true)}
+                  className="h-7 rounded-full px-2.5 text-[11px] font-normal border-border gap-1"
+                >
+                  <UserPlus className="h-3 w-3" />
+                  <span>Vincular proprietário</span>
+                </Button>
+              )}
+            </div>
             {ownerRecord ? (
               <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-1">
                 <p className="font-normal text-foreground">
@@ -871,8 +1101,20 @@ export default function ImovelDetalhe() {
                 </p>
               </div>
             ) : (
-              <div className="p-3.5 rounded-lg border border-border bg-muted/20 text-muted-foreground">
-                Nenhum cliente proprietário vinculado.
+              <div className="p-3.5 rounded-lg border border-border bg-muted/20 text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span>Nenhum cliente proprietário vinculado.</span>
+                {canManage && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLinkOwnerModalOpen(true)}
+                    className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1 self-start sm:self-auto"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    <span>Vincular proprietário</span>
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1173,6 +1415,22 @@ export default function ImovelDetalhe() {
           setTaskDetailModalOpen(false)
         }}
       />
+
+      {/* Modal de Vincular Proprietário */}
+      {property && (
+        <LinkOwnerModal
+          open={linkOwnerModalOpen}
+          onOpenChange={setLinkOwnerModalOpen}
+          propertyId={property.id}
+          propertyCode={property.code}
+          onLinked={async () => {
+            await loadData(property.id)
+            toast({
+              title: 'Proprietário vinculado com sucesso.',
+            })
+          }}
+        />
+      )}
     </div>
   )
 }

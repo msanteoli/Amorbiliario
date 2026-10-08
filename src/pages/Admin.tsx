@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   AdminUserItem,
@@ -16,6 +17,7 @@ import {
   AUDIT_REASON_LABELS,
   formatAdminErrorMessage,
 } from '@/services/admin'
+import { listOwnersWithoutProperty, OwnerWithoutPropertyItem } from '@/services/properties'
 import { formatDateTimeBahia, bahiaLocalToIsoUtc } from '@/services/visits'
 import { getRoleLabel } from '@/lib/roles'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -61,7 +63,9 @@ export default function Admin() {
   const { user: currentUser } = useAuth()
 
   // Abas
-  const [activeTab, setActiveTab] = useState<'usuarios' | 'organizacao' | 'auditoria'>('usuarios')
+  const [activeTab, setActiveTab] = useState<
+    'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel'
+  >('usuarios')
 
   // Feedback global da página
   const [globalSuccess, setGlobalSuccess] = useState<string | null>(null)
@@ -352,6 +356,31 @@ export default function Admin() {
   }
 
   // ═════════════════════════════════════════════════════════════════
+  // ABA 4: PROPRIETÁRIOS SEM IMÓVEL (M2b)
+  // ═════════════════════════════════════════════════════════════════
+  const [ownersWithoutProp, setOwnersWithoutProp] = useState<OwnerWithoutPropertyItem[]>([])
+  const [loadingOwnersWithoutProp, setLoadingOwnersWithoutProp] = useState(false)
+  const [ownersSearchTerm, setOwnersSearchTerm] = useState('')
+
+  const loadOwnersWithoutProp = useCallback(async () => {
+    setLoadingOwnersWithoutProp(true)
+    try {
+      const items = await listOwnersWithoutProperty()
+      setOwnersWithoutProp(items)
+    } catch (err) {
+      setGlobalError(formatAdminErrorMessage(err, 'Erro ao carregar proprietários sem imóvel.'))
+    } finally {
+      setLoadingOwnersWithoutProp(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'sem-imovel') {
+      loadOwnersWithoutProp()
+    }
+  }, [activeTab, loadOwnersWithoutProp])
+
+  // ═════════════════════════════════════════════════════════════════
   // ABA 3: AUDITORIA
   // ═════════════════════════════════════════════════════════════════
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([])
@@ -491,16 +520,22 @@ export default function Admin() {
         onValueChange={(val) => {
           setGlobalSuccess(null)
           setGlobalError(null)
-          setActiveTab(val as 'usuarios' | 'organizacao' | 'auditoria')
+          setActiveTab(val as 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel')
         }}
         className="w-full space-y-6"
       >
-        <TabsList className="h-auto p-1 bg-muted/40 border border-border rounded-full inline-flex gap-1">
+        <TabsList className="h-auto p-1 bg-muted/40 border border-border rounded-full inline-flex gap-1 flex-wrap">
           <TabsTrigger
             value="usuarios"
             className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
             Usuários
+          </TabsTrigger>
+          <TabsTrigger
+            value="sem-imovel"
+            className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Proprietários sem imóvel
           </TabsTrigger>
           <TabsTrigger
             value="organizacao"
@@ -809,6 +844,104 @@ export default function Admin() {
                 </Button>
               </div>
             </form>
+          )}
+        </TabsContent>
+
+        {/* ═════════════════════════════════════════════════════════════ */}
+        {/* ABA 4: PROPRIETÁRIOS SEM IMÓVEL */}
+        {/* ═════════════════════════════════════════════════════════════ */}
+        <TabsContent value="sem-imovel" className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-[20px] font-normal text-foreground">Proprietários sem imóvel</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Clientes marcados como proprietários que ainda não possuem nenhum imóvel ativo ou
+                rascunho vinculado.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={loadOwnersWithoutProp}
+              disabled={loadingOwnersWithoutProp}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5 shrink-0 self-start sm:self-auto"
+            >
+              {loadingOwnersWithoutProp && <Loader2 className="h-3 w-3 animate-spin" />}
+              <span>Atualizar lista</span>
+            </Button>
+          </div>
+
+          {/* Busca na lista */}
+          <div className="relative max-w-sm">
+            <Input
+              placeholder="Buscar proprietário por nome..."
+              value={ownersSearchTerm}
+              onChange={(e) => setOwnersSearchTerm(e.target.value)}
+              className="h-10 text-xs border-border rounded-full px-4"
+            />
+          </div>
+
+          {loadingOwnersWithoutProp ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-14 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : ownersWithoutProp.length === 0 ? (
+            <div className="rounded-lg border border-border bg-card p-12 text-center">
+              <p className="text-xs text-muted-foreground">
+                Nenhum proprietário sem imóvel encontrado. Todos os proprietários possuem imóveis
+                cadastrados.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
+              {ownersWithoutProp
+                .filter((owner) =>
+                  ownersSearchTerm.trim()
+                    ? owner.name.toLowerCase().includes(ownersSearchTerm.trim().toLowerCase())
+                    : true,
+                )
+                .map((owner) => (
+                  <div
+                    key={owner.id}
+                    className="p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="space-y-0.5 min-w-0">
+                      <span className="font-normal text-sm text-foreground block truncate">
+                        {owner.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground block font-mono text-[11px]">
+                        ID: {owner.id}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-full px-3.5 text-xs font-normal border-border"
+                      >
+                        <Link to={`/clientes/${owner.id}`}>
+                          <span>Ver cliente</span>
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        size="sm"
+                        className="h-8 rounded-full px-3.5 text-xs font-normal bg-primary text-primary-foreground gap-1"
+                      >
+                        <Link to={`/imoveis/novo`}>
+                          <Plus className="h-3 w-3" />
+                          <span>Cadastrar imóvel</span>
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            </div>
           )}
         </TabsContent>
 

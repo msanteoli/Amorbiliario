@@ -485,9 +485,20 @@ export default function Imoveis() {
                     </div>
 
                     <div className="col-span-4 min-w-0 space-y-0.5">
-                      <span className="font-normal text-sm text-foreground line-clamp-1">
-                        {property.title}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-normal text-sm text-foreground line-clamp-1">
+                          {property.title ||
+                            `${PROPERTY_TYPE_LABELS[property.property_type] || property.property_type} · ${property.neighborhood || 'Sem bairro'} · ${property.code}`}
+                        </span>
+                        {property.source === 'importacao' && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] bg-muted/60 text-foreground border-border shrink-0"
+                          >
+                            Importado
+                          </Badge>
+                        )}
+                      </div>
                       <span className="text-xs text-muted-foreground">
                         {PROPERTY_TYPE_LABELS[property.property_type] || property.property_type}
                         {property.bedrooms ? ` · ${property.bedrooms} qto(s)` : ''}
@@ -503,6 +514,14 @@ export default function Imoveis() {
                     </div>
 
                     <div className="col-span-2 text-right flex items-center justify-end gap-1.5 flex-wrap">
+                      {property.source === 'importacao' && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] bg-muted/60 text-foreground border-border"
+                        >
+                          Importado
+                        </Badge>
+                      )}
                       {isOutdated && (
                         <Badge variant="attention" className="text-[10px]">
                           Desatualizado
@@ -558,6 +577,14 @@ export default function Imoveis() {
                         {property.code}
                       </span>
                       <div className="flex items-center gap-1 shrink-0">
+                        {property.source === 'importacao' && (
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] px-1 py-0 bg-muted/60 text-foreground border-border"
+                          >
+                            Importado
+                          </Badge>
+                        )}
                         {isOutdated && (
                           <Badge variant="attention" className="text-[9px] px-1 py-0">
                             Desatualizado
@@ -573,7 +600,8 @@ export default function Imoveis() {
                     </div>
 
                     <span className="font-normal text-xs text-foreground line-clamp-1 mt-0.5">
-                      {property.title}
+                      {property.title ||
+                        `${PROPERTY_TYPE_LABELS[property.property_type] || property.property_type} · ${property.neighborhood || 'Sem bairro'} · ${property.code}`}
                     </span>
 
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-1">

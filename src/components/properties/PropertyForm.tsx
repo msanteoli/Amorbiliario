@@ -4,18 +4,21 @@ import {
   PropertyPurpose,
   PropertyType,
   PropertyStatus,
+  PropertyUseType,
   PROPERTY_TYPE_LABELS,
-  PROPERTY_PURPOSE_LABELS,
+  PROPERTY_USE_TYPE_LABELS,
   PROPERTY_STATUS_LABELS,
   searchOwners,
   PropertyOwnerRecord,
+  suggestPropertyTitles,
 } from '@/services/properties'
+import { listActiveCondominiums, CondominiumRecord } from '@/services/condominiums'
+import { QuickCondominiumModal } from '@/components/properties/QuickCondominiumModal'
 import { ResponsibleUser } from '@/services/clients'
 import { formatPhoneNumber } from '@/lib/clientUtils'
-import { maskCurrencyInput, parseCurrencyInput, formatCurrencyInput } from '@/lib/currencyUtils'
+import { maskCurrencyInput, parseCurrencyInput } from '@/lib/currencyUtils'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -25,13 +28,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ExternalLink, Loader2, Search, User, X } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { ExternalLink, Loader2, Search, Sparkles, User, X, Plus, Building2 } from 'lucide-react'
+
 export interface PropertyFormData {
   // Identificação
   code: string
   title: string
   purpose: PropertyPurpose
   property_type: PropertyType
+  use_type?: PropertyUseType
+  in_condominium: boolean
+  condominium_id?: string
   status?: PropertyStatus
 
   // Endereço
@@ -63,12 +78,14 @@ export interface PropertyFormData {
 }
 
 interface PropertyFormProps {
+  propertyId?: string
   isEditing?: boolean
   initialData?: Partial<PropertyFormData>
   initialOwner?: PropertyOwnerRecord | null
   eligibleUsers: ResponsibleUser[]
   currentUser: {
     id: string
+    organization_id?: string
     name?: string
     email?: string
     role?: string
@@ -79,6 +96,7 @@ interface PropertyFormProps {
 }
 
 export function PropertyForm({
+  propertyId,
   isEditing = false,
   initialData,
   initialOwner = null,
@@ -94,15 +112,39 @@ export function PropertyForm({
   // Identificação
   const [code, setCode] = useState(initialData?.code || '')
   const [title, setTitle] = useState(initialData?.title || '')
-  const [purpose, setPurpose] = useState<PropertyPurpose>(initialData?.purpose || 'venda')
+
+  // Finalidade: duas caixas de seleção, Venda e Locação
+  const initialPurpose = initialData?.purpose || 'venda'
+  const [purposeVenda, setPurposeVenda] = useState(
+    initialPurpose === 'venda' || initialPurpose === 'ambos',
+  )
+  const [purposeLocacao, setPurposeLocacao] = useState(
+    initialPurpose === 'locacao' || initialPurpose === 'ambos',
+  )
+  const [purposeError, setPurposeError] = useState<string | null>(null)
+
+  // Uso do imóvel (use_type)
+  const [useType, setUseType] = useState<PropertyUseType>(initialData?.use_type || 'residencial')
+
   const [propertyType, setPropertyType] = useState<PropertyType>(
     initialData?.property_type || 'apartamento',
   )
   const [status, setStatus] = useState<PropertyStatus>(initialData?.status || 'rascunho')
 
-  // Endereço
+  // Alternador Condomínio
+  const [inCondominium, setInCondominium] = useState<boolean>(Boolean(initialData?.in_condominium))
+  const [condominiumId, setCondominiumId] = useState<string>(initialData?.condominium_id || '')
+  const [condoList, setCondoList] = useState<CondominiumRecord[]>([])
+  const [loadingCondos, setLoadingCondos] = useState(false)
+  const [quickCondoModalOpen, setQuickCondoModalOpen] = useState(false)
+  const [condoSearchTerm, setCondoSearchTerm] = useState('')
+
+  // Endereço padronizado (rua, número e S/N)
+  const initialStreetNumber = initialData?.street_number || ''
+  const isInitialSN = initialStreetNumber.trim().toUpperCase() === 'S/N'
   const [street, setStreet] = useState(initialData?.street || '')
-  const [streetNumber, setStreetNumber] = useState(initialData?.street_number || '')
+  const [streetNumber, setStreetNumber] = useState(isInitialSN ? '' : initialStreetNumber)
+  const [isSN, setIsSN] = useState(isInitialSN)
   const [complement, setComplement] = useState(initialData?.complement || '')
   const [neighborhood, setNeighborhood] = useState(initialData?.neighborhood || '')
   const [city, setCity] = useState(initialData?.city || '')
@@ -141,6 +183,31 @@ export function PropertyForm({
 
   // Erros locais de validação de valor zero
   const [zeroValueError, setZeroValueError] = useState<string | null>(null)
+
+  // Sugestões de Título por IA
+  const [suggestModalOpen, setSuggestModalOpen] = useState(false)
+  const [suggestingTitle, setSuggestingTitle] = useState(false)
+  const [titleSuggestions, setTitleSuggestions] = useState<string[]>([])
+  const [suggestError, setSuggestError] = useState<string | null>(null)
+
+  // Carrega lista de condomínios
+  useEffect(() => {
+    let active = true
+    setLoadingCondos(true)
+    listActiveCondominiums()
+      .then((items) => {
+        if (active) setCondoList(items)
+      })
+      .catch(() => {
+        if (active) setCondoList([])
+      })
+      .finally(() => {
+        if (active) setLoadingCondos(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Busca de proprietários
   useEffect(() => {
@@ -215,12 +282,29 @@ export function PropertyForm({
     if (initialData) {
       if (initialData.code !== undefined) setCode(initialData.code)
       if (initialData.title !== undefined) setTitle(initialData.title)
-      if (initialData.purpose !== undefined) setPurpose(initialData.purpose)
+
+      if (initialData.purpose !== undefined) {
+        setPurposeVenda(initialData.purpose === 'venda' || initialData.purpose === 'ambos')
+        setPurposeLocacao(initialData.purpose === 'locacao' || initialData.purpose === 'ambos')
+      }
+
+      if (initialData.use_type !== undefined) setUseType(initialData.use_type)
+      if (initialData.in_condominium !== undefined) {
+        setInCondominium(Boolean(initialData.in_condominium))
+      }
+      if (initialData.condominium_id !== undefined) {
+        setCondominiumId(initialData.condominium_id)
+      }
+
       if (initialData.property_type !== undefined) setPropertyType(initialData.property_type)
       if (initialData.status !== undefined) setStatus(initialData.status)
 
       if (initialData.street !== undefined) setStreet(initialData.street)
-      if (initialData.street_number !== undefined) setStreetNumber(initialData.street_number)
+      if (initialData.street_number !== undefined) {
+        const sn = initialData.street_number.trim().toUpperCase() === 'S/N'
+        setIsSN(sn)
+        setStreetNumber(sn ? '' : initialData.street_number)
+      }
       if (initialData.complement !== undefined) setComplement(initialData.complement)
       if (initialData.neighborhood !== undefined) setNeighborhood(initialData.neighborhood)
       if (initialData.city !== undefined) setCity(initialData.city)
@@ -249,9 +333,61 @@ export function PropertyForm({
     }
   }, [initialOwner])
 
+  // Ação: Sugerir título por IA
+  const handleSuggestTitle = async () => {
+    setSuggestError(null)
+    setTitleSuggestions([])
+
+    // O endpoint requer id do imóvel existente
+    if (!propertyId) {
+      setSuggestError(
+        'Salve o imóvel como rascunho primeiro para sugerir títulos com base nos seus dados.',
+      )
+      setSuggestModalOpen(true)
+      return
+    }
+
+    setSuggestModalOpen(true)
+    setSuggestingTitle(true)
+    try {
+      const suggestions = await suggestPropertyTitles(propertyId)
+      setTitleSuggestions(suggestions)
+    } catch (err) {
+      if (err instanceof Error) {
+        setSuggestError(err.message)
+      } else {
+        setSuggestError('A sugestão está indisponível agora.')
+      }
+    } finally {
+      setSuggestingTitle(false)
+    }
+  }
+
+  const handleSelectTitleSuggestion = (selected: string) => {
+    setTitle(selected)
+    setSuggestModalOpen(false)
+  }
+
+  // Submissão do formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setZeroValueError(null)
+    setPurposeError(null)
+
+    // Validação da Finalidade (duas caixas de seleção)
+    if (!purposeVenda && !purposeLocacao) {
+      setPurposeError('Marque venda, locação ou as duas')
+      return
+    }
+
+    const calculatedPurpose: PropertyPurpose =
+      purposeVenda && purposeLocacao ? 'ambos' : purposeVenda ? 'venda' : 'locacao'
+
+    // Validação de condomínio
+    if (inCondominium && !condominiumId) {
+      setZeroValueError('Escolha o condomínio ou marque fora de condomínio.')
+      return
+    }
 
     // Validação de zeros explícitos em campos monetários
     const checkZero = (val: string, label: string) => {
@@ -263,23 +399,28 @@ export function PropertyForm({
       return false
     }
 
-    if (purpose === 'venda' || purpose === 'ambos') {
+    if (calculatedPurpose === 'venda' || calculatedPurpose === 'ambos') {
       if (checkZero(salePrice, 'Preço de venda')) return
     }
-    if (purpose === 'locacao' || purpose === 'ambos') {
+    if (calculatedPurpose === 'locacao' || calculatedPurpose === 'ambos') {
       if (checkZero(rentPrice, 'Preço de locação')) return
     }
     if (checkZero(condoFee, 'Condomínio')) return
     if (checkZero(iptu, 'IPTU')) return
 
+    const finalStreetNumber = isSN ? 'S/N' : streetNumber.trim()
+
     await onSubmit({
       code: code.trim(),
       title: title.trim(),
-      purpose,
+      purpose: calculatedPurpose,
       property_type: propertyType,
+      use_type: useType,
+      in_condominium: inCondominium,
+      condominium_id: inCondominium ? condominiumId : '',
       status: isEditing ? status : undefined,
       street: street.trim(),
-      street_number: streetNumber.trim(),
+      street_number: finalStreetNumber,
       complement: complement.trim(),
       neighborhood: neighborhood.trim(),
       city: city.trim(),
@@ -299,12 +440,19 @@ export function PropertyForm({
   }
 
   // Define se campos de preço devem ser exibidos
-  const showSalePrice = purpose === 'venda' || purpose === 'ambos'
-  const showRentPrice = purpose === 'locacao' || purpose === 'ambos'
+  const showSalePrice = purposeVenda
+  const showRentPrice = purposeLocacao
+
+  // Filtra condomínios pelo search
+  const filteredCondos = condoList.filter((c) =>
+    condoSearchTerm.trim()
+      ? c.name.toLowerCase().includes(condoSearchTerm.trim().toLowerCase())
+      : true,
+  )
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Aviso de validação de valor zero */}
+      {/* Aviso de validação de valor zero ou erro geral */}
       {zeroValueError && (
         <p className="text-xs text-destructive font-normal" role="alert">
           {zeroValueError}
@@ -316,7 +464,7 @@ export function PropertyForm({
         <div>
           <h2 className="text-[20px] font-normal text-foreground">Identificação</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Código do imóvel, título descritivo, finalidade e tipo de construção.
+            Código do imóvel, finalidade do negócio, uso, tipo de construção e título.
           </p>
         </div>
 
@@ -340,17 +488,57 @@ export function PropertyForm({
             </p>
           </div>
 
-          {/* Finalidade */}
+          {/* Finalidade do negócio: Venda e Locação em Checkboxes */}
           <div className="space-y-1.5">
-            <label htmlFor="prop-purpose" className="text-[13px] font-normal text-foreground block">
-              Finalidade <span className="text-destructive">*</span>
+            <label className="text-[13px] font-normal text-foreground block">
+              Finalidade do negócio <span className="text-destructive">*</span>
             </label>
-            <Select value={purpose} onValueChange={(val) => setPurpose(val as PropertyPurpose)}>
-              <SelectTrigger id="prop-purpose" className="h-12 text-sm border-border">
+            <div className="h-12 px-3.5 rounded-lg border border-border bg-card flex items-center gap-6">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-foreground">
+                <Checkbox
+                  checked={purposeVenda}
+                  onCheckedChange={(c) => {
+                    setPurposeVenda(Boolean(c))
+                    setPurposeError(null)
+                  }}
+                />
+                <span>Venda</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-foreground">
+                <Checkbox
+                  checked={purposeLocacao}
+                  onCheckedChange={(c) => {
+                    setPurposeLocacao(Boolean(c))
+                    setPurposeError(null)
+                  }}
+                />
+                <span>Locação</span>
+              </label>
+            </div>
+            {purposeError && (
+              <p className="text-xs text-destructive font-normal" role="alert">
+                {purposeError}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Uso do Imóvel: Finalidade (use_type) */}
+          <div className="space-y-1.5">
+            <label
+              htmlFor="prop-use-type"
+              className="text-[13px] font-normal text-foreground block"
+            >
+              Uso do imóvel (Finalidade) <span className="text-destructive">*</span>
+            </label>
+            <Select value={useType} onValueChange={(val) => setUseType(val as PropertyUseType)}>
+              <SelectTrigger id="prop-use-type" className="h-12 text-sm border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(PROPERTY_PURPOSE_LABELS).map(([k, label]) => (
+                {Object.entries(PROPERTY_USE_TYPE_LABELS).map(([k, label]) => (
                   <SelectItem key={k} value={k}>
                     {label}
                   </SelectItem>
@@ -358,13 +546,11 @@ export function PropertyForm({
               </SelectContent>
             </Select>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Tipo de Imóvel */}
           <div className="space-y-1.5">
             <label htmlFor="prop-type" className="text-[13px] font-normal text-foreground block">
-              Tipo de imóvel <span className="text-destructive">*</span>
+              Tipo de construção <span className="text-destructive">*</span>
             </label>
             <Select
               value={propertyType}
@@ -382,41 +568,50 @@ export function PropertyForm({
               </SelectContent>
             </Select>
           </div>
-
-          {/* Situação (somente na EDIÇÃO) */}
-          {isEditing && (
-            <div className="space-y-1.5">
-              <label
-                htmlFor="prop-status"
-                className="text-[13px] font-normal text-foreground block"
-              >
-                Situação do imóvel <span className="text-destructive">*</span>
-              </label>
-              <Select value={status} onValueChange={(val) => setStatus(val as PropertyStatus)}>
-                <SelectTrigger id="prop-status" className="h-12 text-sm border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PROPERTY_STATUS_LABELS).map(([k, label]) => (
-                    <SelectItem key={k} value={k}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Para ficar Disponível, o imóvel deve ter endereço, valores, características,
-                proprietário e 5 fotos.
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* Título */}
+        {/* Situação (somente na EDIÇÃO) */}
+        {isEditing && (
+          <div className="space-y-1.5">
+            <label htmlFor="prop-status" className="text-[13px] font-normal text-foreground block">
+              Situação do imóvel <span className="text-destructive">*</span>
+            </label>
+            <Select value={status} onValueChange={(val) => setStatus(val as PropertyStatus)}>
+              <SelectTrigger id="prop-status" className="h-12 text-sm border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(PROPERTY_STATUS_LABELS).map(([k, label]) => (
+                  <SelectItem key={k} value={k}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Para ficar Disponível, o imóvel deve ter endereço, valores, características,
+              proprietário e 5 fotos.
+            </p>
+          </div>
+        )}
+
+        {/* Título com botão Sugerir título por IA */}
         <div className="space-y-1.5">
-          <label htmlFor="prop-title" className="text-[13px] font-normal text-foreground block">
-            Título do anúncio <span className="text-destructive">*</span>
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="prop-title" className="text-[13px] font-normal text-foreground block">
+              Título do anúncio <span className="text-destructive">*</span>
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSuggestTitle}
+              className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1.5 text-primary hover:text-primary"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Sugerir título</span>
+            </Button>
+          </div>
           <Input
             id="prop-title"
             placeholder="Ex.: Apartamento com 3 quartos e vista mar no bairro Santa Mônica"
@@ -430,6 +625,96 @@ export function PropertyForm({
             Título chamativo para o catálogo (máximo 160 caracteres).
           </p>
         </div>
+      </section>
+
+      <hr className="border-t border-border" />
+
+      {/* 2. SEÇÃO: CONDOMÍNIO (Alternador Dentro / Fora) */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-[20px] font-normal text-foreground">Condomínio</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Informe se o imóvel está situado dentro de um condomínio residencial ou comercial.
+          </p>
+        </div>
+
+        {/* Alternador / Pílulas: Dentro / Fora */}
+        <div className="inline-flex p-1 rounded-full border border-border bg-muted/40 gap-1">
+          <button
+            type="button"
+            onClick={() => setInCondominium(false)}
+            className={`h-9 px-4 rounded-full text-xs font-normal transition-colors ${
+              !inCondominium
+                ? 'bg-primary text-primary-foreground font-medium'
+                : 'bg-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Fora de condomínio
+          </button>
+          <button
+            type="button"
+            onClick={() => setInCondominium(true)}
+            className={`h-9 px-4 rounded-full text-xs font-normal transition-colors ${
+              inCondominium
+                ? 'bg-primary text-primary-foreground font-medium'
+                : 'bg-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Dentro de condomínio
+          </button>
+        </div>
+
+        {/* Se Dentro de condomínio: seletor de condomínio e atalho Novo condomínio */}
+        {inCondominium && (
+          <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <label
+                htmlFor="prop-condo-select"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Escolher condomínio <span className="text-destructive">*</span>
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setQuickCondoModalOpen(true)}
+                className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1 self-start sm:self-auto"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Novo condomínio</span>
+              </Button>
+            </div>
+
+            <Select value={condominiumId || ''} onValueChange={(val) => setCondominiumId(val)}>
+              <SelectTrigger id="prop-condo-select" className="h-12 text-sm border-border">
+                <SelectValue placeholder="Selecione um condomínio ativo..." />
+              </SelectTrigger>
+              <SelectContent>
+                {loadingCondos ? (
+                  <div className="p-3 text-xs text-muted-foreground text-center">
+                    Carregando condomínios...
+                  </div>
+                ) : condoList.length === 0 ? (
+                  <div className="p-3 text-xs text-muted-foreground text-center">
+                    Nenhum condomínio ativo cadastrado. Clique em Novo condomínio.
+                  </div>
+                ) : (
+                  condoList.map((condo) => (
+                    <SelectItem key={condo.id} value={condo.id} className="text-xs">
+                      {condo.name}
+                      {condo.neighborhood ? ` · ${condo.neighborhood}` : ''}
+                      {condo.city ? ` (${condo.city})` : ''}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              A ficha do imóvel exibirá dados como área de lazer, regras e fotos do condomínio.
+            </p>
+          </div>
+        )}
       </section>
 
       <hr className="border-t border-border" />
@@ -458,16 +743,30 @@ export function PropertyForm({
             />
           </div>
           <div className="space-y-1.5">
-            <label
-              htmlFor="prop-street-number"
-              className="text-[13px] font-normal text-foreground block"
-            >
-              Número (&quot;S/N&quot; válido)
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="prop-street-number"
+                className="text-[13px] font-normal text-foreground block"
+              >
+                Número
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <Checkbox
+                  checked={isSN}
+                  onCheckedChange={(checked) => {
+                    const sn = Boolean(checked)
+                    setIsSN(sn)
+                    if (sn) setStreetNumber('')
+                  }}
+                />
+                <span>S/N</span>
+              </label>
+            </div>
             <Input
               id="prop-street-number"
-              placeholder="Ex.: 123 ou S/N"
-              value={streetNumber}
+              placeholder={isSN ? 'S/N' : 'Ex.: 123'}
+              value={isSN ? 'S/N' : streetNumber}
+              disabled={isSN}
               onChange={(e) => setStreetNumber(e.target.value)}
               maxLength={20}
               className="h-12 text-sm border-border"
@@ -947,6 +1246,77 @@ export function PropertyForm({
           <span>Salvar</span>
         </Button>
       </div>
+
+      {/* Modal de Cadastro Rápido de Condomínio */}
+      <QuickCondominiumModal
+        open={quickCondoModalOpen}
+        onOpenChange={setQuickCondoModalOpen}
+        currentUser={currentUser}
+        onCreated={(newCondo) => {
+          setCondoList((prev) => [newCondo, ...prev])
+          setCondominiumId(newCondo.id)
+        }}
+      />
+
+      {/* Modal de Sugestões de Título por IA */}
+      <Dialog open={suggestModalOpen} onOpenChange={setSuggestModalOpen}>
+        <DialogContent className="max-w-lg p-5">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-normal text-foreground flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span>Sugestões de título com IA</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Sugestões geradas com base nas características do imóvel. Escolha uma para preencher o
+              título.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {suggestingTitle && (
+              <div className="flex flex-col items-center justify-center p-8 text-muted-foreground gap-2">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <p className="text-xs">Gerando 3 opções de título...</p>
+              </div>
+            )}
+
+            {suggestError && (
+              <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal">
+                {suggestError}
+              </div>
+            )}
+
+            {!suggestingTitle && titleSuggestions.length > 0 && (
+              <div className="space-y-2">
+                {titleSuggestions.map((sug, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectTitleSuggestion(sug)}
+                    className="w-full text-left p-3.5 rounded-lg border border-border bg-card hover:bg-muted/40 transition-colors text-xs text-foreground flex items-center justify-between gap-3 group"
+                  >
+                    <span>{sug}</span>
+                    <span className="text-[11px] text-primary shrink-0 opacity-80 group-hover:opacity-100">
+                      Usar
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSuggestModalOpen(false)}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border"
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   )
 }
