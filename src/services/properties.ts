@@ -206,6 +206,7 @@ export interface ListPropertiesParams {
   minPrice?: number | ''
   maxPrice?: number | ''
   pendingReviewOnly?: boolean
+  importBatchId?: string
   sort?: string
 }
 
@@ -411,10 +412,16 @@ export async function listProperties(params: ListPropertiesParams = {}) {
     minPrice,
     maxPrice,
     pendingReviewOnly,
+    importBatchId,
     sort = '-created',
   } = params
 
   const filterParts: string[] = []
+
+  // Filtro por lote de importação
+  if (importBatchId) {
+    filterParts.push(`import_batch_id = "${importBatchId.replace(/['"\\]/g, '')}"`)
+  }
 
   // Busca textual por código, título ou bairro
   if (search && search.trim()) {

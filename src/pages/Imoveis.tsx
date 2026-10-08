@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   listProperties,
   PropertyRecord,
@@ -86,10 +86,14 @@ const STATUS_BADGE_VARIANTS: Record<PropertyStatus, { label: string; className: 
 
 export default function Imoveis() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
 
   // Permissão do botão Novo Imóvel: somente admin ou corretor
   const canCreateProperty = user?.role === 'admin' || user?.role === 'corretor'
+
+  // Filtro de lote de importação vindo da URL
+  const importBatchIdParam = searchParams.get('import_batch_id') || ''
 
   // Aba selecionada: 'todos' ou 'pendentes'
   const [activeTab, setActiveTab] = useState<'todos' | 'pendentes'>('todos')
@@ -142,6 +146,7 @@ export default function Imoveis() {
       minPrice: Number.isNaN(minP) ? undefined : minP,
       maxPrice: Number.isNaN(maxP) ? undefined : maxP,
       pendingReviewOnly: activeTab === 'pendentes',
+      importBatchId: importBatchIdParam || undefined,
       sort: '-created',
     })
       .then((res) => {
@@ -171,6 +176,7 @@ export default function Imoveis() {
     minPriceInput,
     maxPriceInput,
     activeTab,
+    importBatchIdParam,
   ])
 
   const handleClearFilters = () => {
@@ -181,6 +187,10 @@ export default function Imoveis() {
     setMinBedroomsInput('')
     setMinPriceInput('')
     setMaxPriceInput('')
+    if (importBatchIdParam) {
+      searchParams.delete('import_batch_id')
+      setSearchParams(searchParams)
+    }
     setCurrentPage(1)
   }
 
@@ -191,7 +201,8 @@ export default function Imoveis() {
     selectedStatus ||
     minBedroomsInput ||
     minPriceInput ||
-    maxPriceInput,
+    maxPriceInput ||
+    importBatchIdParam,
   )
 
   const getPropertyBadgeVariant = (
@@ -391,6 +402,26 @@ export default function Imoveis() {
             </button>
           )}
         </div>
+
+        {/* Aviso de filtro de lote ativo */}
+        {importBatchIdParam && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs text-foreground">
+            <span>
+              Exibindo imóveis importados no lote{' '}
+              <strong className="font-mono">{importBatchIdParam}</strong>.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                searchParams.delete('import_batch_id')
+                setSearchParams(searchParams)
+              }}
+              className="text-primary underline hover:opacity-80 ml-auto"
+            >
+              Remover filtro
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Erro de carregamento */}

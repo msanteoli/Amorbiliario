@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react'
-import * as XLSX from 'xlsx'
 import {
   Dialog,
   DialogContent,
@@ -8,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { readSpreadsheetFile } from '@/lib/spreadsheet'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -81,34 +81,25 @@ export function ImportCondominiumsModal({
     setReadingFile(true)
 
     try {
-      const buffer = await selected.arrayBuffer()
-      const workbook = XLSX.read(buffer, { type: 'array' })
-      const firstSheetName = workbook.SheetNames[0]
-      if (!firstSheetName) {
-        throw new Error('A planilha está vazia ou não possui abas.')
-      }
-      const worksheet = workbook.Sheets[firstSheetName]
-      const rows = XLSX.utils.sheet_to_json<ImportCondominiumRow>(worksheet, {
-        defval: '',
-        raw: false,
-      })
+      const rows = await readSpreadsheetFile<ImportCondominiumRow>(selected, { maxRows: 500 })
+      // Converte valores para string conforme interface ImportCondominiumRow (Nome, Endereço, etc)
+      const sanitizedRows = rows.map((r) => ({
+        Nome: String(r.Nome || (r as Record<string, unknown>).name || ''),
+        Endereço: String(r.Endereço || (r as Record<string, unknown>).street || ''),
+        Bairro: String(r.Bairro || (r as Record<string, unknown>).neighborhood || ''),
+        Cidade: String(r.Cidade || (r as Record<string, unknown>).city || ''),
+        Lazer: String(r.Lazer || (r as Record<string, unknown>).amenities || ''),
+        Regras: String(r.Regras || (r as Record<string, unknown>).rules || ''),
+      }))
 
-      if (!rows || rows.length === 0) {
-        throw new Error('Nenhuma linha de dados encontrada no arquivo.')
-      }
-
-      if (rows.length > 500) {
-        throw new Error('O arquivo excede o limite de 500 linhas por vez.')
-      }
-
-      setParsedRows(rows)
+      setParsedRows(sanitizedRows)
 
       // Executa automaticamente a simulação (dry_run: true) para mostrar a prévia
       setPreviewLoading(true)
       const res = await importCondominiumsEndpoint({
         filename: selected.name,
         dry_run: true,
-        rows,
+        rows: sanitizedRows,
       })
       setPreviewResult(res)
     } catch (err) {

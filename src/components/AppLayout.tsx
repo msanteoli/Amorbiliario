@@ -40,6 +40,7 @@ function getScreenTitle(pathname: string): string {
   if (pathname === '/clientes' || pathname.startsWith('/clientes/')) return 'Clientes'
   if (pathname === '/imoveis' || pathname.startsWith('/imoveis/')) return 'Imóveis'
   if (pathname === '/condominios' || pathname.startsWith('/condominios/')) return 'Condomínios'
+  if (pathname === '/admin/importar-imoveis') return 'Importar imóveis'
   if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'Administração'
   return 'Imobdigital'
 }

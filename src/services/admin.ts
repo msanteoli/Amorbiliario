@@ -244,3 +244,110 @@ export async function listAuditLogs(params: ListAuditLogParams = {}): Promise<Au
     page: res.page,
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// IMPORTAÇÃO DE IMÓVEIS (M2b)
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface PropertyComparisonSnapshot {
+  code?: string
+  status?: string
+  street?: string
+  street_number?: string
+  complement?: string
+  neighborhood?: string
+  sale_price?: number
+  rent_price?: number
+}
+
+export interface PropertyImportItemResult {
+  row: number
+  code: string
+  outcome: 'aceito' | 'pendente' | 'recusado'
+  reasons: string[]
+  notas: string[]
+  comparison?: {
+    existing: PropertyComparisonSnapshot
+    incoming: PropertyComparisonSnapshot
+  }
+}
+
+export interface PropertyImportSimulationResponse {
+  dry_run: boolean
+  batch_id: string | null
+  counts: {
+    aceito: number
+    pendente: number
+    recusado: number
+  }
+  items: PropertyImportItemResult[]
+  condominios?: {
+    criados: number
+    reaproveitados: number
+    parecidos: Array<{ novo: string; existente: string }>
+  }
+}
+
+export interface ImportBatchItem {
+  id: string
+  kind: string
+  filename: string
+  state: string
+  counts: {
+    aceito: number
+    pendente: number
+    recusado: number
+  }
+  created: string
+}
+
+export interface ListImportBatchesResponse {
+  items: ImportBatchItem[]
+}
+
+export interface UndoImportBatchResponse {
+  undone: number
+  skipped: number
+  condominiums_deactivated?: number
+}
+
+/**
+ * Envia linhas para simulação ou confirmação de importação de imóveis (POST /backend/v1/admin/imports/properties)
+ * No máximo 500 linhas por chamada.
+ */
+export async function importPropertiesEndpoint(params: {
+  rows: Record<string, unknown>[]
+  dry_run: boolean
+  filename?: string
+}): Promise<PropertyImportSimulationResponse> {
+  return await pb.send<PropertyImportSimulationResponse>('/backend/v1/admin/imports/properties', {
+    method: 'POST',
+    body: {
+      rows: params.rows,
+      dry_run: params.dry_run,
+      filename: params.filename,
+    },
+  })
+}
+
+/**
+ * Lista o histórico de importações anteriores (GET /backend/v1/admin/imports)
+ */
+export async function listImportBatches(): Promise<ImportBatchItem[]> {
+  const res = await pb.send<ListImportBatchesResponse>('/backend/v1/admin/imports', {
+    method: 'GET',
+  })
+  return res.items || []
+}
+
+/**
+ * Desfaz uma importação (POST /backend/v1/admin/imports/{id}/undo)
+ */
+export async function undoImportBatch(batchId: string): Promise<UndoImportBatchResponse> {
+  return await pb.send<UndoImportBatchResponse>(
+    `/backend/v1/admin/imports/${encodeURIComponent(batchId)}/undo`,
+    {
+      method: 'POST',
+    },
+  )
+}

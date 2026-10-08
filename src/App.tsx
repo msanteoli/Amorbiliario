@@ -27,6 +27,7 @@ import Condominios from '@/pages/Condominios'
 import CondominioDetalhe from '@/pages/CondominioDetalhe'
 import Agenda from '@/pages/Agenda'
 import Admin from '@/pages/Admin'
+import ImportarImoveis from '@/pages/ImportarImoveis'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -69,6 +70,7 @@ const App = () => (
                 {/* Admin-only route */}
                 <Route element={<AdminRoute />}>
                   <Route path="/admin" element={<Admin />} />
+                  <Route path="/admin/importar-imoveis" element={<ImportarImoveis />} />
                 </Route>
               </Route>
             </Route>

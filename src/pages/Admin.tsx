@@ -57,7 +57,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Loader2, MoreVertical, ChevronLeft, ChevronRight, FilterX } from 'lucide-react'
+import {
+  Plus,
+  Loader2,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  FilterX,
+  FileSpreadsheet,
+} from 'lucide-react'
 
 export default function Admin() {
   const { user: currentUser } = useAuth()
@@ -480,11 +488,22 @@ export default function Admin() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       {/* Top Header */}
-      <div>
-        <h1 className="display-sm text-foreground">Administração</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Gerencie os usuários da equipe, configurações da organização e registro de auditoria.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="display-sm text-foreground">Administração</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Gerencie os usuários da equipe, configurações da organização, importações e registro de
+            auditoria.
+          </p>
+        </div>
+
+        <Link
+          to="/admin/importar-imoveis"
+          className="inline-flex items-center gap-2 h-10 px-5 rounded-full text-xs font-normal border border-border bg-background hover:bg-muted text-foreground transition-colors self-start sm:self-auto shrink-0"
+        >
+          <FileSpreadsheet className="h-4 w-4" />
+          <span>Importar imóveis</span>
+        </Link>
       </div>
 
       {/* Alertas globais de Sucesso ou Erro */}
