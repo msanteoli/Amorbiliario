@@ -81,7 +81,8 @@ onRecordUpdateRequest((e) => {
   rec.set('import_batch_id', orig.getString('import_batch_id'))
 
   // destaque no site: só valida quando o destaque muda (editar outro campo de um destaque
-  // vencido não pode falhar)
+  // vencido não pode falhar). O nível efetivo (vencido = comum) é calculado na leitura, em
+  // public_properties_list.js e public_property_get.js: mantenha as três regras iguais.
   const hlNew = rec.getString('highlight_level') || 'comum'
   const hlOld = orig.getString('highlight_level') || 'comum'
   const untilNew = rec.getString('highlight_until')
@@ -176,10 +177,12 @@ onRecordUpdateRequest((e) => {
     'highlight_until',
   ]
   const changed = watched.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
-  // só uma edição de verdade renova a data; o valor enviado pelo cliente nunca vale
+  // só uma edição de verdade dos dados renova a data de revisão; marcar ou desmarcar
+  // destaque entra no histórico, mas não conta como revisão; o valor enviado nunca vale
+  const reviewChanged = changed.filter((f) => f !== 'highlight_level' && f !== 'highlight_until')
   rec.set(
     'last_reviewed_at',
-    changed.length ? new Date().toISOString() : orig.get('last_reviewed_at'),
+    reviewChanged.length ? new Date().toISOString() : orig.get('last_reviewed_at'),
   )
 
   const res = e.next()
