@@ -41,6 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -102,6 +103,7 @@ export default function Admin() {
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'sdr' | 'corretor'>('corretor')
+  const [sendInviteNow, setSendInviteNow] = useState(true)
   const [submittingInvite, setSubmittingInvite] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
 
@@ -169,14 +171,18 @@ export default function Admin() {
         name: trimmedName,
         email: trimmedEmail,
         role: inviteRole,
+        send_invite: sendInviteNow,
       })
 
       setInviteModalOpen(false)
       setInviteName('')
       setInviteEmail('')
       setInviteRole('corretor')
+      setSendInviteNow(true)
 
-      if (res.email_sent === false) {
+      if (res.invited === false) {
+        setGlobalSuccess('Usuário criado sem convite')
+      } else if (res.email_sent === false) {
         setGlobalSuccess('Usuário criado, mas o e-mail não foi enviado. Use Reenviar convite.')
       } else {
         setGlobalSuccess('Convite enviado com sucesso.')
@@ -608,6 +614,10 @@ export default function Admin() {
             <Button
               onClick={() => {
                 setInviteError(null)
+                setInviteName('')
+                setInviteEmail('')
+                setInviteRole('corretor')
+                setSendInviteNow(true)
                 setInviteModalOpen(true)
               }}
               className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground gap-1.5 shrink-0 self-start sm:self-auto"
@@ -675,17 +685,22 @@ export default function Admin() {
                       </Button>
 
                       {u.active && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleReinvite(u)}
-                          disabled={reinvitingId === u.id}
-                          className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
-                        >
-                          {reinvitingId === u.id && <Loader2 className="h-3 w-3 animate-spin" />}
-                          <span>Reenviar convite</span>
-                        </Button>
+                        <div className="flex flex-col items-end">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReinvite(u)}
+                            disabled={reinvitingId === u.id}
+                            className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                          >
+                            {reinvitingId === u.id && <Loader2 className="h-3 w-3 animate-spin" />}
+                            <span>Reenviar convite</span>
+                          </Button>
+                          <span className="text-[11px] text-muted-foreground mt-0.5">
+                            Envia o e-mail para a pessoa criar a senha.
+                          </span>
+                        </div>
                       )}
 
                       {!isSelf && (
@@ -735,8 +750,12 @@ export default function Admin() {
                             <DropdownMenuItem
                               onClick={() => handleReinvite(u)}
                               disabled={reinvitingId === u.id}
+                              className="flex flex-col items-start gap-0.5"
                             >
-                              Reenviar convite
+                              <span>Reenviar convite</span>
+                              <span className="text-[10px] text-muted-foreground font-normal">
+                                Envia o e-mail para a pessoa criar a senha.
+                              </span>
                             </DropdownMenuItem>
                           )}
                           {!isSelf && (
@@ -1303,6 +1322,27 @@ export default function Admin() {
                   <SelectItem value="corretor">Corretor</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="send-invite-checkbox"
+                  checked={sendInviteNow}
+                  onCheckedChange={(checked) => setSendInviteNow(checked === true)}
+                  disabled={submittingInvite}
+                />
+                <label
+                  htmlFor="send-invite-checkbox"
+                  className="text-xs font-normal text-foreground leading-none cursor-pointer"
+                >
+                  Enviar convite por e-mail agora
+                </label>
+              </div>
+              <p className="text-[11px] text-muted-foreground pl-6">
+                Desmarque para cadastrar a pessoa agora e convidar depois, quando o sistema estiver
+                publicado.
+              </p>
             </div>
 
             <DialogFooter className="pt-3 gap-2 sm:gap-0">

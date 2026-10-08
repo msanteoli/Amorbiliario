@@ -5,11 +5,20 @@ import {
   importPropertiesEndpoint,
   listImportBatches,
   undoImportBatch,
+  listAdminUsers,
+  AdminUserItem,
   PropertyImportSimulationResponse,
   PropertyImportItemResult,
   ImportBatchItem,
   PropertyComparisonSnapshot,
 } from '@/services/admin'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { formatErrorMessage, formatCurrencyBRL } from '@/services/properties'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -136,6 +145,10 @@ export default function ImportarImoveis() {
   // Item selecionado para comparação lado a lado (modal / drawer)
   const [comparisonItem, setComparisonItem] = useState<PropertyImportItemResult | null>(null)
 
+  // Captador padrão
+  const [users, setUsers] = useState<AdminUserItem[]>([])
+  const [defaultCaptorId, setDefaultCaptorId] = useState<string>('')
+
   // Confirmação / Gravação
   const [confirmingLoading, setConfirmingLoading] = useState(false)
   const [finalReport, setFinalReport] = useState<PropertyImportSimulationResponse | null>(null)
@@ -172,6 +185,35 @@ export default function ImportarImoveis() {
     loadBatches()
   }, [loadBatches])
 
+  // Carrega lista de usuários da Administração para captador padrão
+  useEffect(() => {
+    let isMounted = true
+    listAdminUsers()
+      .then((items) => {
+        if (isMounted) {
+          setUsers(items)
+        }
+      })
+      .catch(() => {
+        // Silencioso se falhar
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // Corretores e admins ativos
+  const activeCaptors = useMemo(() => {
+    return users.filter((u) => u.active && (u.role === 'corretor' || u.role === 'admin'))
+  }, [users])
+
+  // Nome do captador padrão selecionado
+  const selectedCaptorName = useMemo(() => {
+    if (!defaultCaptorId) return ''
+    const found = users.find((u) => u.id === defaultCaptorId)
+    return found ? found.name || found.email : ''
+  }, [defaultCaptorId, users])
+
   // Reset do fluxo de importação
   const handleResetFlow = () => {
     setFile(null)
@@ -183,6 +225,7 @@ export default function ImportarImoveis() {
     setComparisonItem(null)
     setActiveFilter('todos')
     setTableSearch('')
+    setDefaultCaptorId('')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -209,7 +252,7 @@ export default function ImportarImoveis() {
       setParsedRows(rows)
 
       // Executa simulação automaticamente
-      await runSimulation(rows, selected.name)
+      await runSimulation(rows, selected.name, defaultCaptorId)
     } catch (err) {
       setGeneralError(formatErrorMessage(err))
       setFile(null)
@@ -220,8 +263,21 @@ export default function ImportarImoveis() {
     }
   }
 
+  // Ao mudar a escolha da lista de captador padrão, refaz a simulação automaticamente
+  const handleDefaultCaptorChange = (val: string) => {
+    const newCaptorId = val === 'none' ? '' : val
+    setDefaultCaptorId(newCaptorId)
+    if (file && parsedRows.length > 0) {
+      runSimulation(parsedRows, file.name, newCaptorId)
+    }
+  }
+
   // Executar simulação em lotes de até 500 linhas
-  const runSimulation = async (rows: Record<string, unknown>[], filename: string) => {
+  const runSimulation = async (
+    rows: Record<string, unknown>[],
+    filename: string,
+    captorId?: string,
+  ) => {
     setSimulationLoading(true)
     setGeneralError(null)
 
@@ -243,6 +299,7 @@ export default function ImportarImoveis() {
           rows: slice,
           dry_run: true,
           filename: filename,
+          default_captor_id: captorId || undefined,
         })
 
         aggregatedCounts.aceito += res.counts.aceito
@@ -314,6 +371,7 @@ export default function ImportarImoveis() {
           rows: slice,
           dry_run: false,
           filename: file.name,
+          default_captor_id: defaultCaptorId || undefined,
         })
 
         if (res.batch_id) {
@@ -373,6 +431,19 @@ export default function ImportarImoveis() {
     }
   }
 
+  // Tradução de notas com suporte dinâmico ao captador selecionado
+  const renderNoteText = useCallback(
+    (note: string) => {
+      if (note === 'captador_padrao') {
+        return selectedCaptorName
+          ? `Captador não encontrado: ficou com ${selectedCaptorName}`
+          : 'Captador não encontrado: ficou com captador padrão'
+      }
+      return translateNote(note)
+    },
+    [selectedCaptorName],
+  )
+
   // Itens filtrados na tabela de simulação
   const filteredSimulationItems = useMemo(() => {
     if (!simulationResult) return []
@@ -387,12 +458,12 @@ export default function ImportarImoveis() {
         const reasonMatch = item.reasons.some((r) =>
           translateReason(r).toLowerCase().includes(query),
         )
-        const noteMatch = item.notas.some((n) => translateNote(n).toLowerCase().includes(query))
+        const noteMatch = item.notas.some((n) => renderNoteText(n).toLowerCase().includes(query))
         return codeMatch || rowMatch || reasonMatch || noteMatch
       }
       return true
     })
-  }, [simulationResult, activeFilter, tableSearch])
+  }, [simulationResult, activeFilter, tableSearch, renderNoteText])
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -522,7 +593,7 @@ export default function ImportarImoveis() {
             onClick={() => {
               setGeneralError(null)
               if (file && parsedRows.length > 0) {
-                runSimulation(parsedRows, file.name)
+                runSimulation(parsedRows, file.name, defaultCaptorId)
               }
             }}
             className="rounded-full px-4 h-8 text-xs font-normal border-destructive/30 text-destructive hover:bg-destructive/10 self-start sm:self-auto shrink-0"
@@ -625,12 +696,47 @@ export default function ImportarImoveis() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              {/* Captador padrão para quem não for encontrado */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 min-w-[240px] max-w-sm">
+                <label
+                  htmlFor="default-captor-select"
+                  className="text-xs text-muted-foreground whitespace-nowrap"
+                >
+                  Captador para quem não for encontrado:
+                </label>
+                <Select
+                  value={defaultCaptorId || 'none'}
+                  onValueChange={handleDefaultCaptorChange}
+                  disabled={simulationLoading || confirmingLoading}
+                >
+                  <SelectTrigger
+                    id="default-captor-select"
+                    className="h-9 text-xs border-border rounded-full w-full sm:w-[220px]"
+                  >
+                    <SelectValue placeholder="Padrão (quem importa)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-xs">
+                      Padrão (quem importa)
+                    </SelectItem>
+                    {activeCaptors.map((captor) => (
+                      <SelectItem key={captor.id} value={captor.id} className="text-xs">
+                        {captor.name || captor.email} (
+                        {captor.role === 'admin' ? 'Admin' : 'Corretor'})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button
                 type="button"
                 onClick={handleConfirmImport}
-                disabled={confirmingLoading || simulationResult.counts.aceito === 0}
-                className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2 shrink-0"
+                disabled={
+                  simulationLoading || confirmingLoading || simulationResult.counts.aceito === 0
+                }
+                className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2 shrink-0 self-start sm:self-auto"
               >
                 {confirmingLoading ? (
                   <>
@@ -921,7 +1027,7 @@ export default function ImportarImoveis() {
 
                           <TableCell className="text-muted-foreground max-w-xs">
                             {item.notas.length > 0 ? (
-                              <span>{item.notas.map(translateNote).join(', ')}</span>
+                              <span>{item.notas.map(renderNoteText).join(', ')}</span>
                             ) : (
                               <span className="text-muted-foreground italic">—</span>
                             )}
@@ -1216,7 +1322,7 @@ export default function ImportarImoveis() {
                   </div>
                   {comparisonItem.notas.length > 0 && (
                     <div className="text-muted-foreground">
-                      Notas: {comparisonItem.notas.map(translateNote).join(', ')}
+                      Notas: {comparisonItem.notas.map(renderNoteText).join(', ')}
                     </div>
                   )}
                 </div>

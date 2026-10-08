@@ -17,11 +17,13 @@ export interface InviteUserPayload {
   name: string
   email: string
   role: 'admin' | 'sdr' | 'corretor' | string
+  send_invite?: boolean
 }
 
 export interface InviteUserResponse {
   id: string
   email_sent: boolean
+  invited?: boolean
 }
 
 export interface ReinviteUserResponse {
@@ -319,14 +321,19 @@ export async function importPropertiesEndpoint(params: {
   rows: Record<string, unknown>[]
   dry_run: boolean
   filename?: string
+  default_captor_id?: string
 }): Promise<PropertyImportSimulationResponse> {
+  const body: Record<string, unknown> = {
+    rows: params.rows,
+    dry_run: params.dry_run,
+    filename: params.filename,
+  }
+  if (params.default_captor_id) {
+    body.default_captor_id = params.default_captor_id
+  }
   return await pb.send<PropertyImportSimulationResponse>('/backend/v1/admin/imports/properties', {
     method: 'POST',
-    body: {
-      rows: params.rows,
-      dry_run: params.dry_run,
-      filename: params.filename,
-    },
+    body,
   })
 }
 
