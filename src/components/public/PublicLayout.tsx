@@ -22,9 +22,27 @@ export const HEADER_MENU_ITEMS: HeaderMenuItem[] = [
   { label: 'Falar com a imobiliária', actionKey: 'contato' },
 ]
 
+import { getFilters, PublicFiltersResponse } from '@/services/publicSite'
+
+/**
+ * Cache simples em memória do resultado de getFilters() para evitar chamadas duplicadas
+ * ao alternar ou re-renderizar componentes do site público.
+ */
+let filtersCachePromise: Promise<PublicFiltersResponse> | null = null
+function loadCachedFilters(): Promise<PublicFiltersResponse> {
+  if (!filtersCachePromise) {
+    filtersCachePromise = getFilters().catch((err) => {
+      filtersCachePromise = null
+      throw err
+    })
+  }
+  return filtersCachePromise
+}
+
 interface PublicLayoutProps {
   children: React.ReactNode
   orgName?: string
+  whatsappEnabled?: boolean
   showContactButton?: boolean
   onSelectPurpose?: (purpose: 'venda' | 'locacao') => void
   onOpenContact?: () => void
@@ -34,6 +52,7 @@ interface PublicLayoutProps {
 export const PublicLayout: React.FC<PublicLayoutProps> = ({
   children,
   orgName = 'Imobdigital',
+  whatsappEnabled,
   showContactButton = true,
   onSelectPurpose,
   onOpenContact,
@@ -42,6 +61,32 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
   const [internalContactOpen, setInternalContactOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [cookiePreferencesOpen, setCookiePreferencesOpen] = useState(false)
+  const [isWhatsappEnabled, setIsWhatsappEnabled] = useState<boolean>(whatsappEnabled ?? false)
+
+  React.useEffect(() => {
+    if (whatsappEnabled !== undefined) {
+      setIsWhatsappEnabled(whatsappEnabled)
+      return
+    }
+
+    let mounted = true
+    loadCachedFilters()
+      .then((res) => {
+        if (mounted && res?.organization) {
+          setIsWhatsappEnabled(Boolean(res.organization.whatsapp_enabled))
+        }
+      })
+      .catch(() => {
+        // Se falhar a busca de filtros, mantém oculto
+        if (mounted) {
+          setIsWhatsappEnabled(false)
+        }
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [whatsappEnabled])
 
   const metaId = (import.meta.env.VITE_META_PIXEL_ID || '').trim()
   const googleId = (import.meta.env.VITE_GOOGLE_ADS_ID || '').trim()
@@ -198,8 +243,8 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({
       {/* Conteúdo da página */}
       <main className="flex-1">{children}</main>
 
-      {/* Botão flutuante de WhatsApp (sempre visível, canto inferior direito) */}
-      <FloatingWhatsAppButton className={floatingWaClassName} />
+      {/* Botão flutuante de WhatsApp (exibido somente quando organization.whatsapp_enabled for verdadeiro) */}
+      {isWhatsappEnabled && <FloatingWhatsAppButton className={floatingWaClassName} />}
 
       {/* Rodapé: o nome e o ano, o ThemeToggle e, se existir, "Preferências de cookies" */}
       <footer className="border-t border-border bg-background pt-8 pb-24 px-4 text-center text-sm text-muted-foreground">

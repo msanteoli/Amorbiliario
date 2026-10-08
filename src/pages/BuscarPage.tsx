@@ -349,7 +349,11 @@ export const BuscarPage: React.FC = () => {
   // Se o visitante acessou / e o auth ainda está carregando, mostra o esqueleto
   if (location.pathname === '/' && authLoading) {
     return (
-      <PublicLayout orgName={orgName} showContactButton={true}>
+      <PublicLayout
+        orgName={orgName}
+        whatsappEnabled={filterMeta?.organization?.whatsapp_enabled}
+        showContactButton={true}
+      >
         <div className="w-full bg-muted py-8 sm:py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -437,6 +441,7 @@ export const BuscarPage: React.FC = () => {
   return (
     <PublicLayout
       orgName={orgName}
+      whatsappEnabled={filterMeta?.organization?.whatsapp_enabled}
       showContactButton={true}
       onSelectPurpose={(p) => {
         handleFiltersChange({ ...currentFilters, purpose: p }, false)

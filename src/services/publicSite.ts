@@ -1,6 +1,7 @@
 export interface PublicOrganization {
   name: string
   whatsapp_enabled: boolean
+  whatsapp_url: string | null
 }
 
 export interface PublicNeighborhoodOption {
@@ -46,6 +47,7 @@ export interface PublicPropertyListItem {
   sale: PriceDetail | null
   rent: PriceDetail | null
   cover: string | null
+  highlight: 'comum' | 'destaque' | 'super_destaque'
 }
 
 export interface PublicPropertyListResponse {
@@ -59,6 +61,11 @@ export interface PublicPropertyListResponse {
 export interface PublicPropertyDetail extends PublicPropertyListItem {
   description: string
   photos: string[]
+  condominium: {
+    name: string
+    amenities: string
+    rules: string
+  } | null
 }
 
 export interface SearchPropertiesParams {
@@ -70,6 +77,7 @@ export interface SearchPropertiesParams {
   bedrooms?: number | string
   parking?: number | string
   sort?: 'recent' | 'price_asc' | 'price_desc'
+  featured?: '0' | '1'
   page?: number | string
   per_page?: number | string
 }
@@ -146,6 +154,7 @@ export async function searchProperties(
   if (params.parking != null && params.parking !== '') {
     query.set('parking', String(params.parking))
   }
+  if (params.featured) query.set('featured', params.featured)
   if (params.sort) query.set('sort', params.sort)
   if (params.page != null) query.set('page', String(params.page))
   if (params.per_page != null) query.set('per_page', String(params.per_page))

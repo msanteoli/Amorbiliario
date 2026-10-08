@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getProperty, getFilters, PublicPropertyDetail } from '@/services/publicSite'
+import {
+  getProperty,
+  getFilters,
+  PublicPropertyDetail,
+  PublicOrganization,
+} from '@/services/publicSite'
 import { addViewed } from '@/lib/searchMemory'
 import { initCampaignFromUrl } from '@/lib/campaign'
 import { initMarketingScripts, trackWhatsapp } from '@/lib/marketing'
@@ -38,6 +43,7 @@ export const ImovelPublicoPage: React.FC = () => {
   const { codigo } = useParams<{ codigo: string }>()
   const [property, setProperty] = useState<PublicPropertyDetail | null>(null)
   const [orgName, setOrgName] = useState('Imobdigital')
+  const [orgData, setOrgData] = useState<PublicOrganization | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -60,12 +66,15 @@ export const ImovelPublicoPage: React.FC = () => {
     initMarketingScripts()
   }, [])
 
-  // Carrega nome da imobiliária
+  // Carrega dados da imobiliária (nome e whatsapp_enabled)
   useEffect(() => {
     getFilters()
       .then((res) => {
-        if (res.organization?.name) {
-          setOrgName(res.organization.name)
+        if (res.organization) {
+          setOrgData(res.organization)
+          if (res.organization.name) {
+            setOrgName(res.organization.name)
+          }
         }
       })
       .catch(() => {
@@ -219,7 +228,11 @@ export const ImovelPublicoPage: React.FC = () => {
 
   if (loading) {
     return (
-      <PublicLayout orgName={orgName} showContactButton={false}>
+      <PublicLayout
+        orgName={orgName}
+        whatsappEnabled={orgData?.whatsapp_enabled}
+        showContactButton={false}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
           <Skeleton className="h-6 w-36 rounded-[8px]" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 h-[420px]">
@@ -249,7 +262,11 @@ export const ImovelPublicoPage: React.FC = () => {
 
   if (notFound) {
     return (
-      <PublicLayout orgName={orgName} showContactButton={false}>
+      <PublicLayout
+        orgName={orgName}
+        whatsappEnabled={orgData?.whatsapp_enabled}
+        showContactButton={false}
+      >
         <div className="max-w-md mx-auto px-4 py-24 text-center space-y-5">
           <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
             <AlertCircle className="h-8 w-8" />
@@ -277,7 +294,11 @@ export const ImovelPublicoPage: React.FC = () => {
 
   if (errorMessage || !property) {
     return (
-      <PublicLayout orgName={orgName} showContactButton={false}>
+      <PublicLayout
+        orgName={orgName}
+        whatsappEnabled={orgData?.whatsapp_enabled}
+        showContactButton={false}
+      >
         <div className="max-w-md mx-auto px-4 py-24 text-center space-y-4">
           <div className="h-14 w-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
             <AlertCircle className="h-7 w-7" />
@@ -320,6 +341,7 @@ export const ImovelPublicoPage: React.FC = () => {
   return (
     <PublicLayout
       orgName={orgName}
+      whatsappEnabled={orgData?.whatsapp_enabled}
       showContactButton={true}
       floatingWaClassName="bottom-20 lg:bottom-4"
     >
@@ -503,6 +525,71 @@ export const ImovelPublicoPage: React.FC = () => {
                 </p>
               )}
             </div>
+
+            {/* Seção Condomínio (quando condominium não for nulo) */}
+            {property.condominium && (
+              <>
+                <hr className="border-t border-border" />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">Condomínio</h2>
+                  </div>
+
+                  <div className="rounded-[8px] border border-border bg-card p-5 space-y-4">
+                    {/* Nome do condomínio */}
+                    <div>
+                      <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-1">
+                        Nome
+                      </span>
+                      <p className="text-base font-semibold text-foreground">
+                        {property.condominium.name}
+                      </p>
+                    </div>
+
+                    {/* Itens de lazer (um por linha, como lista) */}
+                    {property.condominium.amenities &&
+                      property.condominium.amenities
+                        .split('\n')
+                        .map((item) => item.trim())
+                        .filter(Boolean).length > 0 && (
+                        <div className="pt-3 border-t border-border space-y-2">
+                          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground block">
+                            Itens de lazer
+                          </span>
+                          <ul className="space-y-1.5 text-sm text-foreground">
+                            {property.condominium.amenities
+                              .split('\n')
+                              .map((item) => item.trim())
+                              .filter(Boolean)
+                              .map((amenity, idx) => (
+                                <li key={idx} className="flex items-start gap-2">
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full bg-primary mt-2 shrink-0"
+                                    aria-hidden="true"
+                                  />
+                                  <span>{amenity}</span>
+                                </li>
+                              ))}
+                          </ul>
+                        </div>
+                      )}
+
+                    {/* Regras do condomínio (texto) */}
+                    {property.condominium.rules && property.condominium.rules.trim() && (
+                      <div className="pt-3 border-t border-border space-y-2">
+                        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground block">
+                          Regras
+                        </span>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed max-w-[70ch]">
+                          {property.condominium.rules.trim()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Condomínio e IPTU */}
             {(property.condo_fee > 0 || property.iptu > 0) && (
