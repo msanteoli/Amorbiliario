@@ -484,15 +484,19 @@ export default function ImovelDetalhe() {
   const formatHistoryEntry = (item: PropertyHistoryItem) => {
     let actionText = ''
 
-    if (item.action === 'imovel_criado') {
-      actionText = 'Imóvel cadastrado'
+    if (item.action === 'imovel_importado') {
+      actionText = 'Importado da Kenlo'
+    } else if (item.action === 'imovel_criado') {
+      actionText = 'Imóvel criado'
     } else if (item.action === 'imovel_alterado') {
       const fieldName = item.field ? HISTORY_FIELD_LABELS[item.field] || item.field : ''
-      actionText = fieldName ? `Alterou ${fieldName}` : 'Alterou dados'
+      actionText = fieldName ? `Alterado ${fieldName}` : 'Alterado'
     } else if (item.action === 'dados_confirmados') {
-      actionText = 'Confirmou os dados'
+      actionText = 'Dados confirmados'
+    } else if (item.action === 'importacao_desfeita') {
+      actionText = 'Importação desfeita'
     } else {
-      actionText = item.action
+      actionText = 'Alteração'
     }
 
     if (item.reason === 'auto_rascunho_incompleto' || item.reason === 'auto_rascunho_fotos') {
@@ -611,7 +615,7 @@ export default function ImovelDetalhe() {
               </p>
               <ul className="space-y-1 text-xs">
                 {importMissingItems.map((item, idx) => (
-                  <li key={idx} className="flex items-center gap-2 text-attention-foreground">
+                  <li key={idx} className="flex items-center gap-2 text-foreground font-normal">
                     <AlertCircle className="h-3.5 w-3.5 text-attention shrink-0" />
                     <span>{item}</span>
                     {item === 'Sem proprietário' && canManage && (
@@ -713,7 +717,9 @@ export default function ImovelDetalhe() {
                 </Badge>
               )}
             </div>
-            <h1 className="display-sm text-foreground mt-0.5">{displayTitle}</h1>
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-light tracking-tight text-foreground mt-0.5 line-clamp-2">
+              {displayTitle}
+            </h1>
           </div>
         </div>
 
@@ -995,19 +1001,19 @@ export default function ImovelDetalhe() {
               <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
                 <p className="eyebrow text-muted-foreground text-[10px]">Quartos</p>
                 <p className="tabular text-sm font-normal text-foreground mt-0.5">
-                  {property.bedrooms ?? '—'}
+                  {property.bedrooms && property.bedrooms > 0 ? property.bedrooms : '—'}
                 </p>
               </div>
               <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
-                <p className="eyebrow text-muted-foreground text-[10px]">Banh.</p>
+                <p className="eyebrow text-muted-foreground text-[10px]">Banheiros</p>
                 <p className="tabular text-sm font-normal text-foreground mt-0.5">
-                  {property.bathrooms ?? '—'}
+                  {property.bathrooms && property.bathrooms > 0 ? property.bathrooms : '—'}
                 </p>
               </div>
               <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
                 <p className="eyebrow text-muted-foreground text-[10px]">Vagas</p>
                 <p className="tabular text-sm font-normal text-foreground mt-0.5">
-                  {property.parking ?? '—'}
+                  {property.parking && property.parking > 0 ? property.parking : '—'}
                 </p>
               </div>
               <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
@@ -1100,18 +1106,6 @@ export default function ImovelDetalhe() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="eyebrow text-muted-foreground block">Proprietário</span>
-              {!hasOwner && canManage && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLinkOwnerModalOpen(true)}
-                  className="h-7 rounded-full px-2.5 text-[11px] font-normal border-border gap-1"
-                >
-                  <UserPlus className="h-3 w-3" />
-                  <span>Vincular proprietário</span>
-                </Button>
-              )}
             </div>
             {ownerRecord ? (
               <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-1">

@@ -36,7 +36,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ExternalLink, Loader2, Search, Sparkles, User, X, Plus, Building2 } from 'lucide-react'
+import { Loader2, Sparkles, User, X, Plus, Building2, UserPlus } from 'lucide-react'
+import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
+import { getPropertyById } from '@/services/properties'
 
 export interface PropertyFormData {
   // Identificação
@@ -179,11 +181,7 @@ export function PropertyForm({
 
   // Proprietário
   const [selectedOwner, setSelectedOwner] = useState<PropertyOwnerRecord | null>(initialOwner)
-  const [ownerSearchTerm, setOwnerSearchTerm] = useState('')
-  const [ownerSearchResults, setOwnerSearchResults] = useState<PropertyOwnerRecord[]>([])
-  const [isSearchingOwners, setIsSearchingOwners] = useState(false)
-  const [showOwnerDropdown, setShowOwnerDropdown] = useState(false)
-  const searchContainerRef = useRef<HTMLDivElement>(null)
+  const [linkOwnerModalOpen, setLinkOwnerModalOpen] = useState(false)
 
   // Destaque no site
   const initialHl = initialData?.highlight_level || 'comum'
@@ -220,53 +218,6 @@ export function PropertyForm({
       })
     return () => {
       active = false
-    }
-  }, [])
-
-  // Busca de proprietários
-  useEffect(() => {
-    if (!ownerSearchTerm.trim()) {
-      setOwnerSearchResults([])
-      return
-    }
-
-    let active = true
-    setIsSearchingOwners(true)
-
-    const timer = setTimeout(() => {
-      searchOwners(ownerSearchTerm)
-        .then((results) => {
-          if (active) {
-            setOwnerSearchResults(results)
-          }
-        })
-        .catch(() => {
-          if (active) setOwnerSearchResults([])
-        })
-        .finally(() => {
-          if (active) setIsSearchingOwners(false)
-        })
-    }, 250)
-
-    return () => {
-      active = false
-      clearTimeout(timer)
-    }
-  }, [ownerSearchTerm])
-
-  // Fecha dropdown de busca ao clicar fora
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(event.target as Node)
-      ) {
-        setShowOwnerDropdown(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
 
@@ -562,7 +513,7 @@ export function PropertyForm({
               htmlFor="prop-use-type"
               className="text-[13px] font-normal text-foreground block"
             >
-              Uso do imóvel (Finalidade) <span className="text-destructive">*</span>
+              Uso do imóvel <span className="text-destructive">*</span>
             </label>
             <Select value={useType} onValueChange={(val) => setUseType(val as PropertyUseType)}>
               <SelectTrigger id="prop-use-type" className="h-12 text-sm border-border">
@@ -620,8 +571,8 @@ export function PropertyForm({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Para ficar Disponível, o imóvel deve ter endereço, valores, características,
-              proprietário e 5 fotos.
+              Para ficar Disponível, o imóvel deve ter título e descrição, endereço, valores,
+              características, proprietário e 5 fotos.
             </p>
           </div>
         )}
@@ -1237,103 +1188,70 @@ export function PropertyForm({
         </div>
 
         {/* Proprietário */}
-        <div className="space-y-1.5" ref={searchContainerRef}>
+        <div className="space-y-1.5">
           <label className="text-[13px] font-normal text-foreground block">
             Proprietário do imóvel
           </label>
 
-          {selectedOwner ? (
-            <div className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-card">
+          {!propertyId ? (
+            <div className="p-3.5 rounded-lg border border-border bg-muted/20 text-xs text-muted-foreground">
+              Salve o imóvel para vincular o proprietário.
+            </div>
+          ) : selectedOwner ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg border border-border bg-card gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-muted text-foreground flex items-center justify-center shrink-0">
                   <User className="h-4 w-4" />
                 </div>
                 <div>
                   <p className="text-xs font-normal text-foreground">{selectedOwner.name}</p>
-                  <p className="text-xs text-muted-foreground tabular">
-                    Telefone: {formatPhoneNumber(selectedOwner.phone)}
-                    {selectedOwner.email && ` · ${selectedOwner.email}`}
-                  </p>
+                  {(selectedOwner.phone || selectedOwner.email) && (
+                    <p className="text-xs text-muted-foreground tabular">
+                      {selectedOwner.phone
+                        ? `Telefone: ${formatPhoneNumber(selectedOwner.phone)}`
+                        : ''}
+                      {selectedOwner.phone && selectedOwner.email ? ' · ' : ''}
+                      {selectedOwner.email || ''}
+                    </p>
+                  )}
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLinkOwnerModalOpen(true)}
+                  className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  <span>Vincular proprietário</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedOwner(null)}
+                  className="h-8 rounded-full px-2.5 text-xs font-normal text-muted-foreground hover:text-foreground"
+                  title="Desvincular no formulário"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-lg border border-border bg-muted/20 text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+              <span>Nenhum proprietário vinculado</span>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setSelectedOwner(null)
-                  setOwnerSearchTerm('')
-                }}
-                className="h-9 sm:h-8 min-h-[44px] sm:min-h-[32px] rounded-full px-3.5 sm:px-3 text-xs font-normal border-border gap-1"
+                onClick={() => setLinkOwnerModalOpen(true)}
+                className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1 self-start sm:self-auto text-foreground"
               >
-                <X className="h-3.5 w-3.5" />
-                <span>Trocar</span>
+                <UserPlus className="h-3.5 w-3.5" />
+                <span>Vincular proprietário</span>
               </Button>
-            </div>
-          ) : (
-            <div className="space-y-1.5 relative">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar proprietário por nome ou telefone..."
-                  value={ownerSearchTerm}
-                  onChange={(e) => {
-                    setOwnerSearchTerm(e.target.value)
-                    setShowOwnerDropdown(true)
-                  }}
-                  onFocus={() => setShowOwnerDropdown(true)}
-                  className="pl-9 h-12 text-sm border-border"
-                />
-                {isSearchingOwners && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-              </div>
-
-              {/* Dropdown de resultados */}
-              {showOwnerDropdown && ownerSearchTerm.trim().length > 0 && (
-                <div className="absolute z-20 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-border bg-popover p-1">
-                  {ownerSearchResults.length > 0 ? (
-                    ownerSearchResults.map((owner) => (
-                      <div
-                        key={owner.id}
-                        className="flex items-center justify-between p-2.5 rounded hover:bg-muted cursor-pointer text-xs"
-                        onClick={() => {
-                          setSelectedOwner(owner)
-                          setShowOwnerDropdown(false)
-                          setOwnerSearchTerm('')
-                        }}
-                      >
-                        <div>
-                          <p className="text-foreground">{owner.name}</p>
-                          <p className="text-xs text-muted-foreground tabular">
-                            {formatPhoneNumber(owner.phone)}
-                            {owner.email && ` · ${owner.email}`}
-                          </p>
-                        </div>
-                        <span className="text-xs text-primary">Selecionar</span>
-                      </div>
-                    ))
-                  ) : !isSearchingOwners ? (
-                    <div className="p-3 text-center text-xs text-muted-foreground">
-                      Nenhum cliente do tipo proprietário encontrado.
-                    </div>
-                  ) : null}
-                </div>
-              )}
-
-              {/* Mensagem e link para cadastrar proprietário */}
-              <p className="text-xs text-muted-foreground pt-1">
-                Cadastre o proprietário em Clientes e volte aqui.{' '}
-                <Link
-                  to="/clientes/novo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  <span>Abrir cadastro de clientes</span>
-                  <ExternalLink className="h-3 w-3" />
-                </Link>
-              </p>
             </div>
           )}
         </div>
@@ -1418,6 +1336,28 @@ export function PropertyForm({
           <span>Salvar</span>
         </Button>
       </div>
+
+      {/* Modal de Vincular Proprietário */}
+      {propertyId && (
+        <LinkOwnerModal
+          open={linkOwnerModalOpen}
+          onOpenChange={setLinkOwnerModalOpen}
+          propertyId={propertyId}
+          propertyCode={code || initialData?.code || ''}
+          onLinked={async () => {
+            try {
+              const fresh = await getPropertyById(propertyId)
+              if (fresh.expand?.owner_id) {
+                setSelectedOwner(fresh.expand.owner_id)
+              } else if (fresh.owner_id) {
+                setSelectedOwner({ id: fresh.owner_id, name: 'Proprietário vinculado' })
+              }
+            } catch {
+              // fallback
+            }
+          }}
+        />
+      )}
 
       {/* Modal de Cadastro Rápido de Condomínio */}
       <QuickCondominiumModal

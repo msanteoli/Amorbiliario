@@ -307,8 +307,8 @@ export default function Imoveis() {
           />
         </div>
 
-        {/* Pílulas de seleção em fileira com rolagem lateral no celular */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+        {/* Pílulas de seleção com quebra de linha permitida */}
+        <div className="flex items-center gap-2 flex-wrap py-1">
           {/* Tipo */}
           <Select
             value={selectedType || 'todos'}
@@ -521,14 +521,6 @@ export default function Imoveis() {
                           {property.title ||
                             `${PROPERTY_TYPE_LABELS[property.property_type] || property.property_type} · ${property.neighborhood || 'Sem bairro'} · ${property.code}`}
                         </span>
-                        {property.source === 'importacao' && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] bg-muted/60 text-foreground border-border shrink-0"
-                          >
-                            Importado
-                          </Badge>
-                        )}
                         {(() => {
                           const hl = (property as any).highlight_level || 'comum'
                           const untilStr = (property as any).highlight_until
@@ -675,15 +667,15 @@ export default function Imoveis() {
 
                   {/* Informações centrais e preço em tabular */}
                   <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="eyebrow text-muted-foreground text-[10px]">
+                    <div className="flex items-start justify-between gap-1.5">
+                      <span className="eyebrow text-muted-foreground text-[10px] shrink-0 pt-0.5">
                         {property.code}
                       </span>
-                      <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                      <div className="flex items-center gap-1 flex-wrap justify-end">
                         {property.source === 'importacao' && (
                           <Badge
                             variant="outline"
-                            className="text-[9px] px-1 py-0 bg-muted/60 text-foreground border-border"
+                            className="text-[9px] px-1 py-0 bg-muted/60 text-foreground border-border shrink-0"
                           >
                             Importado
                           </Badge>

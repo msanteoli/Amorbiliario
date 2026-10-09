@@ -295,8 +295,8 @@ export default function CondominioDetalhe() {
 
         <div className="flex items-center gap-2">
           <div className="text-xs text-muted-foreground tabular">
-            <span className="font-medium text-foreground">{properties.length}</span> imóveis
-            vinculados
+            <span className="font-medium text-foreground">{properties.length}</span>{' '}
+            {properties.length === 1 ? 'imóvel vinculado' : 'imóveis vinculados'}
           </div>
         </div>
       </div>

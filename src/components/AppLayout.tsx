@@ -11,6 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
 import { useAuth } from '@/contexts/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { getRoleLabel } from '@/lib/roles'
@@ -18,9 +25,11 @@ import {
   Building2,
   CalendarDays,
   CheckSquare,
+  ChevronRight,
   Database,
   Home,
   LogOut,
+  MoreHorizontal,
   Settings,
   User,
   UserCheck,
@@ -53,25 +62,36 @@ export function AppLayout() {
   const role = user?.role
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
 
   // Itens de navegação:
-  // Base (para todos): Hoje, Leads, Clientes, Imóveis, Condomínios, Agenda
-  // Admin e SDR: inclui Backup
-  // Admin: inclui também Administração
-  // Outros papéis (corretor, etc): não veem Backup nem Administração
-  const baseItems: NavItem[] = [
+  // Desktop: todos os itens disponíveis para o papel
+  // Celular: 4 itens fixos (Hoje, Leads, Imóveis, Agenda) e o botão Mais com os demais (Clientes, Condomínios, Backup, Administração)
+  const canSeeBackup = role === 'admin' || role === 'sdr'
+
+  const desktopItems: NavItem[] = [
     { title: 'Hoje', url: '/hoje', icon: CheckSquare },
     { title: 'Leads', url: '/leads', icon: Users },
     { title: 'Clientes', url: '/clientes', icon: UserCheck },
     { title: 'Imóveis', url: '/imoveis', icon: Home },
     { title: 'Condomínios', url: '/condominios', icon: Building2 },
     { title: 'Agenda', url: '/agenda', icon: CalendarDays },
+    ...(canSeeBackup ? [{ title: 'Backup', url: '/backup', icon: Database }] : []),
+    ...(role === 'admin' ? [{ title: 'Administração', url: '/admin', icon: Settings }] : []),
   ]
 
-  const canSeeBackup = role === 'admin' || role === 'sdr'
+  // Itens fixos do menu inferior móvel (máx 4)
+  const mobileFixedItems: NavItem[] = [
+    { title: 'Hoje', url: '/hoje', icon: CheckSquare },
+    { title: 'Leads', url: '/leads', icon: Users },
+    { title: 'Imóveis', url: '/imoveis', icon: Home },
+    { title: 'Agenda', url: '/agenda', icon: CalendarDays },
+  ]
 
-  const navItems: NavItem[] = [
-    ...baseItems,
+  // Itens secundários acessíveis via folha "Mais"
+  const mobileMoreItems: NavItem[] = [
+    { title: 'Clientes', url: '/clientes', icon: UserCheck },
+    { title: 'Condomínios', url: '/condominios', icon: Building2 },
     ...(canSeeBackup ? [{ title: 'Backup', url: '/backup', icon: Database }] : []),
     ...(role === 'admin' ? [{ title: 'Administração', url: '/admin', icon: Settings }] : []),
   ]
@@ -94,7 +114,7 @@ export function AppLayout() {
 
         {/* Itens de navegação: traço de 2px à esquerda e texto em foreground quando ativo */}
         <nav className="flex-1 py-4 space-y-1">
-          {navItems.map((item) => {
+          {desktopItems.map((item) => {
             const Icon = item.icon
             const isActive =
               location.pathname === item.url || location.pathname.startsWith(`${item.url}/`)
@@ -214,12 +234,12 @@ export function AppLayout() {
           <Outlet />
         </main>
 
-        {/* Barra inferior de navegação no celular: alvos de 48px, ícone de 22px, ponto de 4px acima do ativo */}
+        {/* Barra inferior de navegação no celular: 4 itens fixos + 1 item Mais, alvos de 48px, sem sobreposição */}
         <nav
           aria-label="Navegação móvel"
-          className="md:hidden fixed bottom-0 left-0 right-0 z-30 flex items-center justify-between border-t border-border bg-background/95 backdrop-blur px-1 py-1 supports-[backdrop-filter]:bg-background/90"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 items-center border-t border-border bg-background/95 backdrop-blur px-1 py-1 supports-[backdrop-filter]:bg-background/90"
         >
-          {navItems.map((item) => {
+          {mobileFixedItems.map((item) => {
             const Icon = item.icon
             const isActive =
               location.pathname === item.url || location.pathname.startsWith(`${item.url}/`)
@@ -229,8 +249,10 @@ export function AppLayout() {
                 key={item.url}
                 to={item.url}
                 className={cn(
-                  'relative flex flex-col items-center justify-center min-h-[48px] h-12 flex-1 px-0.5 rounded transition-colors',
-                  isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                  'relative flex flex-col items-center justify-center min-h-[48px] h-12 w-full px-0.5 rounded transition-colors',
+                  isActive
+                    ? 'text-foreground font-medium'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {/* Ponto de 4px acima do ícone quando ativo */}
@@ -241,19 +263,90 @@ export function AppLayout() {
                   )}
                   aria-hidden="true"
                 />
-                <Icon className="h-[22px] w-[22px] shrink-0" />
-                <span
-                  className={cn(
-                    'leading-tight truncate max-w-full text-center mt-0.5',
-                    navItems.length >= 6 ? 'text-[10px]' : 'text-[11px]',
-                  )}
-                >
+                <Icon className="h-5 w-5 shrink-0" />
+                <span className="text-[11px] leading-tight truncate max-w-full text-center mt-0.5">
                   {item.title}
                 </span>
               </Link>
             )
           })}
+
+          {/* Quinto item: Mais (abre a folha inferior) */}
+          {(() => {
+            const isMoreActive = mobileMoreItems.some(
+              (item) =>
+                location.pathname === item.url || location.pathname.startsWith(`${item.url}/`),
+            )
+
+            return (
+              <button
+                type="button"
+                onClick={() => setMobileMoreOpen(true)}
+                className={cn(
+                  'relative flex flex-col items-center justify-center min-h-[48px] h-12 w-full px-0.5 rounded transition-colors',
+                  isMoreActive
+                    ? 'text-foreground font-medium'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                aria-label="Abrir mais opções de navegação"
+              >
+                <span
+                  className={cn(
+                    'w-1 h-1 rounded-full mb-0.5 transition-opacity',
+                    isMoreActive ? 'bg-foreground opacity-100' : 'opacity-0',
+                  )}
+                  aria-hidden="true"
+                />
+                <MoreHorizontal className="h-5 w-5 shrink-0" />
+                <span className="text-[11px] leading-tight truncate max-w-full text-center mt-0.5">
+                  Mais
+                </span>
+              </button>
+            )
+          })()}
         </nav>
+
+        {/* Folha (Sheet) Mais opções de navegação */}
+        <Sheet open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
+          <SheetContent side="bottom" className="p-4 rounded-t-2xl max-h-[85vh] overflow-y-auto">
+            <SheetHeader className="text-left pb-2 border-b border-border">
+              <SheetTitle className="text-base font-normal text-foreground">Mais opções</SheetTitle>
+              <SheetDescription className="text-xs text-muted-foreground">
+                Acesse outras áreas do sistema Imobdigital
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="py-3 space-y-1">
+              {mobileMoreItems.map((item) => {
+                const Icon = item.icon
+                const isActive =
+                  location.pathname === item.url || location.pathname.startsWith(`${item.url}/`)
+
+                return (
+                  <Link
+                    key={item.url}
+                    to={item.url}
+                    onClick={() => setMobileMoreOpen(false)}
+                    className={cn(
+                      'flex items-center justify-between p-3 min-h-[48px] rounded-lg transition-colors text-sm',
+                      isActive
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'text-foreground hover:bg-muted/50',
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-foreground shrink-0">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <span>{item.title}</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </Link>
+                )
+              })}
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   )

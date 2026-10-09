@@ -104,25 +104,25 @@ export default function Condominios() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {canImport && (
             <Button
               variant="outline"
               onClick={() => setImportModalOpen(true)}
-              className="h-9 sm:h-10 rounded-full px-4 text-xs font-normal border-border gap-2"
+              className="h-9 sm:h-10 rounded-full px-3.5 sm:px-4 text-xs font-normal border-border gap-2 flex-1 sm:flex-none"
             >
-              <FileSpreadsheet className="h-4 w-4" />
-              <span>Importar condomínios</span>
+              <FileSpreadsheet className="h-4 w-4 shrink-0" />
+              <span className="truncate">Importar condomínios</span>
             </Button>
           )}
 
           {canCreate && (
             <Button
               onClick={() => setCreateModalOpen(true)}
-              className="h-9 sm:h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+              className="h-9 sm:h-10 rounded-full px-4 sm:px-5 text-xs font-normal bg-primary text-primary-foreground gap-2 flex-1 sm:flex-none"
             >
-              <Plus className="h-4 w-4" />
-              <span>Novo condomínio</span>
+              <Plus className="h-4 w-4 shrink-0" />
+              <span className="truncate">Novo condomínio</span>
             </Button>
           )}
         </div>
@@ -325,7 +325,9 @@ export default function Condominios() {
 
                     <div className="flex items-center gap-1 text-foreground tabular font-medium shrink-0">
                       <Home className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{condo.propertiesCount} imóveis</span>
+                      <span>
+                        {condo.propertiesCount} {condo.propertiesCount === 1 ? 'imóvel' : 'imóveis'}
+                      </span>
                     </div>
                   </div>
                 </div>
