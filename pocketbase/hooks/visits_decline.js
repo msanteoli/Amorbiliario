@@ -31,9 +31,24 @@ routerAdd(
     }
 
     const now = new Date().toISOString()
-    visit.set('declined_reason', reason)
-    visit.set('declined_at', now)
-    $app.save(visit)
+    // leitura, conferência e gravação na mesma transação (confirmar e recusar não se misturam)
+    let lost = ''
+    $app.runInTransaction((tx) => {
+      const v = tx.findRecordById('visits', visit.id)
+      if (v.getString('status') !== 'agendada') {
+        lost = 'Só visita aguardando confirmação pode ser recusada.'
+        return
+      }
+      if (v.getString('declined_at')) {
+        lost = 'Esta visita já foi recusada.'
+        return
+      }
+      v.set('declined_reason', reason)
+      v.set('declined_at', now)
+      tx.save(v)
+      visit = v
+    })
+    if (lost) return e.json(400, { message: lost })
 
     let code = ''
     try {

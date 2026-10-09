@@ -134,7 +134,7 @@ routerAdd(
       visit.set('declined_reason', '')
       visit.set('declined_at', '')
     }
-    if (oldEventId || visit.getString('google_sync') === 'sincronizada') {
+    if (changedPlan && (oldEventId || visit.getString('google_sync') === 'sincronizada')) {
       visit.set('google_sync', 'pendente')
       visit.set('google_sync_attempts', 0)
     }
@@ -170,6 +170,20 @@ routerAdd(
           { d: 'visit:' + visit.id },
         )
         const prop = $app.findRecordById('properties', visit.getString('property_id'))
+        const declinedTasks = $app.findRecordsByFilter(
+          'tasks',
+          "description = {:d} && status = 'aberta'",
+          '',
+          20,
+          0,
+          { d: 'visit_declined:' + visit.id },
+        )
+        declinedTasks.forEach((dt) => {
+          dt.set('status', 'concluida')
+          dt.set('closed_by', actor.id)
+          dt.set('closed_at', nowIso)
+          $app.save(dt)
+        })
         if (!open.length) {
           const t = new Record($app.findCollectionByNameOrId('tasks'))
           t.set('organization_id', orgId)

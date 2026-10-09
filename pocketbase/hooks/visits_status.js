@@ -49,27 +49,45 @@ routerAdd(
     if (next === 'confirmada' && role === 'corretor' && visit.getString('declined_at')) {
       throw new BadRequestError('A visita foi recusada. Aguarde a remarcação.')
     }
-    visit.set('status', next)
+    let hasGoogle = false
     if (next === 'confirmada') {
       try {
-        const conns = $app.findRecordsByFilter(
-          'google_connections',
-          "user_id = {:u} && status = 'conectado'",
-          '',
-          1,
-          0,
-          { u: visit.getString('broker_id') },
-        )
-        if (conns.length) {
-          visit.set('google_sync', 'pendente')
-          visit.set('google_sync_attempts', 0)
-        }
+        hasGoogle =
+          $app.findRecordsByFilter(
+            'google_connections',
+            "user_id = {:u} && status = 'conectado'",
+            '',
+            1,
+            0,
+            { u: visit.getString('broker_id') },
+          ).length > 0
       } catch (err) {
         $app.logger().error('visit_google_check_failed', 'err', String((err && err.message) || err))
       }
     }
-    if (result) visit.set('result_text', result.slice(0, 1000))
-    $app.save(visit)
+    // leitura, conferência e gravação na mesma transação: confirmar e recusar ao mesmo tempo
+    // não deixam a visita em estado misto
+    let lost = ''
+    $app.runInTransaction((tx) => {
+      const v = tx.findRecordById('visits', visit.id)
+      if (allowedFrom[next].indexOf(v.getString('status')) < 0) {
+        lost = 'Mudança de situação não permitida.'
+        return
+      }
+      if (next === 'confirmada' && role === 'corretor' && v.getString('declined_at')) {
+        lost = 'A visita foi recusada. Aguarde a remarcação.'
+        return
+      }
+      v.set('status', next)
+      if (hasGoogle) {
+        v.set('google_sync', 'pendente')
+        v.set('google_sync_attempts', 0)
+      }
+      if (result) v.set('result_text', result.slice(0, 1000))
+      tx.save(v)
+      visit = v
+    })
+    if (lost) return e.json(400, { message: lost })
 
     try {
       const open = $app.findRecordsByFilter(
