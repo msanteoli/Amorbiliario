@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T11:43:10.153Z",
+  "generatedAt": "2026-10-09T11:49:00.514Z",
   "collections": [
     {
       "name": "users",
@@ -1718,6 +1718,296 @@
       ],
       "indexes": [
         "CREATE INDEX idx_import_batches_org ON import_batches (organization_id, created)"
+      ]
+    },
+    {
+      "name": "negotiations",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || responsible_id = @request.auth.id)",
+        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id && (@request.auth.role != 'corretor' || responsible_id = @request.auth.id)",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "lead_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "leads"
+        },
+        {
+          "name": "property_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "properties"
+        },
+        {
+          "name": "purpose",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "venda",
+            "locacao"
+          ]
+        },
+        {
+          "name": "agreed_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "em_analise",
+            "aprovada",
+            "fechada",
+            "desistiu"
+          ]
+        },
+        {
+          "name": "responsible_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "closed_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_negotiations_open_lead ON negotiations (lead_id) WHERE status IN ('em_analise','aprovada')",
+        "CREATE INDEX idx_negotiations_org_status ON negotiations (organization_id, status)",
+        "CREATE INDEX idx_negotiations_property ON negotiations (property_id)"
+      ]
+    },
+    {
+      "name": "negotiation_people",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.active = true && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || @request.auth.role = 'corretor') && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || @request.auth.role = 'sdr' || negotiation_id.responsible_id = @request.auth.id)",
+        "view": "@request.auth.id != '' && organization_id = @request.auth.organization_id && (@request.auth.role != 'corretor' || negotiation_id.responsible_id = @request.auth.id)",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "negotiation_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "negotiations"
+        },
+        {
+          "name": "client_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clients"
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "cliente",
+            "fiador",
+            "conjuge_cliente",
+            "conjuge_fiador",
+            "morador"
+          ]
+        },
+        {
+          "name": "active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_neg_people_unique ON negotiation_people (negotiation_id, client_id, role)",
+        "CREATE INDEX idx_neg_people_client ON negotiation_people (client_id)"
+      ]
+    },
+    {
+      "name": "negotiation_documents",
+      "type": "base",
+      "apiRules": {
+        "list": null,
+        "view": null,
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "negotiation_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "negotiations"
+        },
+        {
+          "name": "person_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "negotiation_people"
+        },
+        {
+          "name": "doc_type",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "documento_foto",
+            "cpf",
+            "comprovante_renda",
+            "comprovante_renda_3m",
+            "comprovante_residencia",
+            "certidao_estado_civil",
+            "matricula_garantia",
+            "contrato_social",
+            "cnpj"
+          ]
+        },
+        {
+          "name": "state",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "pendente",
+            "recebido",
+            "conferido"
+          ]
+        },
+        {
+          "name": "file",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "checked_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "checked_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_neg_docs_neg ON negotiation_documents (negotiation_id, active)"
       ]
     }
   ]

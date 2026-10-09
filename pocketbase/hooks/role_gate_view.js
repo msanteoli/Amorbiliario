@@ -53,4 +53,7 @@ onRecordViewRequest(
   'condominiums',
   'condominium_photos',
   'import_batches',
+  'negotiations',
+  'negotiation_people',
+  'negotiation_documents',
 )
