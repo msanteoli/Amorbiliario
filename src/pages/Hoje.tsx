@@ -11,7 +11,13 @@ import {
   TodayStageCountItem,
   formatTodayErrorMessage,
 } from '@/services/today'
-import { formatDateBahia, formatTimeBahia, formatDateTimeBahia } from '@/services/visits'
+import {
+  formatDateBahia,
+  formatTimeBahia,
+  formatDateTimeBahia,
+  getVisitById,
+  VisitRecord,
+} from '@/services/visits'
 import { LEAD_STAGE_LABELS, LeadStage } from '@/services/leads'
 import { listOwnersWithoutProperty, OwnerWithoutPropertyItem } from '@/services/properties'
 import { Button } from '@/components/ui/button'
@@ -26,6 +32,8 @@ import {
   GoogleIntegrationConfigError,
 } from '@/services/googleCalendar'
 import { Calendar } from 'lucide-react'
+import { PendingVisitsConfirmationBlock } from '@/components/agenda/PendingVisitsConfirmationBlock'
+import { VisitDetailModal } from '@/components/agenda/VisitDetailModal'
 
 // Mapeamento visual das situações de Lead conforme guia M9a
 function getLeadStageBadgeVariant(
@@ -59,6 +67,11 @@ export default function Hoje() {
   const [googleStatus, setGoogleStatus] = useState<GoogleConnectionStatus | null>(null)
   const [googleConnecting, setGoogleConnecting] = useState(false)
   const [googleConfigError, setGoogleConfigError] = useState<string | null>(null)
+
+  // Estado para modal de remarcar visita quando acionado pela Hoje
+  const [rescheduleVisitModalOpen, setRescheduleVisitModalOpen] = useState(false)
+  const [rescheduleTargetVisit, setRescheduleTargetVisit] = useState<VisitRecord | null>(null)
+  const [initialRescheduleAction, setInitialRescheduleAction] = useState<boolean>(false)
 
   const loadOwnersWarning = useCallback(async () => {
     try {
@@ -113,6 +126,17 @@ export default function Hoje() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const handleReschedulePendingItem = async (pendingItem: { id: string }) => {
+    try {
+      const fullVisit = await getVisitById(pendingItem.id)
+      setRescheduleTargetVisit(fullVisit)
+      setInitialRescheduleAction(true)
+      setRescheduleVisitModalOpen(true)
+    } catch {
+      // Falha ao carregar visita para remarcar
+    }
+  }
 
   const handleConnectGoogle = async () => {
     setGoogleConfigError(null)
@@ -627,6 +651,12 @@ export default function Hoje() {
           {/* SDR */}
           {data.role === 'sdr' && (
             <>
+              {/* Bloco "Aguardando confirmação" para SDR */}
+              <PendingVisitsConfirmationBlock
+                onRescheduleClick={handleReschedulePendingItem}
+                onGoogleStatusChange={(status) => setGoogleStatus(status)}
+              />
+
               {renderLeadSection(
                 'Leads novos sem dono',
                 data.sections.new_unassigned_leads,
@@ -655,15 +685,16 @@ export default function Hoje() {
             </>
           )}
 
-          {/* CORRETOR (no celular: "Visitas de hoje" primeiro com hora em destaque) */}
+          {/* CORRETOR (no celular e desktop: "Visitas para confirmar" no topo via PendingVisitsConfirmationBlock) */}
           {data.role === 'corretor' && (
             <>
+              {/* Bloco 1: Corretor: "Visitas para confirmar" no topo */}
+              <PendingVisitsConfirmationBlock
+                onGoogleStatusChange={(status) => setGoogleStatus(status)}
+              />
+
               {renderVisitSection('Visitas de hoje', data.sections.visits_today, {
                 isCorretorVisitsToday: true,
-              })}
-
-              {renderVisitSection('Visitas a confirmar', data.sections.visits_to_confirm, {
-                isVisitToConfirm: true,
               })}
 
               {renderTaskSection('Minhas tarefas atrasadas e de hoje', data.sections.my_tasks_due)}
@@ -680,6 +711,12 @@ export default function Hoje() {
           {/* ADMIN */}
           {data.role === 'admin' && (
             <>
+              {/* Bloco "Aguardando confirmação" para Admin */}
+              <PendingVisitsConfirmationBlock
+                onRescheduleClick={handleReschedulePendingItem}
+                onGoogleStatusChange={(status) => setGoogleStatus(status)}
+              />
+
               {/* Aviso de proprietários sem imóvel (M7) */}
               {ownersWithoutProp.length > 0 && (
                 <div
@@ -734,6 +771,26 @@ export default function Hoje() {
           )}
         </div>
       )}
+
+      {/* Modal de Remarcação de Visita (quando acionado pelo atalho Remarcar) */}
+      <VisitDetailModal
+        visit={rescheduleTargetVisit}
+        open={rescheduleVisitModalOpen}
+        initialAction={initialRescheduleAction ? 'remarcar' : null}
+        onOpenChange={(open) => {
+          setRescheduleVisitModalOpen(open)
+          if (!open) {
+            setRescheduleTargetVisit(null)
+            setInitialRescheduleAction(false)
+          }
+        }}
+        onUpdated={() => {
+          loadData(true)
+          setRescheduleVisitModalOpen(false)
+          setRescheduleTargetVisit(null)
+          setInitialRescheduleAction(false)
+        }}
+      />
     </div>
   )
 }

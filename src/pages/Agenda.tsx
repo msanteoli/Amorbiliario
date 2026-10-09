@@ -28,6 +28,8 @@ import { VisitDetailModal, getVisitStatusBadge } from '@/components/agenda/Visit
 import { CreateVisitModal } from '@/components/agenda/CreateVisitModal'
 import { TaskDetailModal, getTaskStatusBadge } from '@/components/agenda/TaskDetailModal'
 import { CreateTaskModal } from '@/components/agenda/CreateTaskModal'
+import { GoogleSyncBadge } from '@/components/agenda/GoogleSyncBadge'
+import { getGoogleStatus } from '@/services/googleCalendar'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -105,6 +107,7 @@ export default function Agenda() {
   const [loadingVisits, setLoadingVisits] = useState(false)
   const [visitsPage, setVisitsPage] = useState(1)
   const [visitsTotalPages, setVisitsTotalPages] = useState(1)
+  const [userNeedsGoogleReconnect, setUserNeedsGoogleReconnect] = useState(false)
 
   // Corretores para o filtro
   const [brokersList, setBrokersList] = useState<ActiveBroker[]>([])
@@ -135,14 +138,23 @@ export default function Agenda() {
   // Modal criar tarefa
   const [createTaskOpen, setCreateTaskOpen] = useState(false)
 
-  // Carregar lista de corretores ativos para filtros
+  // Carregar lista de corretores ativos para filtros e status do google
   useEffect(() => {
     if (canFilterBroker) {
       listActiveBrokers()
         .then(setBrokersList)
         .catch(() => {})
     }
-  }, [canFilterBroker])
+    if (role === 'corretor' || role === 'admin') {
+      getGoogleStatus()
+        .then((res) => {
+          setUserNeedsGoogleReconnect(res.status === 'reconectar')
+        })
+        .catch(() => {
+          setUserNeedsGoogleReconnect(false)
+        })
+    }
+  }, [canFilterBroker, role])
 
   // ═══════════════════════════════════════════════════════════════
   // CARREGAR VISITAS
@@ -636,6 +648,19 @@ export default function Agenda() {
                                     <div className="text-muted-foreground truncate text-[11px]">
                                       {personName}
                                     </div>
+                                    {v.status === 'confirmada' && (
+                                      <div className="pt-1">
+                                        <GoogleSyncBadge
+                                          googleSync={v.google_sync}
+                                          brokerId={v.broker_id}
+                                          brokerNeedsReconnect={
+                                            v.broker_id === user?.id && userNeedsGoogleReconnect
+                                          }
+                                          visitStatus={v.status}
+                                          showConnectAction={false}
+                                        />
+                                      </div>
+                                    )}
                                   </button>
                                 )
                               })
@@ -709,6 +734,19 @@ export default function Agenda() {
                                       <p className="text-sm font-normal text-foreground truncate">
                                         [{propCode}] {personName}
                                       </p>
+                                      {v.status === 'confirmada' && (
+                                        <div className="pt-1">
+                                          <GoogleSyncBadge
+                                            googleSync={v.google_sync}
+                                            brokerId={v.broker_id}
+                                            brokerNeedsReconnect={
+                                              v.broker_id === user?.id && userNeedsGoogleReconnect
+                                            }
+                                            visitStatus={v.status}
+                                            showConnectAction={false}
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                     <div className="shrink-0">{getVisitStatusBadge(v.status)}</div>
                                   </div>
@@ -780,6 +818,19 @@ export default function Agenda() {
                                 <p className="text-xs text-muted-foreground truncate mt-0.5">
                                   Pessoa: {personName} • Corretor: {brokerName}
                                 </p>
+                                {v.status === 'confirmada' && (
+                                  <div className="pt-1">
+                                    <GoogleSyncBadge
+                                      googleSync={v.google_sync}
+                                      brokerId={v.broker_id}
+                                      brokerNeedsReconnect={
+                                        v.broker_id === user?.id && userNeedsGoogleReconnect
+                                      }
+                                      visitStatus={v.status}
+                                      showConnectAction={false}
+                                    />
+                                  </div>
+                                )}
                               </div>
 
                               <div className="shrink-0">{getVisitStatusBadge(v.status)}</div>
@@ -898,6 +949,19 @@ export default function Agenda() {
                                 <p className="text-xs text-muted-foreground truncate mt-0.5">
                                   Pessoa: {personName} • Corretor: {brokerName}
                                 </p>
+                                {v.status === 'confirmada' && (
+                                  <div className="pt-1">
+                                    <GoogleSyncBadge
+                                      googleSync={v.google_sync}
+                                      brokerId={v.broker_id}
+                                      brokerNeedsReconnect={
+                                        v.broker_id === user?.id && userNeedsGoogleReconnect
+                                      }
+                                      visitStatus={v.status}
+                                      showConnectAction={false}
+                                    />
+                                  </div>
+                                )}
                               </div>
 
                               <div className="shrink-0">{getVisitStatusBadge(v.status)}</div>

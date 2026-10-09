@@ -18,6 +18,8 @@ export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
   nao_compareceu: 'Não compareceu',
 }
 
+export type GoogleSyncStatus = 'nao_aplicavel' | 'pendente' | 'sincronizada' | 'falhou'
+
 export interface VisitRecord extends RecordModel {
   organization_id: string
   lead_id?: string
@@ -32,6 +34,11 @@ export interface VisitRecord extends RecordModel {
   cancelled_by?: string
   cancelled_at?: string
   created_by?: string
+  google_event_id?: string
+  google_sync?: GoogleSyncStatus | string
+  google_sync_attempts?: number
+  declined_reason?: string
+  declined_at?: string
   created: string
   updated: string
   expand?: {
@@ -202,6 +209,19 @@ export function extractErrorMessage(err: unknown, defaultMessage = 'Ocorreu um e
   if (!err) return defaultMessage
   if (typeof err === 'object' && err !== null) {
     const errorObj = err as Record<string, unknown>
+    const status =
+      errorObj.status ?? (errorObj.response as Record<string, unknown> | undefined)?.status
+    if (status === 403) {
+      // Caso específico de permissão para confirmar visita ou mensagem personalizada
+      if (
+        errorObj.data &&
+        typeof (errorObj.data as Record<string, unknown>).message === 'string' &&
+        (errorObj.data as Record<string, unknown>).message
+      ) {
+        return (errorObj.data as Record<string, unknown>).message as string
+      }
+      return 'Só o corretor responsável ou o admin confirmam a visita.'
+    }
     // Resposta do endpoint com data.message
     if (errorObj.data && typeof errorObj.data === 'object') {
       const data = errorObj.data as Record<string, unknown>
@@ -383,6 +403,55 @@ export async function rescheduleVisit(
   return await pb.send<{ status: string }>(`/backend/v1/visits/${visitId}/reschedule`, {
     method: 'POST',
     body: input,
+  })
+}
+
+export interface PendingConfirmationItem {
+  id: string
+  property_id: string
+  property_code: string
+  lead_id: string
+  lead_name: string
+  broker_id: string
+  broker_name: string
+  start_at: string
+  end_at: string
+  created: string
+  overdue: boolean
+  declined: boolean
+  declined_reason: string
+  declined_at: string
+  google_sync: GoogleSyncStatus | string
+}
+
+export interface PendingConfirmationResponse {
+  items: PendingConfirmationItem[]
+  google: {
+    status: 'conectado' | 'reconectar' | 'nao_conectado'
+  }
+}
+
+/**
+ * GET /backend/v1/visits/pending-confirmation
+ */
+export async function getPendingConfirmationVisits(): Promise<PendingConfirmationResponse> {
+  return await pb.send<PendingConfirmationResponse>('/backend/v1/visits/pending-confirmation', {
+    method: 'GET',
+    requestKey: null,
+  })
+}
+
+/**
+ * POST /backend/v1/visits/{id}/decline
+ * body = { reason }
+ */
+export async function declineVisit(
+  visitId: string,
+  reason: string,
+): Promise<{ id: string; declined: boolean }> {
+  return await pb.send<{ id: string; declined: boolean }>(`/backend/v1/visits/${visitId}/decline`, {
+    method: 'POST',
+    body: { reason },
   })
 }
 

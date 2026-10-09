@@ -49,6 +49,8 @@ import {
   CalendarDays,
   Loader2,
 } from 'lucide-react'
+import { GoogleSyncBadge } from '@/components/agenda/GoogleSyncBadge'
+import { getGoogleStatus } from '@/services/googleCalendar'
 
 export function getVisitStatusBadge(status: VisitStatus) {
   switch (status) {
@@ -72,21 +74,29 @@ export function getVisitStatusBadge(status: VisitStatus) {
 interface VisitDetailModalProps {
   visit: VisitRecord | null
   open: boolean
+  initialAction?: 'realizada' | 'cancelar' | 'remarcar' | null
   onOpenChange: (open: boolean) => void
   onUpdated: () => void
 }
 
-export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: VisitDetailModalProps) {
+export function VisitDetailModal({
+  visit,
+  open,
+  initialAction = null,
+  onOpenChange,
+  onUpdated,
+}: VisitDetailModalProps) {
   const { user } = useAuth()
 
   // Estados de ação
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [conflictMessage, setConflictMessage] = useState<string | null>(null)
+  const [currentUserGoogleReconnect, setCurrentUserGoogleReconnect] = useState(false)
 
   // Sub-diálogos de ação inline
   const [activeAction, setActiveAction] = useState<'realizada' | 'cancelar' | 'remarcar' | null>(
-    null,
+    initialAction,
   )
 
   // Form para realizada
@@ -105,7 +115,7 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
     if (open && visit) {
       setErrorMessage(null)
       setConflictMessage(null)
-      setActiveAction(null)
+      setActiveAction(initialAction || null)
       setResultText(visit.result_text || '')
       setCancelReason('')
 
@@ -119,8 +129,19 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
       listActiveBrokers()
         .then(setBrokersList)
         .catch(() => {})
+
+      // Checar se o usuário atual tem status 'reconectar' no Google
+      if (user?.role === 'corretor' || user?.role === 'admin') {
+        getGoogleStatus()
+          .then((res) => {
+            setCurrentUserGoogleReconnect(res.status === 'reconectar')
+          })
+          .catch(() => {
+            setCurrentUserGoogleReconnect(false)
+          })
+      }
     }
-  }, [open, visit])
+  }, [open, visit, initialAction, user])
 
   if (!visit) return null
 
@@ -131,8 +152,9 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
   const isMyVisit = visit.broker_id === user?.id
 
   // Permissões de ação:
-  // - "Confirmar" (admin, SDR e o corretor da visita; só quando Agendada)
-  const canConfirm = (isAdmin || isSdr || isMyVisit) && visit.status === 'agendada'
+  // Item 4: "O SDR deixou de poder confirmar visita: só o corretor da visita ou o admin.
+  // Esconda o botão 'Confirmar' para o SDR e, se o servidor responder 403, mostre 'Só o corretor responsável ou o admin confirmam a visita.'"
+  const canConfirm = (isAdmin || isMyVisit) && !isSdr && visit.status === 'agendada'
 
   // - "Marcar como realizada" (mesmos papéis; quando Agendada ou Confirmada)
   const canMarkRealizada =
@@ -168,8 +190,14 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
     try {
       await updateVisitStatus(visit.id, 'confirmada')
       onUpdated()
-    } catch (err) {
-      setErrorMessage(extractErrorMessage(err, 'Erro ao confirmar visita.'))
+    } catch (err: unknown) {
+      const errorObj = err as { status?: number; response?: { status?: number } } | undefined
+      const status = errorObj?.status || errorObj?.response?.status
+      if (status === 403) {
+        setErrorMessage('Só o corretor responsável ou o admin confirmam a visita.')
+      } else {
+        setErrorMessage(extractErrorMessage(err, 'Erro ao confirmar visita.'))
+      }
     } finally {
       setSubmitting(false)
     }
@@ -408,6 +436,20 @@ export function VisitDetailModal({ visit, open, onOpenChange, onUpdated }: Visit
               ) : (
                 <p className="text-xs text-attention">Horário pendente</p>
               )}
+            </div>
+          </div>
+
+          {/* Situação da Google Agenda (Item 3) */}
+          <div className="space-y-1 pt-2 border-t border-border">
+            <span className="text-xs eyebrow text-muted-foreground block">Google Agenda</span>
+            <div className="pt-0.5">
+              <GoogleSyncBadge
+                googleSync={visit.google_sync}
+                brokerId={visit.broker_id}
+                brokerNeedsReconnect={isMyVisit && currentUserGoogleReconnect}
+                visitStatus={visit.status}
+                showConnectAction={true}
+              />
             </div>
           </div>
 
