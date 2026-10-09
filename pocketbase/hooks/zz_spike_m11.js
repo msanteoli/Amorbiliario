@@ -1,80 +1,60 @@
 // SPIKE descartável (M11 T4): só confirma o que o goja oferece. Será removido.
-routerAdd(
-  'GET',
-  '/backend/v1/zz-spike-m11',
-  (e) => {
-    if (e.auth.getString('role') !== 'admin') throw new ForbiddenError('x')
-    const out = {}
-    const k = 'abcdefghijklmnopqrstuvwxyz012345'
-    try {
-      const c = $security.encrypt('ola-mundo', k)
-      out.encType = typeof c
-      out.encLen = String(c).length
-      const d = $security.decrypt(c, k)
-      out.decType = typeof d
-      out.decOk = d === 'ola-mundo'
-      out.decStr = String(d) === 'ola-mundo'
-    } catch (err) {
-      out.encErr = String(err)
-    }
+routerAdd('GET', '/backend/v1/zz-spike-m11', (e) => {
+  const s = String(e.request.url.query().get('s') || '0')
+  if (s === '0') return e.json(200, { ok: 'vivo' })
+  const k = 'abcdefghijklmnopqrstuvwxyz012345'
+  if (s === '1') {
+    const c = $security.encrypt('ola-mundo', k)
+    const d = $security.decrypt(c, k)
+    return e.json(200, {
+      encType: typeof c,
+      encLen: String(c).length,
+      decType: typeof d,
+      decOk: d === 'ola-mundo',
+    })
+  }
+  if (s === '2') {
+    let r = 'nao lançou'
     try {
       $security.decrypt('lixo', k)
-      out.decBad = 'nao lançou'
-    } catch (err) {
-      out.decBad = 'lançou'
+    } catch (_) {
+      r = 'lançou'
     }
-    try {
-      const h = $security.hs256('abc', k)
-      out.hsType = typeof h
-      out.hsLen = String(h).length
-    } catch (err) {
-      out.hsErr = String(err)
-    }
-    try {
-      const r = $security.randomString(16)
-      out.rnd = typeof r + ':' + String(r).length
-    } catch (err) {
-      out.rndErr = String(err)
-    }
-    out.btoa = typeof btoa
-    out.atob = typeof atob
-    out.textDecoder = typeof TextDecoder
-    try {
-      out.b64 = btoa('{"a":1}')
-      out.unb64 = atob(out.b64)
-    } catch (err) {
-      out.b64Err = String(err)
-    }
-    out.httpSend = typeof $http.send
-    out.redirect = typeof e.redirect
-    out.secretsHas = typeof $secrets.has
-    try {
-      const res = $http.send({
-        url: 'https://oauth2.googleapis.com/token',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'grant_type=x',
-        timeout: 10,
-      })
-      out.httpStatus = res.statusCode
-      out.jsonType = typeof res.json
-      out.jsonErrKey = String(res.json && res.json.error)
-      out.bodyType = typeof res.body
-    } catch (err) {
-      out.httpErr = String(err)
-    }
-    let q = ''
-    try {
-      q = String((e.requestInfo().query || {}).r || '')
-    } catch (err) {
-      out.qErr = String(err)
-    }
-    if (q === '1') return e.redirect(302, 'https://example.com/x?google=ok')
-    const safe = {}
-    Object.keys(out).forEach((k2) => {
-      safe[k2] = String(out[k2])
+    return e.json(200, { decBad: r })
+  }
+  if (s === '3') {
+    const h = $security.hs256('abc', k)
+    return e.json(200, { hsType: typeof h, hsLen: String(h).length })
+  }
+  if (s === '4') {
+    const r = $security.randomString(16)
+    return e.json(200, { t: typeof r, l: String(r).length })
+  }
+  if (s === '5')
+    return e.json(200, { btoa: typeof btoa, atob: typeof atob, td: typeof TextDecoder })
+  if (s === '6') {
+    const b = btoa('{"a":1}')
+    return e.json(200, { b: b, u: atob(b) })
+  }
+  if (s === '7') {
+    const res = $http.send({
+      url: 'https://oauth2.googleapis.com/token',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=x',
+      timeout: 10,
     })
-    return e.json(200, safe)
-  },
-  $apis.requireAuth(),
-)
+    return e.json(200, {
+      st: res.statusCode,
+      jt: typeof res.json,
+      err: String((res.json && res.json.error) || ''),
+    })
+  }
+  if (s === '8') return e.redirect(302, 'https://example.com/x?google=ok')
+  if (s === '9')
+    return e.json(200, {
+      has: $secrets.has('IMOB_GOOGLE_CLIENT_ID'),
+      len0: $secrets.get('IMOB_NAO_EXISTE') === '',
+    })
+  return e.json(200, {})
+})
