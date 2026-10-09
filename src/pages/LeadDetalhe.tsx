@@ -39,6 +39,8 @@ import {
   completeTask,
   extractTaskErrorMessage,
 } from '@/services/tasks'
+import { LeadNegotiationTab } from '@/components/negotiations/LeadNegotiationTab'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -136,12 +138,17 @@ export default function LeadDetalhe() {
   // Copiar telefone
   const [copiedPhone, setCopiedPhone] = useState(false)
 
+  // Controle de abas da página (Geral vs Negociação)
+  const [activeTab, setActiveTab] = useState<'geral' | 'negociacao'>('geral')
+
   const isCorretor = user?.role === 'corretor'
   const isAdmin = user?.role === 'admin'
   const isSdr = user?.role === 'sdr'
   const canManageLeads = isAdmin || isSdr
-  // Permissão geral de edição de estágio, próximo passo e eventos: admin, SDR e o corretor do lead
+  // Permissão geral de negociação e visualização da aba: admin, SDR e o corretor responsável pelo lead
   const isAssignedCorretor = isCorretor && lead?.assigned_to === user?.id
+  const canSeeNegotiationTab = isAdmin || isSdr || isAssignedCorretor
+  // Permissão geral de edição de estágio, próximo passo e eventos: admin, SDR e o corretor do lead
   const canOperateLead = canManageLeads || isAssignedCorretor
 
   // Verifica mensagem vinda do state de navegação (ex.: "Lead cadastrado.")
@@ -730,345 +737,389 @@ export default function LeadDetalhe() {
         </div>
       </div>
 
-      {/* PERFIL DE BUSCA (quando preenchido) */}
-      {(lead.search_neighborhood ||
-        lead.search_type ||
-        (lead.search_bedrooms && lead.search_bedrooms > 0) ||
-        (lead.search_max_price && lead.search_max_price > 0)) && (
-        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-          <div className="eyebrow text-muted-foreground flex items-center gap-2">
-            <Building className="h-3.5 w-3.5" />
-            <span>Perfil de Busca</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-            {lead.search_neighborhood && (
-              <div>
-                <span className="eyebrow text-muted-foreground block">Bairro</span>
-                <span className="text-foreground">{lead.search_neighborhood}</span>
-              </div>
-            )}
-            {lead.search_type && (
-              <div>
-                <span className="eyebrow text-muted-foreground block">Tipo</span>
-                <span className="text-foreground capitalize">{lead.search_type}</span>
-              </div>
-            )}
-            {typeof lead.search_bedrooms === 'number' && lead.search_bedrooms > 0 && (
-              <div>
-                <span className="eyebrow text-muted-foreground block">Quartos mínimos</span>
-                <span className="text-foreground tabular">{lead.search_bedrooms}</span>
-              </div>
-            )}
-            {typeof lead.search_max_price === 'number' && lead.search_max_price > 0 && (
-              <div>
-                <span className="eyebrow text-muted-foreground block">Valor máximo</span>
-                <span className="text-foreground tabular font-normal">
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                  }).format(lead.search_max_price)}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* PRÓXIMO PASSO E PRAZO */}
-      {canOperateLead && (
-        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="eyebrow text-muted-foreground flex items-center gap-2">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Próximo Passo e Prazo</span>
-            </div>
-            {lead.next_step_due && (
-              <div
-                className={`text-xs tabular ${
-                  isOverdue ? 'text-attention font-medium' : 'text-muted-foreground'
-                }`}
+      {/* ABAS DO CARTÃO DO LEAD: GERAL E NEGOCIAÇÃO */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => setActiveTab(val as 'geral' | 'negociacao')}
+        className="w-full space-y-6"
+      >
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <TabsList className="h-auto p-1 bg-muted/40 border border-border rounded-full inline-flex gap-1 flex-wrap">
+            <TabsTrigger
+              value="geral"
+              className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+            >
+              Visão geral
+            </TabsTrigger>
+            {canSeeNegotiationTab && (
+              <TabsTrigger
+                value="negociacao"
+                className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
               >
-                {isOverdue && 'Atrasado: '}
-                {formatDateTimeBR(lead.next_step_due)}
-              </div>
+                Negociação
+              </TabsTrigger>
             )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-2 space-y-1">
-              <label
-                htmlFor="next-step-input"
-                className="text-[13px] font-normal text-foreground block"
-              >
-                Ação a ser executada
-              </label>
-              <input
-                id="next-step-input"
-                placeholder="Ex.: Ligar para agendar visita"
-                value={nextStepText}
-                onChange={(e) => setNextStepText(e.target.value)}
-                maxLength={200}
-                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-            <div className="space-y-1">
-              <label
-                htmlFor="next-step-due-input"
-                className="text-[13px] font-normal text-foreground block"
-              >
-                Prazo (data e hora)
-              </label>
-              <input
-                id="next-step-due-input"
-                type="datetime-local"
-                value={nextStepDueDate}
-                onChange={(e) => setNextStepDueDate(e.target.value)}
-                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-1">
-            <Button
-              size="sm"
-              onClick={handleSaveNextStep}
-              disabled={savingNextStep}
-              className="h-9 rounded-full px-4 text-xs font-normal border-border"
-              variant="outline"
-            >
-              {savingNextStep && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-              <span>Salvar próximo passo</span>
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* NOTAS E CONTATOS COM CAMPO GRANDE E DUAS PÍLULAS */}
-      {canOperateLead && (
-        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-          <div className="eyebrow text-muted-foreground flex items-center gap-2">
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span>Notas e Contatos</span>
-          </div>
-          <Textarea
-            placeholder="Digite sua nota ou detalhes do contato realizado..."
-            value={noteContactText}
-            onChange={(e) => setNoteContactText(e.target.value)}
-            rows={4}
-            className="text-xs rounded-lg border-border bg-background"
-          />
-          <div className="flex justify-end items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleCreateEvent('nota')}
-              disabled={submittingNote || submittingContact || !noteContactText.trim()}
-              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
-            >
-              {submittingNote && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-              <FileText className="h-3.5 w-3.5" />
-              <span>Registrar nota</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleCreateEvent('contato')}
-              disabled={submittingNote || submittingContact || !noteContactText.trim()}
-              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
-            >
-              {submittingContact && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-              <Phone className="h-3.5 w-3.5" />
-              <span>Registrar contato</span>
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* SEÇÃO VISITAS DO LEAD */}
-      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="eyebrow text-muted-foreground flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Visitas ({visits.length})</span>
-          </div>
-          {canManageLeads && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setCreateVisitModalOpen(true)}
-              className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
-            >
-              <Calendar className="h-3.5 w-3.5" />
-              <span>Agendar</span>
-            </Button>
-          )}
+          </TabsList>
         </div>
 
-        {visits.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">
-            Nenhuma visita registrada para este lead.
-          </p>
-        ) : (
-          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-            {visits.map((v) => {
-              const prop = v.expand?.property_id
-              const broker = v.expand?.broker_id
-              return (
-                <div
-                  key={v.id}
-                  onClick={() => {
-                    setSelectedVisit(v)
-                    setVisitDetailModalOpen(true)
-                  }}
-                  className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
-                >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="tabular text-foreground">
-                        {formatDateTimeBahia(v.start_at)}
-                      </span>
-                      {getVisitStatusBadge(v.status)}
-                    </div>
-                    <p className="text-muted-foreground">
-                      Imóvel: [{prop?.code || '-'}] {prop?.title || ''}
-                      {broker && <span> · Corretor: {broker.name || broker.email}</span>}
-                    </p>
+        {/* ABA 1: VISÃO GERAL */}
+        <TabsContent value="geral" className="space-y-6 m-0">
+          {/* PERFIL DE BUSCA (quando preenchido) */}
+          {(lead.search_neighborhood ||
+            lead.search_type ||
+            (lead.search_bedrooms && lead.search_bedrooms > 0) ||
+            (lead.search_max_price && lead.search_max_price > 0)) && (
+            <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+              <div className="eyebrow text-muted-foreground flex items-center gap-2">
+                <Building className="h-3.5 w-3.5" />
+                <span>Perfil de Busca</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                {lead.search_neighborhood && (
+                  <div>
+                    <span className="eyebrow text-muted-foreground block">Bairro</span>
+                    <span className="text-foreground">{lead.search_neighborhood}</span>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+                )}
+                {lead.search_type && (
+                  <div>
+                    <span className="eyebrow text-muted-foreground block">Tipo</span>
+                    <span className="text-foreground capitalize">{lead.search_type}</span>
+                  </div>
+                )}
+                {typeof lead.search_bedrooms === 'number' && lead.search_bedrooms > 0 && (
+                  <div>
+                    <span className="eyebrow text-muted-foreground block">Quartos mínimos</span>
+                    <span className="text-foreground tabular">{lead.search_bedrooms}</span>
+                  </div>
+                )}
+                {typeof lead.search_max_price === 'number' && lead.search_max_price > 0 && (
+                  <div>
+                    <span className="eyebrow text-muted-foreground block">Valor máximo</span>
+                    <span className="text-foreground tabular font-normal">
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      }).format(lead.search_max_price)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-      {/* SEÇÃO TAREFAS DO LEAD */}
-      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="eyebrow text-muted-foreground flex items-center gap-2">
-            <Clock className="h-3.5 w-3.5" />
-            <span>Tarefas ({tasks.length})</span>
-          </div>
+          {/* PRÓXIMO PASSO E PRAZO */}
           {canOperateLead && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setCreateTaskModalOpen(true)}
-              className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
-            >
-              <Clock className="h-3.5 w-3.5" />
-              <span>Criar tarefa</span>
-            </Button>
-          )}
-        </div>
+            <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="eyebrow text-muted-foreground flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Próximo Passo e Prazo</span>
+                </div>
+                {lead.next_step_due && (
+                  <div
+                    className={`text-xs tabular ${
+                      isOverdue ? 'text-attention font-medium' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {isOverdue && 'Atrasado: '}
+                    {formatDateTimeBR(lead.next_step_due)}
+                  </div>
+                )}
+              </div>
 
-        {tasks.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">
-            Nenhuma tarefa vinculada a este lead.
-          </p>
-        ) : (
-          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-            {tasks.map((t) => {
-              const overdue = isTaskOverdue(t)
-              const assignee = t.expand?.assigned_to
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => {
-                    setSelectedTask(t)
-                    setTaskDetailModalOpen(true)
-                  }}
-                  className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2 space-y-1">
+                  <label
+                    htmlFor="next-step-input"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Ação a ser executada
+                  </label>
+                  <input
+                    id="next-step-input"
+                    placeholder="Ex.: Ligar para agendar visita"
+                    value={nextStepText}
+                    onChange={(e) => setNextStepText(e.target.value)}
+                    maxLength={200}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="next-step-due-input"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Prazo (data e hora)
+                  </label>
+                  <input
+                    id="next-step-due-input"
+                    type="datetime-local"
+                    value={nextStepDueDate}
+                    onChange={(e) => setNextStepDueDate(e.target.value)}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <Button
+                  size="sm"
+                  onClick={handleSaveNextStep}
+                  disabled={savingNextStep}
+                  className="h-9 rounded-full px-4 text-xs font-normal border-border"
+                  variant="outline"
                 >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-foreground">{t.title}</span>
-                      {getTaskStatusBadge(t)}
+                  {savingNextStep && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+                  <span>Salvar próximo passo</span>
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* NOTAS E CONTATOS COM CAMPO GRANDE E DUAS PÍLULAS */}
+          {canOperateLead && (
+            <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+              <div className="eyebrow text-muted-foreground flex items-center gap-2">
+                <MessageSquare className="h-3.5 w-3.5" />
+                <span>Notas e Contatos</span>
+              </div>
+              <Textarea
+                placeholder="Digite sua nota ou detalhes do contato realizado..."
+                value={noteContactText}
+                onChange={(e) => setNoteContactText(e.target.value)}
+                rows={4}
+                className="text-xs rounded-lg border-border bg-background"
+              />
+              <div className="flex justify-end items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCreateEvent('nota')}
+                  disabled={submittingNote || submittingContact || !noteContactText.trim()}
+                  className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
+                >
+                  {submittingNote && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>Registrar nota</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCreateEvent('contato')}
+                  disabled={submittingNote || submittingContact || !noteContactText.trim()}
+                  className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
+                >
+                  {submittingContact && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+                  <Phone className="h-3.5 w-3.5" />
+                  <span>Registrar contato</span>
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* SEÇÃO VISITAS DO LEAD */}
+          <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="eyebrow text-muted-foreground flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Visitas ({visits.length})</span>
+              </div>
+              {canManageLeads && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCreateVisitModalOpen(true)}
+                  className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>Agendar</span>
+                </Button>
+              )}
+            </div>
+
+            {visits.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                Nenhuma visita registrada para este lead.
+              </p>
+            ) : (
+              <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+                {visits.map((v) => {
+                  const prop = v.expand?.property_id
+                  const broker = v.expand?.broker_id
+                  return (
+                    <div
+                      key={v.id}
+                      onClick={() => {
+                        setSelectedVisit(v)
+                        setVisitDetailModalOpen(true)
+                      }}
+                      className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="tabular text-foreground">
+                            {formatDateTimeBahia(v.start_at)}
+                          </span>
+                          {getVisitStatusBadge(v.status)}
+                        </div>
+                        <p className="text-muted-foreground">
+                          Imóvel: [{prop?.code || '-'}] {prop?.title || ''}
+                          {broker && <span> · Corretor: {broker.name || broker.email}</span>}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-muted-foreground tabular">
-                      Prazo:{' '}
-                      <span className={overdue ? 'text-attention font-medium' : ''}>
-                        {overdue && 'Atrasado: '}
-                        {formatTaskDateTimeBahia(t.due_at)}
-                      </span>
-                      {assignee && <span> · Responsável: {assignee.name || assignee.email}</span>}
-                    </p>
-                  </div>
-                  {t.status === 'aberta' && (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs rounded-full px-3 border-border"
-                        onClick={async () => {
-                          try {
-                            await completeTask(t.id)
-                            if (lead) {
-                              const freshTasks = await listTasksByLead(lead.id)
-                              setTasks(freshTasks)
-                            }
-                          } catch (err) {
-                            setErrorMessage(extractTaskErrorMessage(err))
-                          }
-                        }}
-                      >
-                        <Check className="h-3 w-3 mr-1" />
-                        Concluir
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            )}
           </div>
+
+          {/* SEÇÃO TAREFAS DO LEAD */}
+          <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="eyebrow text-muted-foreground flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Tarefas ({tasks.length})</span>
+              </div>
+              {canOperateLead && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCreateTaskModalOpen(true)}
+                  className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Criar tarefa</span>
+                </Button>
+              )}
+            </div>
+
+            {tasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                Nenhuma tarefa vinculada a este lead.
+              </p>
+            ) : (
+              <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+                {tasks.map((t) => {
+                  const overdue = isTaskOverdue(t)
+                  const assignee = t.expand?.assigned_to
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        setSelectedTask(t)
+                        setTaskDetailModalOpen(true)
+                      }}
+                      className="p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-muted/40 cursor-pointer text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-foreground">{t.title}</span>
+                          {getTaskStatusBadge(t)}
+                        </div>
+                        <p className="text-muted-foreground tabular">
+                          Prazo:{' '}
+                          <span className={overdue ? 'text-attention font-medium' : ''}>
+                            {overdue && 'Atrasado: '}
+                            {formatTaskDateTimeBahia(t.due_at)}
+                          </span>
+                          {assignee && (
+                            <span> · Responsável: {assignee.name || assignee.email}</span>
+                          )}
+                        </p>
+                      </div>
+                      {t.status === 'aberta' && (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs rounded-full px-3 border-border"
+                            onClick={async () => {
+                              try {
+                                await completeTask(t.id)
+                                if (lead) {
+                                  const freshTasks = await listTasksByLead(lead.id)
+                                  setTasks(freshTasks)
+                                }
+                              } catch (err) {
+                                setErrorMessage(extractTaskErrorMessage(err))
+                              }
+                            }}
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Concluir
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* LINHA DO TEMPO: lista vertical com traço fino à esquerda, horário em .eyebrow e .tabular (dd/mm hh:mm) e o texto ao lado, do mais novo ao mais antigo */}
+          <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+            <div>
+              <h2 className="text-[20px] font-normal text-foreground">Linha do Tempo</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Histórico de eventos, alterações e contatos, do mais recente ao mais antigo.
+              </p>
+            </div>
+
+            {events.length === 0 ? (
+              <div className="text-center py-6 text-xs text-muted-foreground">
+                Nenhum evento registrado nesta linha do tempo.
+              </div>
+            ) : (
+              <div className="relative pl-5 space-y-5 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-px before:bg-border">
+                {events.map((ev) => {
+                  const authorName =
+                    ev.expand?.author_id?.name || ev.expand?.author_id?.email || 'Sistema'
+                  const typeLabel = LEAD_EVENT_TYPE_LABELS[ev.type] || ev.type
+
+                  return (
+                    <div key={ev.id} className="relative group">
+                      <div className="absolute -left-[18px] top-1.5 h-2 w-2 rounded-full bg-foreground ring-4 ring-background" />
+                      <div className="space-y-1 text-xs">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="eyebrow tabular text-muted-foreground">
+                            {formatDateTimeBR(ev.occurred_at || ev.created)}
+                          </span>
+                          <Badge variant="default" className="text-[10px] px-1.5 py-0">
+                            {typeLabel}
+                          </Badge>
+                          <span className="text-muted-foreground">por {authorName}</span>
+                        </div>
+                        <div className="text-foreground p-3 rounded-lg border border-border bg-muted/20">
+                          {ev.text}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ABA 2: NEGOCIAÇÃO */}
+        {canSeeNegotiationTab && (
+          <TabsContent value="negociacao" className="m-0">
+            <LeadNegotiationTab
+              leadId={lead.id}
+              defaultPropertyId={lead.property_id || undefined}
+              currentUserRole={user?.role}
+              currentUserId={user?.id}
+              assignedToId={lead.assigned_to || undefined}
+            />
+          </TabsContent>
         )}
-      </div>
-
-      {/* LINHA DO TEMPO: lista vertical com traço fino à esquerda, horário em .eyebrow e .tabular (dd/mm hh:mm) e o texto ao lado, do mais novo ao mais antigo */}
-      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-        <div>
-          <h2 className="text-[20px] font-normal text-foreground">Linha do Tempo</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Histórico de eventos, alterações e contatos, do mais recente ao mais antigo.
-          </p>
-        </div>
-
-        {events.length === 0 ? (
-          <div className="text-center py-6 text-xs text-muted-foreground">
-            Nenhum evento registrado nesta linha do tempo.
-          </div>
-        ) : (
-          <div className="relative pl-5 space-y-5 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-px before:bg-border">
-            {events.map((ev) => {
-              const authorName =
-                ev.expand?.author_id?.name || ev.expand?.author_id?.email || 'Sistema'
-              const typeLabel = LEAD_EVENT_TYPE_LABELS[ev.type] || ev.type
-
-              return (
-                <div key={ev.id} className="relative group">
-                  <div className="absolute -left-[18px] top-1.5 h-2 w-2 rounded-full bg-foreground ring-4 ring-background" />
-                  <div className="space-y-1 text-xs">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="eyebrow tabular text-muted-foreground">
-                        {formatDateTimeBR(ev.occurred_at || ev.created)}
-                      </span>
-                      <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                        {typeLabel}
-                      </Badge>
-                      <span className="text-muted-foreground">por {authorName}</span>
-                    </div>
-                    <div className="text-foreground p-3 rounded-lg border border-border bg-muted/20">
-                      {ev.text}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      </Tabs>
 
       {/* DIÁLOGO: Motivo de perda (ao mudar etapa para perdido) */}
       <Dialog open={lostReasonDialogOpen} onOpenChange={setLostReasonDialogOpen}>
