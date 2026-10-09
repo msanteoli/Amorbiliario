@@ -46,9 +46,49 @@ routerAdd(
     if (next === 'realizada' && result.length < 3) {
       throw new BadRequestError('Informe o resultado da visita.')
     }
+    if (next === 'confirmada' && role === 'corretor' && visit.getString('declined_at')) {
+      throw new BadRequestError('A visita foi recusada. Aguarde a remarcação.')
+    }
     visit.set('status', next)
+    if (next === 'confirmada') {
+      try {
+        const conns = $app.findRecordsByFilter(
+          'google_connections',
+          "user_id = {:u} && status = 'conectado'",
+          '',
+          1,
+          0,
+          { u: visit.getString('broker_id') },
+        )
+        if (conns.length) {
+          visit.set('google_sync', 'pendente')
+          visit.set('google_sync_attempts', 0)
+        }
+      } catch (err) {
+        $app.logger().error('visit_google_check_failed', 'err', String((err && err.message) || err))
+      }
+    }
     if (result) visit.set('result_text', result.slice(0, 1000))
     $app.save(visit)
+
+    try {
+      const open = $app.findRecordsByFilter(
+        'tasks',
+        "description = {:d} && status = 'aberta'",
+        '',
+        20,
+        0,
+        { d: 'visit:' + visit.id },
+      )
+      open.forEach((t) => {
+        t.set('status', 'concluida')
+        t.set('closed_by', actor.id)
+        t.set('closed_at', new Date().toISOString())
+        $app.save(t)
+      })
+    } catch (err) {
+      $app.logger().error('visit_task_close_failed', 'err', String((err && err.message) || err))
+    }
 
     const leadId = visit.getString('lead_id')
     if (leadId) {

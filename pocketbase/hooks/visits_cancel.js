@@ -33,7 +33,30 @@ routerAdd(
     visit.set('cancel_reason', reason.slice(0, 300))
     visit.set('cancelled_by', actor.id)
     visit.set('cancelled_at', now)
+    if (visit.getString('google_event_id') || visit.getString('google_sync') === 'sincronizada') {
+      visit.set('google_sync', 'pendente')
+      visit.set('google_sync_attempts', 0)
+    }
     $app.save(visit)
+
+    try {
+      const open = $app.findRecordsByFilter(
+        'tasks',
+        "description = {:d} && status = 'aberta'",
+        '',
+        20,
+        0,
+        { d: 'visit:' + visit.id },
+      )
+      open.forEach((t) => {
+        t.set('status', 'cancelada')
+        t.set('closed_by', actor.id)
+        t.set('closed_at', now)
+        $app.save(t)
+      })
+    } catch (err) {
+      $app.logger().error('visit_task_close_failed', 'err', String((err && err.message) || err))
+    }
 
     try {
       const audit = new Record($app.findCollectionByNameOrId('audit_log'))

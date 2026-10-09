@@ -94,6 +94,7 @@ routerAdd(
     }
     visit.set('status', scheduled ? 'agendada' : 'pendente_agenda')
     visit.set('created_by', actor.id)
+    if (scheduled) visit.set('google_sync', 'nao_aplicavel')
 
     // a conferência do conflito e a gravação acontecem na mesma transação: duas chamadas
     // simultâneas para o mesmo corretor e horário não passam juntas
@@ -125,6 +126,24 @@ routerAdd(
         conflict_start: clash[0].getString('start_at'),
         conflict_end: clash[0].getString('end_at'),
       })
+    }
+
+    if (scheduled) {
+      try {
+        const t = new Record($app.findCollectionByNameOrId('tasks'))
+        t.set('organization_id', orgId)
+        t.set('title', 'Confirmar visita: ' + property.getString('code'))
+        t.set('description', 'visit:' + visit.id)
+        t.set('due_at', visit.getString('start_at'))
+        t.set('assigned_to', brokerId)
+        t.set('status', 'aberta')
+        t.set('created_by', actor.id)
+        if (leadId) t.set('lead_id', leadId)
+        t.set('property_id', property.id)
+        $app.save(t)
+      } catch (err) {
+        $app.logger().error('visit_task_failed', 'err', String((err && err.message) || err))
+      }
     }
 
     if (lead) {

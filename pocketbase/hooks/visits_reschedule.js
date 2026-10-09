@@ -118,6 +118,9 @@ routerAdd(
     }
 
     const nowIso = new Date().toISOString()
+    const oldBroker = visit.getString('broker_id')
+    const oldEventId = visit.getString('google_event_id')
+    const brokerChanged = !!oldBroker && brokerId !== oldBroker
     visit.set('broker_id', brokerId)
     visit.set('start_at', start ? start.toISOString() : '')
     visit.set('end_at', end ? end.toISOString() : '')
@@ -127,7 +130,75 @@ routerAdd(
       'status',
       complete && oldStatus === 'confirmada' && !changedPlan ? 'confirmada' : newStatus,
     )
+    if (visit.getString('status') === 'agendada') {
+      visit.set('declined_reason', '')
+      visit.set('declined_at', '')
+    }
+    if (oldEventId || visit.getString('google_sync') === 'sincronizada') {
+      visit.set('google_sync', 'pendente')
+      visit.set('google_sync_attempts', 0)
+    }
+    if (brokerChanged && oldEventId) visit.set('google_event_id', '')
     $app.save(visit)
+
+    if (brokerChanged && oldEventId) {
+      try {
+        const orphan = new Record($app.findCollectionByNameOrId('audit_log'))
+        orphan.set('organization_id', orgId)
+        orphan.set('actor_id', actor.id)
+        orphan.set('actor_role', role)
+        orphan.set('action', 'google_evento_orfao')
+        orphan.set('collection_name', 'visits')
+        orphan.set('record_id', visit.id)
+        orphan.set('field_name', 'broker_id')
+        orphan.set('reason', oldBroker + '|' + oldEventId)
+        orphan.set('occurred_at', nowIso)
+        $app.save(orphan)
+      } catch (err) {
+        $app.logger().error('visit_orphan_audit_failed', 'err', String((err && err.message) || err))
+      }
+    }
+
+    if (visit.getString('status') === 'agendada') {
+      try {
+        const open = $app.findRecordsByFilter(
+          'tasks',
+          "description = {:d} && status = 'aberta'",
+          'created',
+          20,
+          0,
+          { d: 'visit:' + visit.id },
+        )
+        const prop = $app.findRecordById('properties', visit.getString('property_id'))
+        if (!open.length) {
+          const t = new Record($app.findCollectionByNameOrId('tasks'))
+          t.set('organization_id', orgId)
+          t.set('title', 'Confirmar visita: ' + prop.getString('code'))
+          t.set('description', 'visit:' + visit.id)
+          t.set('due_at', visit.getString('start_at'))
+          t.set('assigned_to', brokerId)
+          t.set('status', 'aberta')
+          t.set('created_by', actor.id)
+          if (visit.getString('lead_id')) t.set('lead_id', visit.getString('lead_id'))
+          t.set('property_id', visit.getString('property_id'))
+          $app.save(t)
+        } else {
+          open.forEach((t, i) => {
+            if (i > 0) {
+              t.set('status', 'cancelada')
+              t.set('closed_by', actor.id)
+              t.set('closed_at', nowIso)
+            } else {
+              t.set('assigned_to', brokerId)
+              t.set('due_at', visit.getString('start_at'))
+            }
+            $app.save(t)
+          })
+        }
+      } catch (err) {
+        $app.logger().error('visit_task_resync_failed', 'err', String((err && err.message) || err))
+      }
+    }
 
     try {
       const label = (raw) =>
