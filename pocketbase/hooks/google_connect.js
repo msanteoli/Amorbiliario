@@ -17,8 +17,9 @@ routerAdd(
     if (!clientId || !clientSecret || key.length !== 32 || !appUrl) {
       return e.json(503, { message: 'Integração com o Google ainda não configurada.' })
     }
-    const redirectUri =
-      'https://imobdigital-1ceec.shrd00.internal.goskip.dev/backend/v1/google/callback'
+    let base = appUrl
+    while (base.endsWith('/')) base = base.slice(0, -1)
+    const redirectUri = base + '/google/retorno' // tela do sistema que chama POST /google/finish
     const payload = btoa(
       JSON.stringify({
         u: actor.id,

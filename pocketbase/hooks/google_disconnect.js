@@ -2,7 +2,8 @@
 // Remove da agenda do usuário os eventos futuros que o sistema criou (máx. 50; 404/410 contam como removidos),
 // limpa google_event_id e volta as visitas futuras do corretor a google_sync = 'nao_aplicavel', revoga o token
 // (falha ignorada) e apaga o registro de google_connections. O que não foi removido entra em audit_log só como contagem.
-// Funciona sem os segredos: sem eles (ou sem conseguir renovar o acesso), os eventos contam como não removidos.
+// Funciona sem os segredos: sem eles (ou sem conseguir renovar o acesso), os eventos contam como não removidos
+// e, sem token decifrável, grava 'google_token_nao_revogado' (sem valor). Acima de 50 eventos, o resto é só limpo e contado.
 routerAdd(
   'POST',
   '/backend/v1/google/disconnect',
@@ -50,15 +51,18 @@ routerAdd(
     }
 
     let notRemoved = 0
+    const filter =
+      "broker_id = {:u} && start_at > {:now} && (google_event_id != '' || (google_sync != '' && google_sync != 'nao_aplicavel'))"
+    const params = { u: actor.id, now: now.toISOString().replace('T', ' ') }
+    const clear = (v) => {
+      v.set('google_event_id', '')
+      v.set('google_sync', 'nao_aplicavel')
+      v.set('google_sync_attempts', 0)
+      $app.save(v)
+    }
     try {
-      const visits = $app.findRecordsByFilter(
-        'visits',
-        "broker_id = {:u} && start_at > {:now} && (google_event_id != '' || (google_sync != '' && google_sync != 'nao_aplicavel'))",
-        'start_at',
-        50,
-        0,
-        { u: actor.id, now: now.toISOString().replace('T', ' ') },
-      )
+      // até 50 eventos são apagados no Google
+      const visits = $app.findRecordsByFilter('visits', filter, 'start_at', 50, 0, params)
       visits.forEach((v) => {
         const evId = v.getString('google_event_id')
         if (evId) {
@@ -82,11 +86,19 @@ routerAdd(
           }
           if (!ok) notRemoved++
         }
-        v.set('google_event_id', '')
-        v.set('google_sync', 'nao_aplicavel')
-        v.set('google_sync_attempts', 0)
-        $app.save(v)
+        clear(v)
       })
+      // o que passar de 50 só é limpo aqui (sem chamar o Google) e entra na contagem de não removidos
+      let guard = 0
+      while (guard < 20) {
+        guard++
+        const rest = $app.findRecordsByFilter('visits', filter, 'start_at', 200, 0, params)
+        if (!rest.length) break
+        rest.forEach((v) => {
+          if (v.getString('google_event_id')) notRemoved++
+          clear(v)
+        })
+      }
     } catch (err) {
       $app.logger().error('google_disconnect_events_failed', 'user', actor.id)
     }
@@ -122,6 +134,8 @@ routerAdd(
     }
     audit('google_desconectado', '')
     if (notRemoved > 0) audit('google_eventos_nao_removidos', String(notRemoved))
+    // sem chave utilizável o token não pôde ser revogado: o dono revoga na conta Google
+    if (!refresh) audit('google_token_nao_revogado', '')
     return e.json(200, { status: 'nao_conectado' })
   },
   $apis.requireAuth(),
