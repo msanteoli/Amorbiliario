@@ -11,7 +11,9 @@ import {
   formatPhoneNumber,
   formatDate,
   maskCpfInput,
+  maskCnpjInput,
   KIND_LABELS,
+  PERSON_TYPE_LABELS,
   CONSENT_STATUS_LABELS,
 } from '@/lib/clientUtils'
 import { Button } from '@/components/ui/button'
@@ -250,19 +252,27 @@ export default function ClienteDetalhe() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
           <div className="space-y-1">
-            <span className="eyebrow text-muted-foreground block">Nome completo</span>
-            <p className="text-sm font-normal text-foreground">{client.name}</p>
+            <span className="eyebrow text-muted-foreground block">Tipo de pessoa</span>
+            <p className="text-sm font-normal text-foreground">
+              {PERSON_TYPE_LABELS[client.person_type || 'fisica'] || 'Pessoa física'}
+            </p>
           </div>
 
           <div className="space-y-1">
-            <span className="eyebrow text-muted-foreground block">Responsável</span>
-            <p className="text-sm font-normal text-foreground flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>{respName}</span>
-            </p>
+            <span className="eyebrow text-muted-foreground block">
+              {client.person_type === 'juridica' ? 'Contato / Representante' : 'Nome completo'}
+            </span>
+            <p className="text-sm font-normal text-foreground">{client.name}</p>
           </div>
+
+          {client.person_type === 'juridica' && client.company_name && (
+            <div className="space-y-1">
+              <span className="eyebrow text-muted-foreground block">Razão social</span>
+              <p className="text-sm font-normal text-foreground">{client.company_name}</p>
+            </div>
+          )}
 
           <div className="space-y-1">
             <span className="eyebrow text-muted-foreground block">Telefone</span>
@@ -277,6 +287,14 @@ export default function ClienteDetalhe() {
             <p className="text-sm font-normal text-foreground flex items-center gap-1.5">
               <Mail className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="truncate">{client.email || '—'}</span>
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <span className="eyebrow text-muted-foreground block">Responsável</span>
+            <p className="text-sm font-normal text-foreground flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>{respName}</span>
             </p>
           </div>
         </div>
@@ -310,29 +328,65 @@ export default function ClienteDetalhe() {
           </div>
         </div>
 
-        {/* Seção Dados Pessoais (client_private) */}
+        {/* Seção Dados Pessoais e Fiscais Confidenciais (client_private) */}
         {clientPrivate && (
           <div className="pt-4 border-t border-border space-y-3">
             <div className="eyebrow text-muted-foreground flex items-center gap-2">
               <Lock className="h-3.5 w-3.5 text-attention" />
-              <span>Dados pessoais</span>
+              <span>Dados confidenciais</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 rounded-lg bg-muted/20 border border-border text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-3.5 rounded-lg bg-muted/20 border border-border text-xs">
+              {client.person_type === 'juridica' && clientPrivate.cnpj && (
+                <div className="space-y-1">
+                  <span className="eyebrow text-muted-foreground block">CNPJ</span>
+                  <p className="font-mono tabular text-foreground">
+                    {maskCnpjInput(clientPrivate.cnpj)}
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-1">
-                <span className="eyebrow text-muted-foreground block">CPF</span>
+                <span className="eyebrow text-muted-foreground block">
+                  {client.person_type === 'juridica' ? 'CPF do responsável' : 'CPF'}
+                </span>
                 <p className="font-mono tabular text-foreground">
                   {clientPrivate.cpf ? maskCpfInput(clientPrivate.cpf) : '—'}
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <span className="eyebrow text-muted-foreground block">Data de nascimento</span>
-                <p className="tabular text-foreground flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{formatDate(clientPrivate.birth_date)}</span>
-                </p>
-              </div>
+              {clientPrivate.rg && (
+                <div className="space-y-1">
+                  <span className="eyebrow text-muted-foreground block">RG</span>
+                  <p className="tabular text-foreground">{clientPrivate.rg}</p>
+                </div>
+              )}
+
+              {clientPrivate.birth_date && (
+                <div className="space-y-1">
+                  <span className="eyebrow text-muted-foreground block">Data de nascimento</span>
+                  <p className="tabular text-foreground flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{formatDate(clientPrivate.birth_date)}</span>
+                  </p>
+                </div>
+              )}
+
+              {clientPrivate.address && (
+                <div className="sm:col-span-2 lg:col-span-3 space-y-1">
+                  <span className="eyebrow text-muted-foreground block">Endereço</span>
+                  <p className="text-foreground">{clientPrivate.address}</p>
+                </div>
+              )}
+
+              {clientPrivate.bank_details && (
+                <div className="sm:col-span-2 lg:col-span-3 space-y-1">
+                  <span className="eyebrow text-muted-foreground block">Dados bancários</span>
+                  <p className="text-foreground whitespace-pre-wrap">
+                    {clientPrivate.bank_details}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -8,6 +8,7 @@ import {
   ResponsibleUser,
   MatchResponse,
   ClientKind,
+  PersonType,
   ConsentStatus,
   formatErrorMessage,
   ClientPrivateSaveError,
@@ -15,7 +16,9 @@ import {
 import {
   maskPhoneInput,
   maskCpfInput,
+  maskCnpjInput,
   isValidCpf,
+  isValidCnpj,
   formatPhoneNumber,
   KIND_LABELS,
   CONSENT_STATUS_LABELS,
@@ -49,10 +52,16 @@ export default function NovoCliente() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Dados do formulário
+  const [personType, setPersonType] = useState<PersonType>('fisica')
   const [name, setName] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [cpf, setCpf] = useState('')
+  const [cnpj, setCnpj] = useState('')
+  const [rg, setRg] = useState('')
+  const [address, setAddress] = useState('')
+  const [bankDetails, setBankDetails] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [kinds, setKinds] = useState<ClientKind[]>(['comprador'])
   const [responsibleId, setResponsibleId] = useState<string>(isCorretor && user?.id ? user.id : '')
@@ -154,12 +163,15 @@ export default function NovoCliente() {
     const trimmedPhone = phone.trim()
     const trimmedEmail = email.trim()
     const rawCpf = cpf.replace(/\D/g, '')
+    const rawCnpj = cnpj.replace(/\D/g, '')
 
     setSaving(true)
     try {
       const created = await createClient(
         {
           name: trimmedName,
+          person_type: personType,
+          company_name: personType === 'juridica' ? companyName.trim() : undefined,
           phone: trimmedPhone || undefined,
           email: trimmedEmail || undefined,
           kind: kinds,
@@ -167,7 +179,11 @@ export default function NovoCliente() {
           consent_status: consentStatus,
           consent_channel: consentChannel || undefined,
           cpf: canSeeCpf && rawCpf ? rawCpf : undefined,
+          cnpj: canSeeCpf && personType === 'juridica' && rawCnpj ? rawCnpj : undefined,
           birth_date: canSeeCpf && birthDate ? birthDate : undefined,
+          rg: canSeeCpf && rg.trim() ? rg.trim() : undefined,
+          address: canSeeCpf && address.trim() ? address.trim() : undefined,
+          bank_details: canSeeCpf && bankDetails.trim() ? bankDetails.trim() : undefined,
         },
         user,
       )
@@ -200,9 +216,15 @@ export default function NovoCliente() {
     const trimmedPhone = phone.trim()
     const trimmedEmail = email.trim()
     const rawCpf = cpf.replace(/\D/g, '')
+    const rawCnpj = cnpj.replace(/\D/g, '')
 
     if (!trimmedName) {
       setErrorMessage('Nome é obrigatório.')
+      return
+    }
+
+    if (personType === 'juridica' && !companyName.trim()) {
+      setErrorMessage('Informe a Razão Social para pessoa jurídica.')
       return
     }
 
@@ -217,7 +239,12 @@ export default function NovoCliente() {
     }
 
     if (canSeeCpf && rawCpf && !isValidCpf(rawCpf)) {
-      setErrorMessage('CPF inválido.')
+      setErrorMessage(personType === 'juridica' ? 'CPF do responsável inválido.' : 'CPF inválido.')
+      return
+    }
+
+    if (canSeeCpf && personType === 'juridica' && rawCnpj && !isValidCnpj(rawCnpj)) {
+      setErrorMessage('CNPJ inválido.')
       return
     }
 
@@ -227,6 +254,11 @@ export default function NovoCliente() {
         setErrorMessage('Data de nascimento inválida.')
         return
       }
+    }
+
+    if (canSeeCpf && bankDetails.length > 500) {
+      setErrorMessage('Dados bancários não podem exceder 500 caracteres.')
+      return
     }
 
     // Se o CPF mudou em relação ao verificado na etapa 1 (inclusive se etapa 1 foi sem CPF),
@@ -586,13 +618,46 @@ export default function NovoCliente() {
           {/* Dados Principais */}
           <div className="space-y-4">
             <h2 className="text-[20px] font-normal text-foreground">Dados cadastrais completos</h2>
+
+            {/* Tipo de Pessoa */}
+            <div className="space-y-2">
+              <label className="text-[13px] font-normal text-foreground block">
+                Tipo de pessoa
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-foreground">
+                  <input
+                    type="radio"
+                    name="personType"
+                    value="fisica"
+                    checked={personType === 'fisica'}
+                    onChange={() => setPersonType('fisica')}
+                    className="accent-primary"
+                  />
+                  <span>Pessoa física</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-foreground">
+                  <input
+                    type="radio"
+                    name="personType"
+                    value="juridica"
+                    checked={personType === 'juridica'}
+                    onChange={() => setPersonType('juridica')}
+                    className="accent-primary"
+                  />
+                  <span>Pessoa jurídica</span>
+                </label>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <div className="space-y-1">
                 <label
                   htmlFor="step2-name"
                   className="text-[13px] font-normal text-foreground block"
                 >
-                  Nome completo <span className="text-destructive">*</span>
+                  {personType === 'juridica' ? 'Nome do contato / representante' : 'Nome completo'}{' '}
+                  <span className="text-destructive">*</span>
                 </label>
                 <input
                   id="step2-name"
@@ -602,6 +667,26 @@ export default function NovoCliente() {
                   className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
+
+              {personType === 'juridica' && (
+                <div className="space-y-1">
+                  <label
+                    htmlFor="step2-company-name"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Razão social <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    id="step2-company-name"
+                    placeholder="Ex.: Empresa Imobiliária LTDA"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    maxLength={160}
+                    required
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -642,27 +727,30 @@ export default function NovoCliente() {
 
           <div className="border-t border-border" />
 
-          {/* Tipos de Relação */}
+          {/* Tipos de Relação (sem Proprietário - proprietário só nasce ligado a imóvel) */}
           <div className="space-y-3">
-            <label className="text-[13px] font-normal text-foreground block">
-              Tipos de relação <span className="text-destructive">*</span>
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-              {(['comprador', 'locatario', 'proprietario', 'investidor'] as ClientKind[]).map(
-                (k) => (
-                  <label
-                    key={k}
-                    className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-muted/30 cursor-pointer text-xs"
-                  >
-                    <Checkbox
-                      id={`kind-${k}`}
-                      checked={kinds.includes(k)}
-                      onCheckedChange={() => handleToggleKind(k)}
-                    />
-                    <span>{KIND_LABELS[k]}</span>
-                  </label>
-                ),
-              )}
+            <div>
+              <label className="text-[13px] font-normal text-foreground block">
+                Tipos de relação <span className="text-destructive">*</span>
+              </label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Proprietários são vinculados diretamente ao imóvel.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+              {(['comprador', 'locatario', 'investidor'] as ClientKind[]).map((k) => (
+                <label
+                  key={k}
+                  className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-muted/30 cursor-pointer text-xs"
+                >
+                  <Checkbox
+                    id={`kind-${k}`}
+                    checked={kinds.includes(k)}
+                    onCheckedChange={() => handleToggleKind(k)}
+                  />
+                  <span>{KIND_LABELS[k]}</span>
+                </label>
+              ))}
             </div>
           </div>
 
@@ -753,19 +841,49 @@ export default function NovoCliente() {
             </div>
           </div>
 
-          {/* Dados Pessoais (apenas Admin e Corretor) */}
+          {/* Dados Pessoais e Confidenciais (apenas Admin e Corretor) */}
           {canSeeCpf && (
             <>
               <div className="border-t border-border" />
               <div className="space-y-4">
-                <h2 className="text-[20px] font-normal text-foreground">Dados pessoais</h2>
+                <div>
+                  <h2 className="text-[20px] font-normal text-foreground">
+                    Dados pessoais e confidenciais
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Visíveis apenas pelo corretor responsável e administradores (protegido).
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {personType === 'juridica' && (
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="step2-cnpj"
+                        className="text-[13px] font-normal text-foreground block"
+                      >
+                        CNPJ
+                      </label>
+                      <input
+                        id="step2-cnpj"
+                        placeholder="00.000.000/0000-00"
+                        value={cnpj}
+                        onChange={(e) => setCnpj(maskCnpjInput(e.target.value))}
+                        maxLength={18}
+                        className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                      />
+                      {cnpj && !isValidCnpj(cnpj) && (
+                        <span className="text-xs text-destructive">CNPJ inválido.</span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-1">
                     <label
                       htmlFor="step2-cpf"
                       className="text-[13px] font-normal text-foreground block"
                     >
-                      CPF
+                      {personType === 'juridica' ? 'CPF do responsável' : 'CPF'}
                     </label>
                     <input
                       id="step2-cpf"
@@ -778,6 +896,23 @@ export default function NovoCliente() {
                     {cpf && !isValidCpf(cpf) && (
                       <span className="text-xs text-destructive">Dígitos do CPF não conferem.</span>
                     )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="step2-rg"
+                      className="text-[13px] font-normal text-foreground block"
+                    >
+                      RG
+                    </label>
+                    <input
+                      id="step2-rg"
+                      placeholder="Número e órgão emissor"
+                      value={rg}
+                      onChange={(e) => setRg(e.target.value)}
+                      maxLength={30}
+                      className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
                   </div>
 
                   <div className="space-y-1">
@@ -796,6 +931,44 @@ export default function NovoCliente() {
                       className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="step2-address"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Endereço
+                  </label>
+                  <input
+                    id="step2-address"
+                    placeholder="Logradouro, número, complemento, bairro, cidade/UF, CEP"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    maxLength={300}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="step2-bank-details"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    Dados bancários
+                  </label>
+                  <textarea
+                    id="step2-bank-details"
+                    placeholder="Banco, agência, conta, chave PIX, titular..."
+                    value={bankDetails}
+                    onChange={(e) => setBankDetails(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    className="w-full p-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-[11px] text-muted-foreground tabular block text-right">
+                    {bankDetails.length}/500
+                  </span>
                 </div>
               </div>
             </>

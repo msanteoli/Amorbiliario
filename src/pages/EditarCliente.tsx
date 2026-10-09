@@ -8,13 +8,16 @@ import {
   listEligibleResponsibleUsers,
   ResponsibleUser,
   ClientKind,
+  PersonType,
   ConsentStatus,
   formatErrorMessage,
 } from '@/services/clients'
 import {
   maskPhoneInput,
   maskCpfInput,
+  maskCnpjInput,
   isValidCpf,
+  isValidCnpj,
   formatPhoneNumber,
   KIND_LABELS,
   CONSENT_STATUS_LABELS,
@@ -50,10 +53,16 @@ export default function EditarCliente() {
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError)
 
   // Formulário
+  const [personType, setPersonType] = useState<PersonType>('fisica')
   const [name, setName] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [cpf, setCpf] = useState('')
+  const [cnpj, setCnpj] = useState('')
+  const [rg, setRg] = useState('')
+  const [address, setAddress] = useState('')
+  const [bankDetails, setBankDetails] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [kinds, setKinds] = useState<ClientKind[]>(['comprador'])
   const [responsibleId, setResponsibleId] = useState<string>('')
@@ -80,7 +89,9 @@ export default function EditarCliente() {
     Promise.all([getClientById(id), getClientPrivate(id)])
       .then(([clientData, privateData]) => {
         if (!active) return
+        setPersonType(clientData.person_type || 'fisica')
         setName(clientData.name || '')
+        setCompanyName(clientData.company_name || '')
         setPhone(clientData.phone ? formatPhoneNumber(clientData.phone) : '')
         setEmail(clientData.email || '')
         setKinds(clientData.kind || ['comprador'])
@@ -90,6 +101,10 @@ export default function EditarCliente() {
 
         if (privateData) {
           setCpf(privateData.cpf ? maskCpfInput(privateData.cpf) : '')
+          setCnpj(privateData.cnpj ? maskCnpjInput(privateData.cnpj) : '')
+          setRg(privateData.rg || '')
+          setAddress(privateData.address || '')
+          setBankDetails(privateData.bank_details || '')
           setBirthDate(
             privateData.birth_date ? privateData.birth_date.split(' ')[0].split('T')[0] : '',
           )
@@ -131,9 +146,15 @@ export default function EditarCliente() {
     const trimmedPhone = phone.trim()
     const trimmedEmail = email.trim()
     const rawCpf = cpf.replace(/\D/g, '')
+    const rawCnpj = cnpj.replace(/\D/g, '')
 
     if (!trimmedName) {
       setErrorMessage('Nome é obrigatório.')
+      return
+    }
+
+    if (personType === 'juridica' && !companyName.trim()) {
+      setErrorMessage('Informe a Razão Social para pessoa jurídica.')
       return
     }
 
@@ -148,7 +169,12 @@ export default function EditarCliente() {
     }
 
     if (canSeeCpf && rawCpf && !isValidCpf(rawCpf)) {
-      setErrorMessage('CPF inválido.')
+      setErrorMessage(personType === 'juridica' ? 'CPF do responsável inválido.' : 'CPF inválido.')
+      return
+    }
+
+    if (canSeeCpf && personType === 'juridica' && rawCnpj && !isValidCnpj(rawCnpj)) {
+      setErrorMessage('CNPJ inválido.')
       return
     }
 
@@ -160,12 +186,19 @@ export default function EditarCliente() {
       }
     }
 
+    if (canSeeCpf && bankDetails.length > 500) {
+      setErrorMessage('Dados bancários não podem exceder 500 caracteres.')
+      return
+    }
+
     setSaving(true)
     try {
       await updateClient(
         id,
         {
           name: trimmedName,
+          person_type: personType,
+          company_name: personType === 'juridica' ? companyName.trim() : '',
           phone: trimmedPhone || undefined,
           email: trimmedEmail || undefined,
           kind: kinds,
@@ -173,7 +206,11 @@ export default function EditarCliente() {
           consent_status: consentStatus,
           consent_channel: consentChannel || undefined,
           cpf: canSeeCpf ? rawCpf : undefined,
+          cnpj: canSeeCpf && personType === 'juridica' ? rawCnpj : '',
           birth_date: canSeeCpf ? birthDate : undefined,
+          rg: canSeeCpf ? rg.trim() : undefined,
+          address: canSeeCpf ? address.trim() : undefined,
+          bank_details: canSeeCpf ? bankDetails.trim() : undefined,
         },
         user,
       )
@@ -225,11 +262,42 @@ export default function EditarCliente() {
       <form onSubmit={handleSave} className="space-y-8">
         {/* Dados Principais */}
         <div className="space-y-4">
-          <h2 className="text-[20px] font-normal text-foreground">Dados de contato</h2>
+          <h2 className="text-[20px] font-normal text-foreground">Dados cadastrais</h2>
+
+          {/* Tipo de Pessoa */}
+          <div className="space-y-2">
+            <label className="text-[13px] font-normal text-foreground block">Tipo de pessoa</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-foreground">
+                <input
+                  type="radio"
+                  name="personType"
+                  value="fisica"
+                  checked={personType === 'fisica'}
+                  onChange={() => setPersonType('fisica')}
+                  className="accent-primary"
+                />
+                <span>Pessoa física</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-foreground">
+                <input
+                  type="radio"
+                  name="personType"
+                  value="juridica"
+                  checked={personType === 'juridica'}
+                  onChange={() => setPersonType('juridica')}
+                  className="accent-primary"
+                />
+                <span>Pessoa jurídica</span>
+              </label>
+            </div>
+          </div>
+
           <div className="space-y-4">
             <div className="space-y-1">
               <label htmlFor="edit-name" className="text-[13px] font-normal text-foreground block">
-                Nome completo <span className="text-destructive">*</span>
+                {personType === 'juridica' ? 'Nome do contato / representante' : 'Nome completo'}{' '}
+                <span className="text-destructive">*</span>
               </label>
               <input
                 id="edit-name"
@@ -239,6 +307,26 @@ export default function EditarCliente() {
                 className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
+
+            {personType === 'juridica' && (
+              <div className="space-y-1">
+                <label
+                  htmlFor="edit-company-name"
+                  className="text-[13px] font-normal text-foreground block"
+                >
+                  Razão social <span className="text-destructive">*</span>
+                </label>
+                <input
+                  id="edit-company-name"
+                  placeholder="Ex.: Empresa Imobiliária LTDA"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  maxLength={160}
+                  required
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -279,13 +367,18 @@ export default function EditarCliente() {
 
         <div className="border-t border-border" />
 
-        {/* Tipos de Relação */}
+        {/* Tipos de Relação (sem opção de adicionar Proprietário solto; mantém badge se já for) */}
         <div className="space-y-3">
-          <label className="text-[13px] font-normal text-foreground block">
-            Tipos de relação <span className="text-destructive">*</span>
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-            {(['comprador', 'locatario', 'proprietario', 'investidor'] as ClientKind[]).map((k) => (
+          <div>
+            <label className="text-[13px] font-normal text-foreground block">
+              Tipos de relação <span className="text-destructive">*</span>
+            </label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Proprietários são vinculados pelo cadastro ou ficha do imóvel.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+            {(['comprador', 'locatario', 'investidor'] as ClientKind[]).map((k) => (
               <label
                 key={k}
                 className="flex items-center space-x-2 border border-border rounded-lg p-3 hover:bg-muted/30 cursor-pointer text-xs"
@@ -299,6 +392,12 @@ export default function EditarCliente() {
               </label>
             ))}
           </div>
+          {kinds.includes('proprietario') && (
+            <div className="p-2.5 rounded-lg border border-border bg-muted/20 text-xs text-muted-foreground flex items-center justify-between">
+              <span>Este cliente é Proprietário vinculado a imóvel(is) (somente leitura).</span>
+              <span className="eyebrow text-foreground">Proprietário</span>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border" />
@@ -388,19 +487,49 @@ export default function EditarCliente() {
           </div>
         </div>
 
-        {/* Dados Pessoais (Apenas Admin e Corretor) */}
+        {/* Dados Pessoais e Confidenciais (Apenas Admin e Corretor) */}
         {canSeeCpf && hasPrivateAccess && (
           <>
             <div className="border-t border-border" />
             <div className="space-y-4">
-              <h2 className="text-[20px] font-normal text-foreground">Dados pessoais</h2>
+              <div>
+                <h2 className="text-[20px] font-normal text-foreground">
+                  Dados pessoais e confidenciais
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Visíveis apenas pelo corretor responsável e administradores (protegido).
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {personType === 'juridica' && (
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="edit-cnpj"
+                      className="text-[13px] font-normal text-foreground block"
+                    >
+                      CNPJ
+                    </label>
+                    <input
+                      id="edit-cnpj"
+                      placeholder="00.000.000/0000-00"
+                      value={cnpj}
+                      onChange={(e) => setCnpj(maskCnpjInput(e.target.value))}
+                      maxLength={18}
+                      className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                    />
+                    {cnpj && !isValidCnpj(cnpj) && (
+                      <span className="text-xs text-destructive">CNPJ inválido.</span>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <label
                     htmlFor="edit-cpf"
                     className="text-[13px] font-normal text-foreground block"
                   >
-                    CPF
+                    {personType === 'juridica' ? 'CPF do responsável' : 'CPF'}
                   </label>
                   <input
                     id="edit-cpf"
@@ -413,6 +542,23 @@ export default function EditarCliente() {
                   {cpf && !isValidCpf(cpf) && (
                     <span className="text-xs text-destructive">Dígitos do CPF não conferem.</span>
                   )}
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="edit-rg"
+                    className="text-[13px] font-normal text-foreground block"
+                  >
+                    RG
+                  </label>
+                  <input
+                    id="edit-rg"
+                    placeholder="Número e órgão emissor"
+                    value={rg}
+                    onChange={(e) => setRg(e.target.value)}
+                    maxLength={30}
+                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -431,6 +577,44 @@ export default function EditarCliente() {
                     className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="edit-address"
+                  className="text-[13px] font-normal text-foreground block"
+                >
+                  Endereço
+                </label>
+                <input
+                  id="edit-address"
+                  placeholder="Logradouro, número, complemento, bairro, cidade/UF, CEP"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  maxLength={300}
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="edit-bank-details"
+                  className="text-[13px] font-normal text-foreground block"
+                >
+                  Dados bancários
+                </label>
+                <textarea
+                  id="edit-bank-details"
+                  placeholder="Banco, agência, conta, chave PIX, titular..."
+                  value={bankDetails}
+                  onChange={(e) => setBankDetails(e.target.value)}
+                  maxLength={500}
+                  rows={3}
+                  className="w-full p-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <span className="text-[11px] text-muted-foreground tabular block text-right">
+                  {bankDetails.length}/500
+                </span>
               </div>
             </div>
           </>

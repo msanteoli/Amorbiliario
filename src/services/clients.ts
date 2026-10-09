@@ -2,6 +2,7 @@ import pb from '@/lib/pocketbase/client'
 import { ClientResponseError, RecordModel } from 'pocketbase'
 
 export type ClientKind = 'comprador' | 'locatario' | 'proprietario' | 'investidor'
+export type PersonType = 'fisica' | 'juridica'
 export type ConsentStatus = 'opt_in' | 'opt_out' | 'unknown'
 
 export interface ClientRecord extends RecordModel {
@@ -10,6 +11,8 @@ export interface ClientRecord extends RecordModel {
   phone: string
   email: string
   kind: ClientKind[]
+  person_type?: PersonType
+  company_name?: string
   responsible_id?: string
   consent_status: ConsentStatus
   consent_at?: string
@@ -29,6 +32,10 @@ export interface ClientPrivateRecord extends RecordModel {
   client_id: string
   cpf: string
   birth_date?: string
+  rg?: string
+  address?: string
+  bank_details?: string
+  cnpj?: string
 }
 
 export interface MatchResultItem {
@@ -83,11 +90,17 @@ export interface CreateClientInput {
   phone?: string
   email?: string
   kind: ClientKind[]
+  person_type?: PersonType
+  company_name?: string
   responsible_id?: string
   consent_status?: ConsentStatus
   consent_channel?: string
   cpf?: string
   birth_date?: string
+  rg?: string
+  address?: string
+  bank_details?: string
+  cnpj?: string
 }
 
 export interface UpdateClientInput {
@@ -95,11 +108,17 @@ export interface UpdateClientInput {
   phone?: string
   email?: string
   kind?: ClientKind[]
+  person_type?: PersonType
+  company_name?: string
   responsible_id?: string
   consent_status?: ConsentStatus
   consent_channel?: string
   cpf?: string
   birth_date?: string
+  rg?: string
+  address?: string
+  bank_details?: string
+  cnpj?: string
 }
 
 export interface ResponsibleUser {
@@ -148,6 +167,8 @@ function translateFieldMessage(field: string, msg: string): string {
   if (msg.includes('Responsável inválido')) return msg
   if (msg.includes('Data de nascimento')) return msg
   if (msg.includes('Informe ao menos telefone')) return msg
+  if (msg.includes('Proprietário só nasce ligado')) return msg
+  if (msg.includes('CNPJ inválido')) return msg
 
   switch (field) {
     case 'name':
@@ -162,6 +183,8 @@ function translateFieldMessage(field: string, msg: string): string {
       return 'Responsável inválido.'
     case 'cpf':
       return 'CPF inválido.'
+    case 'cnpj':
+      return 'CNPJ inválido.'
     case 'birth_date':
       return 'Data de nascimento inválida.'
     default:
@@ -170,11 +193,15 @@ function translateFieldMessage(field: string, msg: string): string {
 }
 
 function translateGenericMessage(msg: string): string {
+  if (msg.includes('Proprietário só nasce ligado a um imóvel')) {
+    return 'Proprietário só nasce ligado a um imóvel. Cadastre o imóvel e vincule o proprietário nele.'
+  }
   if (msg.includes('Papel sem acesso a estes dados.')) return 'Papel sem acesso a estes dados.'
   if (msg.includes('Informe telefone, e-mail ou CPF.')) return 'Informe telefone, e-mail ou CPF.'
   if (msg.includes('Telefone inválido. Informe DDD e número.'))
     return 'Telefone inválido. Informe DDD e número.'
   if (msg.includes('CPF inválido.')) return 'CPF inválido.'
+  if (msg.includes('CNPJ inválido.')) return 'CNPJ inválido.'
   if (msg.includes('Responsável inválido.')) return 'Responsável inválido.'
   if (msg.includes('Informe ao menos telefone ou e-mail.'))
     return 'Informe ao menos telefone ou e-mail.'
@@ -207,6 +234,14 @@ export function normalizePhoneForBackend(phone?: string): string {
 export function normalizeCpfDigits(cpf?: string): string {
   if (!cpf) return ''
   return cpf.replace(/\D/g, '')
+}
+
+/**
+ * Remove formatação do CNPJ mantendo só dígitos
+ */
+export function normalizeCnpjDigits(cnpj?: string): string {
+  if (!cnpj) return ''
+  return cnpj.replace(/\D/g, '')
 }
 
 /**
@@ -320,12 +355,16 @@ export async function createClient(
   const isCorretor = currentUser.role === 'corretor'
   const responsibleId = isCorretor ? currentUser.id : input.responsible_id || ''
 
+  const personType: PersonType = input.person_type || 'fisica'
+
   const clientPayload: Record<string, unknown> = {
     organization_id: orgId,
     name: input.name.trim(),
     phone: input.phone ? normalizePhoneForBackend(input.phone) : '',
     email: input.email ? input.email.trim().toLowerCase() : '',
     kind: input.kind,
+    person_type: personType,
+    company_name: personType === 'juridica' ? input.company_name?.trim() || '' : '',
     responsible_id: responsibleId || undefined,
     consent_status: input.consent_status || 'unknown',
     consent_channel: input.consent_channel?.trim() || '',
@@ -333,17 +372,27 @@ export async function createClient(
 
   const createdClient = await pb.collection('clients').create<ClientRecord>(clientPayload)
 
-  // Grava dados pessoais em client_private se admin ou corretor tiver informado CPF ou nascimento
+  // Grava dados pessoais/fiscais em client_private se admin ou corretor tiver informado
   const cpfDigits = normalizeCpfDigits(input.cpf)
+  const cnpjDigits = personType === 'juridica' ? normalizeCnpjDigits(input.cnpj) : ''
   const birthDate = input.birth_date ? input.birth_date.trim() : ''
+  const rg = input.rg ? input.rg.trim().slice(0, 30) : ''
+  const address = input.address ? input.address.trim().slice(0, 300) : ''
+  const bankDetails = input.bank_details ? input.bank_details.trim().slice(0, 500) : ''
 
-  if (cpfDigits || birthDate) {
+  const hasPrivateData = cpfDigits || cnpjDigits || birthDate || rg || address || bankDetails
+
+  if (hasPrivateData) {
     try {
       await pb.collection('client_private').create({
         organization_id: orgId,
         client_id: createdClient.id,
         cpf: cpfDigits,
+        cnpj: cnpjDigits || undefined,
         birth_date: birthDate || undefined,
+        rg: rg || undefined,
+        address: address || undefined,
+        bank_details: bankDetails || undefined,
       })
     } catch (privateErr) {
       throw new ClientPrivateSaveError(createdClient.id, privateErr)
@@ -370,6 +419,14 @@ export async function updateClient(
   if (input.email !== undefined)
     clientPayload.email = input.email ? input.email.trim().toLowerCase() : ''
   if (input.kind !== undefined) clientPayload.kind = input.kind
+  if (input.person_type !== undefined) clientPayload.person_type = input.person_type
+  if (input.company_name !== undefined) {
+    clientPayload.company_name =
+      input.person_type === 'juridica' ||
+      (!input.person_type && clientPayload.person_type === 'juridica')
+        ? input.company_name.trim().slice(0, 160)
+        : ''
+  }
   if (!isCorretor && input.responsible_id !== undefined) {
     clientPayload.responsible_id = input.responsible_id || ''
   }
@@ -379,26 +436,63 @@ export async function updateClient(
 
   const updatedClient = await pb.collection('clients').update<ClientRecord>(clientId, clientPayload)
 
-  // Atualiza ou cria client_private se CPF ou nascimento forem fornecidos
+  // Atualiza ou cria client_private se dados pessoais/fiscais forem fornecidos
+  const effectivePersonType = input.person_type || updatedClient.person_type || 'fisica'
   const cpfDigits = input.cpf !== undefined ? normalizeCpfDigits(input.cpf) : undefined
+  const cnpjDigits =
+    input.cnpj !== undefined
+      ? effectivePersonType === 'juridica'
+        ? normalizeCnpjDigits(input.cnpj)
+        : ''
+      : undefined
   const birthDate = input.birth_date !== undefined ? input.birth_date.trim() : undefined
+  const rg = input.rg !== undefined ? input.rg.trim().slice(0, 30) : undefined
+  const address = input.address !== undefined ? input.address.trim().slice(0, 300) : undefined
+  const bankDetails =
+    input.bank_details !== undefined ? input.bank_details.trim().slice(0, 500) : undefined
 
-  if (cpfDigits !== undefined || birthDate !== undefined) {
+  const touchedPrivate =
+    cpfDigits !== undefined ||
+    cnpjDigits !== undefined ||
+    birthDate !== undefined ||
+    rg !== undefined ||
+    address !== undefined ||
+    bankDetails !== undefined
+
+  if (touchedPrivate) {
     const existingPrivate = await getClientPrivate(clientId)
     const orgId = currentUser.organization_id || updatedClient.organization_id
 
     if (existingPrivate) {
       const privatePayload: Record<string, unknown> = {}
       if (cpfDigits !== undefined) privatePayload.cpf = cpfDigits
+      if (cnpjDigits !== undefined) privatePayload.cnpj = cnpjDigits
       if (birthDate !== undefined) privatePayload.birth_date = birthDate || undefined
+      if (rg !== undefined) privatePayload.rg = rg
+      if (address !== undefined) privatePayload.address = address
+      if (bankDetails !== undefined) privatePayload.bank_details = bankDetails
       await pb.collection('client_private').update(existingPrivate.id, privatePayload)
-    } else if ((cpfDigits && cpfDigits.length > 0) || (birthDate && birthDate.length > 0)) {
-      await pb.collection('client_private').create({
-        organization_id: orgId,
-        client_id: clientId,
-        cpf: cpfDigits || '',
-        birth_date: birthDate || undefined,
-      })
+    } else {
+      const hasAnyValue =
+        (cpfDigits && cpfDigits.length > 0) ||
+        (cnpjDigits && cnpjDigits.length > 0) ||
+        (birthDate && birthDate.length > 0) ||
+        (rg && rg.length > 0) ||
+        (address && address.length > 0) ||
+        (bankDetails && bankDetails.length > 0)
+
+      if (hasAnyValue) {
+        await pb.collection('client_private').create({
+          organization_id: orgId,
+          client_id: clientId,
+          cpf: cpfDigits || '',
+          cnpj: cnpjDigits || undefined,
+          birth_date: birthDate || undefined,
+          rg: rg || undefined,
+          address: address || undefined,
+          bank_details: bankDetails || undefined,
+        })
+      }
     }
   }
 

@@ -32,7 +32,15 @@ interface CorrectOriginModalProps {
   onSuccess: (newOrigin: LeadOrigin) => void
 }
 
-const ORIGINS: LeadOrigin[] = ['whatsapp', 'portal', 'indicacao_balcao', 'site_redes_outros']
+const ORIGINS: LeadOrigin[] = [
+  'whatsapp',
+  'portal',
+  'indicacao_balcao',
+  'ligacao',
+  'site',
+  'redes_sociais',
+  'site_redes_outros',
+]
 
 export function CorrectOriginModal({
   lead,

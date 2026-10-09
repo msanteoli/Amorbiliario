@@ -766,19 +766,40 @@ export default function LeadDetalhe() {
         <TabsContent value="geral" className="space-y-6 m-0">
           {/* PERFIL DE BUSCA (quando preenchido) */}
           {(lead.search_neighborhood ||
+            lead.search_neighborhoods ||
             lead.search_type ||
             (lead.search_bedrooms && lead.search_bedrooms > 0) ||
+            (lead.search_min_price && lead.search_min_price > 0) ||
             (lead.search_max_price && lead.search_max_price > 0)) && (
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="eyebrow text-muted-foreground flex items-center gap-2">
                 <Building className="h-3.5 w-3.5" />
                 <span>Perfil de Busca</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                {lead.search_neighborhood && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                {(lead.search_neighborhoods || lead.search_neighborhood) && (
                   <div>
-                    <span className="eyebrow text-muted-foreground block">Bairro</span>
-                    <span className="text-foreground">{lead.search_neighborhood}</span>
+                    <span className="eyebrow text-muted-foreground block">
+                      Bairros de interesse
+                    </span>
+                    {lead.search_neighborhoods ? (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {lead.search_neighborhoods
+                          .split(';')
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                          .map((b, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full border border-border bg-muted/40 text-[11px] text-foreground"
+                            >
+                              {b}
+                            </span>
+                          ))}
+                      </div>
+                    ) : (
+                      <span className="text-foreground">{lead.search_neighborhood}</span>
+                    )}
                   </div>
                 )}
                 {lead.search_type && (
@@ -793,18 +814,43 @@ export default function LeadDetalhe() {
                     <span className="text-foreground tabular">{lead.search_bedrooms}</span>
                   </div>
                 )}
-                {typeof lead.search_max_price === 'number' && lead.search_max_price > 0 && (
+                {((typeof lead.search_min_price === 'number' && lead.search_min_price > 0) ||
+                  (typeof lead.search_max_price === 'number' && lead.search_max_price > 0)) && (
                   <div>
-                    <span className="eyebrow text-muted-foreground block">Valor máximo</span>
+                    <span className="eyebrow text-muted-foreground block">
+                      Faixa de valor: de ... até ...
+                    </span>
                     <span className="text-foreground tabular font-normal">
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                      }).format(lead.search_max_price)}
+                      {lead.search_min_price && lead.search_min_price > 0
+                        ? new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          }).format(lead.search_min_price)
+                        : 'R$ 0,00'}{' '}
+                      até{' '}
+                      {lead.search_max_price && lead.search_max_price > 0
+                        ? new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          }).format(lead.search_max_price)
+                        : 'sem limite'}
                     </span>
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* OBSERVAÇÕES DO LEAD (quando preenchido) */}
+          {lead.notes && (
+            <div className="rounded-lg border border-border bg-card p-5 space-y-2">
+              <div className="eyebrow text-muted-foreground flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5" />
+                <span>Observações do Lead</span>
+              </div>
+              <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                {lead.notes}
+              </p>
             </div>
           )}
 

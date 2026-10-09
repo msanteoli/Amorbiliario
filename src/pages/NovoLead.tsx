@@ -61,10 +61,15 @@ export default function NovoLead() {
   const [searchingProperty, setSearchingProperty] = useState(false)
 
   // Perfil de busca
-  const [searchNeighborhood, setSearchNeighborhood] = useState('')
+  const [searchNeighborhoodsList, setSearchNeighborhoodsList] = useState<string[]>([])
+  const [neighborhoodTagInput, setNeighborhoodTagInput] = useState('')
   const [searchType, setSearchType] = useState<string>('')
   const [searchBedrooms, setSearchBedrooms] = useState<string>('')
+  const [searchMinPrice, setSearchMinPrice] = useState<string>('')
   const [searchMaxPrice, setSearchMaxPrice] = useState<string>('')
+
+  // Observações (até 2000 caracteres)
+  const [notes, setNotes] = useState('')
 
   // Consentimento
   const [consentStatus, setConsentStatus] = useState<LeadConsentStatus>('unknown')
@@ -118,6 +123,27 @@ export default function NovoLead() {
       return
     }
 
+    const minP = searchMinPrice ? Number(searchMinPrice) : 0
+    const maxP = searchMaxPrice ? Number(searchMaxPrice) : 0
+    if (minP > 0 && maxP > 0 && minP > maxP) {
+      setErrorMessage('A faixa de valor está invertida (o valor mínimo é maior que o máximo).')
+      return
+    }
+
+    // Se o usuário digitou algo na caixa de tags e esqueceu de dar Enter/Adicionar, inclui também
+    let finalNeighborhoods = [...searchNeighborhoodsList]
+    if (neighborhoodTagInput.trim()) {
+      const parts = neighborhoodTagInput
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      for (const p of parts) {
+        if (!finalNeighborhoods.includes(p)) {
+          finalNeighborhoods.push(p)
+        }
+      }
+    }
+
     setLoading(true)
 
     try {
@@ -128,10 +154,13 @@ export default function NovoLead() {
         origin,
         origin_detail: originDetail.trim() || undefined,
         property_id: selectedPropertyId || undefined,
-        search_neighborhood: searchNeighborhood.trim() || undefined,
+        search_neighborhood: finalNeighborhoods[0] || undefined,
+        search_neighborhoods: finalNeighborhoods.join('; ') || undefined,
         search_type: searchType || undefined,
         search_bedrooms: searchBedrooms ? Number(searchBedrooms) : undefined,
-        search_max_price: searchMaxPrice ? Number(searchMaxPrice) : undefined,
+        search_min_price: minP > 0 ? minP : undefined,
+        search_max_price: maxP > 0 ? maxP : undefined,
+        notes: notes.trim() || undefined,
         consent_status: consentStatus,
         next_step: nextStep.trim() || undefined,
         next_step_due: nextStepDue ? new Date(nextStepDue).toISOString() : undefined,
@@ -248,10 +277,13 @@ export default function NovoLead() {
                 setOriginDetail('')
                 setSelectedPropertyId('')
                 setSelectedPropertyLabel('')
-                setSearchNeighborhood('')
+                setSearchNeighborhoodsList([])
+                setNeighborhoodTagInput('')
                 setSearchType('')
                 setSearchBedrooms('')
+                setSearchMinPrice('')
                 setSearchMaxPrice('')
+                setNotes('')
                 setNextStep('')
                 setNextStepDue('')
               }}
@@ -345,6 +377,9 @@ export default function NovoLead() {
                       <SelectItem value="whatsapp">WhatsApp</SelectItem>
                       <SelectItem value="portal">Portais imobiliários</SelectItem>
                       <SelectItem value="indicacao_balcao">Indicação ou balcão</SelectItem>
+                      <SelectItem value="ligacao">Ligação</SelectItem>
+                      <SelectItem value="site">Site</SelectItem>
+                      <SelectItem value="redes_sociais">Redes sociais</SelectItem>
                       <SelectItem value="site_redes_outros">Instagram, site e outros</SelectItem>
                     </SelectContent>
                   </Select>
@@ -469,24 +504,92 @@ export default function NovoLead() {
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label
-                    htmlFor="neighborhood"
-                    className="text-[13px] font-normal text-foreground block"
-                  >
-                    Bairro de interesse
-                  </label>
-                  <input
-                    id="neighborhood"
-                    placeholder="Ex.: Centro, Jardins"
-                    value={searchNeighborhood}
-                    onChange={(e) => setSearchNeighborhood(e.target.value)}
-                    maxLength={80}
-                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
+              {/* Bairros de interesse (campo de etiquetas) */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="neighborhood-tag-input"
+                  className="text-[13px] font-normal text-foreground block"
+                >
+                  Bairros de interesse
+                </label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      id="neighborhood-tag-input"
+                      placeholder="Ex.: Centro, Pituba, Barra (digite e aperte Enter ou Adicionar)"
+                      value={neighborhoodTagInput}
+                      onChange={(e) => setNeighborhoodTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const val = neighborhoodTagInput.trim()
+                          if (val) {
+                            const parts = val
+                              .split(';')
+                              .map((s) => s.trim())
+                              .filter(Boolean)
+                            const updated = [...searchNeighborhoodsList]
+                            for (const p of parts) {
+                              if (!updated.includes(p)) updated.push(p)
+                            }
+                            setSearchNeighborhoodsList(updated)
+                            setNeighborhoodTagInput('')
+                          }
+                        }
+                      }}
+                      className="flex-1 h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const val = neighborhoodTagInput.trim()
+                        if (val) {
+                          const parts = val
+                            .split(';')
+                            .map((s) => s.trim())
+                            .filter(Boolean)
+                          const updated = [...searchNeighborhoodsList]
+                          for (const p of parts) {
+                            if (!updated.includes(p)) updated.push(p)
+                          }
+                          setSearchNeighborhoodsList(updated)
+                          setNeighborhoodTagInput('')
+                        }
+                      }}
+                      className="h-12 px-4 text-xs font-normal border-border rounded-lg"
+                    >
+                      Adicionar
+                    </Button>
+                  </div>
+                  {searchNeighborhoodsList.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {searchNeighborhoodsList.map((nh, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-muted/40 text-xs text-foreground"
+                        >
+                          <span>{nh}</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSearchNeighborhoodsList(
+                                searchNeighborhoodsList.filter((_, i) => i !== idx),
+                              )
+                            }
+                            className="text-muted-foreground hover:text-foreground text-xs leading-none ml-0.5"
+                            title="Remover bairro"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label
                     htmlFor="searchType"
@@ -514,9 +617,7 @@ export default function NovoLead() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label
                     htmlFor="bedrooms"
@@ -534,25 +635,75 @@ export default function NovoLead() {
                     className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
                   />
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <label
-                    htmlFor="maxPrice"
-                    className="text-[13px] font-normal text-foreground block"
-                  >
-                    Valor máximo (R$)
-                  </label>
-                  <input
-                    id="maxPrice"
-                    type="number"
-                    min="0"
-                    placeholder="Ex.: 500000"
-                    value={searchMaxPrice}
-                    onChange={(e) => setSearchMaxPrice(e.target.value)}
-                    className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
-                  />
+              {/* Faixa de valor: de ... até ... */}
+              <div className="space-y-1">
+                <span className="text-[13px] font-normal text-foreground block">
+                  Faixa de valor: de ... até ...
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label htmlFor="minPrice" className="text-xs text-muted-foreground block">
+                      Valor mínimo (R$)
+                    </label>
+                    <input
+                      id="minPrice"
+                      type="number"
+                      min="0"
+                      placeholder="Ex.: 200000"
+                      value={searchMinPrice}
+                      onChange={(e) => setSearchMinPrice(e.target.value)}
+                      className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="maxPrice" className="text-xs text-muted-foreground block">
+                      Valor máximo (R$)
+                    </label>
+                    <input
+                      id="maxPrice"
+                      type="number"
+                      min="0"
+                      placeholder="Ex.: 500000"
+                      value={searchMaxPrice}
+                      onChange={(e) => setSearchMaxPrice(e.target.value)}
+                      className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                    />
+                  </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border" />
+
+          {/* Observações */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-[20px] font-normal text-foreground">Observações</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Detalhes adicionais, preferências ou notas sobre o lead (até 2000 caracteres).
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="notes" className="text-[13px] font-normal text-foreground block">
+                Observações do lead
+              </label>
+              <textarea
+                id="notes"
+                placeholder="Ex.: Prefere contato após as 18h; procura apartamento com vista mar..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                maxLength={2000}
+                rows={4}
+                className="w-full p-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <span className="text-[11px] text-muted-foreground tabular block text-right">
+                {notes.length}/2000
+              </span>
             </div>
           </div>
 

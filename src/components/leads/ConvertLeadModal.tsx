@@ -39,7 +39,6 @@ interface ConvertLeadModalProps {
 const CLIENT_KINDS = [
   { id: 'comprador', label: 'Comprador' },
   { id: 'locatario', label: 'Locatário' },
-  { id: 'proprietario', label: 'Proprietário' },
   { id: 'investidor', label: 'Investidor' },
 ]
 

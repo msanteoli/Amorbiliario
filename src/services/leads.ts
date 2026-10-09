@@ -9,7 +9,14 @@ export type LeadStage =
   | 'ganho'
   | 'perdido'
 
-export type LeadOrigin = 'whatsapp' | 'portal' | 'indicacao_balcao' | 'site_redes_outros'
+export type LeadOrigin =
+  | 'whatsapp'
+  | 'portal'
+  | 'indicacao_balcao'
+  | 'site_redes_outros'
+  | 'ligacao'
+  | 'site'
+  | 'redes_sociais'
 
 export type LostReason = 'sem_retorno' | 'desistencia' | 'duplicado'
 
@@ -45,6 +52,9 @@ export const LEAD_ORIGIN_LABELS: Record<LeadOrigin, string> = {
   portal: 'Portais imobiliários',
   indicacao_balcao: 'Indicação ou balcão',
   site_redes_outros: 'Instagram, site e outros',
+  ligacao: 'Ligação',
+  site: 'Site',
+  redes_sociais: 'Redes sociais',
 }
 
 export const LOST_REASON_LABELS: Record<LostReason, string> = {
@@ -99,7 +109,10 @@ export interface LeadRecord extends RecordModel {
   search_neighborhood?: string
   search_type?: string
   search_bedrooms?: number
+  search_min_price?: number
   search_max_price?: number
+  search_neighborhoods?: string
+  notes?: string
   consent_status: LeadConsentStatus
   stage: LeadStage
   assigned_to?: string
@@ -141,7 +154,10 @@ export interface LeadIntakeInput {
   search_neighborhood?: string
   search_type?: string
   search_bedrooms?: number
+  search_min_price?: number
   search_max_price?: number
+  search_neighborhoods?: string
+  notes?: string
   consent_status?: LeadConsentStatus
   next_step?: string
   next_step_due?: string
@@ -226,7 +242,10 @@ export interface UpdateLeadDataInput {
   search_neighborhood?: string
   search_type?: string | null
   search_bedrooms?: number | null
+  search_min_price?: number | null
   search_max_price?: number | null
+  search_neighborhoods?: string
+  notes?: string
   consent_status?: LeadConsentStatus
 }
 
@@ -318,6 +337,8 @@ function translateGenericLeadMessage(msg: string): string {
   if (msg.includes('Motivo inválido.')) return 'Motivo de perda inválido.'
   if (msg.includes('Responsável inválido.')) return 'Responsável inválido.'
   if (msg.includes('Escolha o responsável.')) return 'Escolha o responsável.'
+  if (msg.includes('A faixa de valor está invertida.'))
+    return 'A faixa de valor está invertida (o valor mínimo é maior que o máximo).'
   if (msg.includes('Informe o motivo da correção.')) return 'Informe o motivo da correção.'
   if (msg.includes('Só o SDR e o admin cadastram leads.'))
     return 'Só o SDR e o admin cadastram leads.'
@@ -523,8 +544,17 @@ export async function intakeLead(input: LeadIntakeInput): Promise<LeadIntakeResp
   if (typeof input.search_bedrooms === 'number' && input.search_bedrooms > 0) {
     payload.search_bedrooms = input.search_bedrooms
   }
+  if (typeof input.search_min_price === 'number' && input.search_min_price > 0) {
+    payload.search_min_price = input.search_min_price
+  }
   if (typeof input.search_max_price === 'number' && input.search_max_price > 0) {
     payload.search_max_price = input.search_max_price
+  }
+  if (input.search_neighborhoods !== undefined) {
+    payload.search_neighborhoods = input.search_neighborhoods.trim().slice(0, 300)
+  }
+  if (input.notes !== undefined) {
+    payload.notes = input.notes.trim().slice(0, 2000)
   }
   if (input.consent_status) {
     payload.consent_status = input.consent_status
@@ -609,10 +639,28 @@ export async function updateLeadData(
     payload.search_bedrooms = patch.search_bedrooms ?? 0
   }
   if (
+    patch.search_min_price !== undefined &&
+    patch.search_min_price !== (existing.search_min_price ?? null)
+  ) {
+    payload.search_min_price = patch.search_min_price ?? 0
+  }
+  if (
     patch.search_max_price !== undefined &&
     patch.search_max_price !== (existing.search_max_price ?? null)
   ) {
     payload.search_max_price = patch.search_max_price ?? 0
+  }
+  if (patch.search_neighborhoods !== undefined) {
+    const clean = patch.search_neighborhoods.trim().slice(0, 300)
+    if (clean !== (existing.search_neighborhoods || '').trim()) {
+      payload.search_neighborhoods = clean
+    }
+  }
+  if (patch.notes !== undefined) {
+    const clean = patch.notes.trim().slice(0, 2000)
+    if (clean !== (existing.notes || '').trim()) {
+      payload.notes = clean
+    }
   }
   if (patch.consent_status !== undefined && patch.consent_status !== existing.consent_status) {
     payload.consent_status = patch.consent_status

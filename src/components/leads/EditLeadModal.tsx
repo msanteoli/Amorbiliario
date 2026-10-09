@@ -56,14 +56,26 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
   const [searchingProperty, setSearchingProperty] = useState(false)
 
   // Perfil de busca
-  const [searchNeighborhood, setSearchNeighborhood] = useState(lead.search_neighborhood || '')
+  const initialNeighborhoods = (lead.search_neighborhoods || lead.search_neighborhood || '')
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const [searchNeighborhoodsList, setSearchNeighborhoodsList] =
+    useState<string[]>(initialNeighborhoods)
+  const [neighborhoodTagInput, setNeighborhoodTagInput] = useState('')
   const [searchType, setSearchType] = useState<string>(lead.search_type || '')
   const [searchBedrooms, setSearchBedrooms] = useState<string>(
     lead.search_bedrooms ? String(lead.search_bedrooms) : '',
   )
+  const [searchMinPrice, setSearchMinPrice] = useState<string>(
+    lead.search_min_price ? String(lead.search_min_price) : '',
+  )
   const [searchMaxPrice, setSearchMaxPrice] = useState<string>(
     lead.search_max_price ? String(lead.search_max_price) : '',
   )
+
+  // Observações (até 2000 caracteres)
+  const [notes, setNotes] = useState<string>(lead.notes || '')
 
   // Consentimento
   const [consentStatus, setConsentStatus] = useState<LeadConsentStatus>(
@@ -107,6 +119,25 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
       return
     }
 
+    const parsedMinPrice = searchMinPrice ? Number(searchMinPrice) : 0
+    const parsedMaxPrice = searchMaxPrice ? Number(searchMaxPrice) : 0
+
+    if (parsedMinPrice > 0 && parsedMaxPrice > 0 && parsedMinPrice > parsedMaxPrice) {
+      setErrorMessage('A faixa de valor está invertida (o valor mínimo é maior que o máximo).')
+      return
+    }
+
+    let finalNeighborhoods = [...searchNeighborhoodsList]
+    if (neighborhoodTagInput.trim()) {
+      const parts = neighborhoodTagInput
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      for (const p of parts) {
+        if (!finalNeighborhoods.includes(p)) finalNeighborhoods.push(p)
+      }
+    }
+
     setLoading(true)
 
     try {
@@ -116,10 +147,13 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
         email: email.trim().toLowerCase(),
         origin_detail: originDetail.trim(),
         property_id: selectedPropertyId || null,
-        search_neighborhood: searchNeighborhood.trim(),
+        search_neighborhood: finalNeighborhoods[0] || '',
+        search_neighborhoods: finalNeighborhoods.join('; '),
+        notes: notes.trim(),
         search_type: searchType || null,
         search_bedrooms: searchBedrooms ? Number(searchBedrooms) : 0,
-        search_max_price: searchMaxPrice ? Number(searchMaxPrice) : 0,
+        search_min_price: parsedMinPrice > 0 ? parsedMinPrice : 0,
+        search_max_price: parsedMaxPrice > 0 ? parsedMaxPrice : 0,
         consent_status: consentStatus,
       })
 
@@ -270,23 +304,90 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
             )}
           </div>
 
-          {/* Perfil de busca */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label
-                htmlFor="edit-neighborhood"
-                className="text-[13px] font-normal text-foreground block"
-              >
-                Bairro de interesse
-              </label>
+          {/* Perfil de busca - Bairros de interesse (etiquetas) */}
+          <div className="space-y-1.5">
+            <label
+              htmlFor="edit-neighborhood-input"
+              className="text-[13px] font-normal text-foreground block"
+            >
+              Bairros de interesse
+            </label>
+            <div className="flex gap-2">
               <input
-                id="edit-neighborhood"
-                value={searchNeighborhood}
-                onChange={(e) => setSearchNeighborhood(e.target.value)}
-                maxLength={80}
-                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                id="edit-neighborhood-input"
+                value={neighborhoodTagInput}
+                onChange={(e) => setNeighborhoodTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    const val = neighborhoodTagInput.trim()
+                    if (val) {
+                      const parts = val
+                        .split(';')
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                      const updated = [...searchNeighborhoodsList]
+                      for (const p of parts) {
+                        if (!updated.includes(p)) updated.push(p)
+                      }
+                      setSearchNeighborhoodsList(updated)
+                      setNeighborhoodTagInput('')
+                    }
+                  }
+                }}
+                placeholder="Ex.: Centro, Pituba (Enter ou Adicionar)"
+                className="flex-1 h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const val = neighborhoodTagInput.trim()
+                  if (val) {
+                    const parts = val
+                      .split(';')
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                    const updated = [...searchNeighborhoodsList]
+                    for (const p of parts) {
+                      if (!updated.includes(p)) updated.push(p)
+                    }
+                    setSearchNeighborhoodsList(updated)
+                    setNeighborhoodTagInput('')
+                  }
+                }}
+                className="h-12 px-4 text-xs font-normal border-border rounded-lg"
+              >
+                Adicionar
+              </Button>
             </div>
+            {searchNeighborhoodsList.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {searchNeighborhoodsList.map((nh, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-muted/40 text-xs text-foreground"
+                  >
+                    <span>{nh}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSearchNeighborhoodsList(
+                          searchNeighborhoodsList.filter((_, i) => i !== idx),
+                        )
+                      }
+                      className="text-muted-foreground hover:text-foreground text-xs leading-none ml-0.5"
+                      title="Remover"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label
                 htmlFor="edit-search-type"
@@ -314,9 +415,7 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label
                 htmlFor="edit-bedrooms"
@@ -333,22 +432,61 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
                 className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
               />
             </div>
-            <div className="space-y-1">
-              <label
-                htmlFor="edit-max-price"
-                className="text-[13px] font-normal text-foreground block"
-              >
-                Valor máximo (R$)
-              </label>
-              <input
-                id="edit-max-price"
-                type="number"
-                min="0"
-                value={searchMaxPrice}
-                onChange={(e) => setSearchMaxPrice(e.target.value)}
-                className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
-              />
+          </div>
+
+          {/* Faixa de valor: de ... até ... */}
+          <div className="space-y-1">
+            <span className="text-[13px] font-normal text-foreground block">
+              Faixa de valor: de ... até ...
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label htmlFor="edit-min-price" className="text-xs text-muted-foreground block">
+                  Valor mínimo (R$)
+                </label>
+                <input
+                  id="edit-min-price"
+                  type="number"
+                  min="0"
+                  value={searchMinPrice}
+                  onChange={(e) => setSearchMinPrice(e.target.value)}
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="edit-max-price" className="text-xs text-muted-foreground block">
+                  Valor máximo (R$)
+                </label>
+                <input
+                  id="edit-max-price"
+                  type="number"
+                  min="0"
+                  value={searchMaxPrice}
+                  onChange={(e) => setSearchMaxPrice(e.target.value)}
+                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring tabular"
+                />
+              </div>
             </div>
+          </div>
+
+          {/* Observações */}
+          <div className="space-y-1">
+            <label htmlFor="edit-notes" className="text-[13px] font-normal text-foreground block">
+              Observações
+            </label>
+            <textarea
+              id="edit-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={2000}
+              rows={3}
+              placeholder="Observações do lead (até 2000 caracteres)..."
+              className="w-full p-3 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <span className="text-[11px] text-muted-foreground tabular block text-right">
+              {notes.length}/2000
+            </span>
           </div>
 
           <div className="space-y-1">

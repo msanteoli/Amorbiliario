@@ -55,6 +55,20 @@ export function maskCpfInput(value: string): string {
 }
 
 /**
+ * Aplica máscara de CNPJ: 00.000.000/0000-00
+ */
+export function maskCnpjInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 14)
+  if (!digits) return ''
+  if (digits.length <= 2) return digits
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`
+  if (digits.length <= 12)
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`
+}
+
+/**
  * Validação rigorosa dos dígitos verificadores do CPF
  */
 export function isValidCpf(cpf?: string | null): boolean {
@@ -83,6 +97,28 @@ export function isValidCpf(cpf?: string | null): boolean {
 }
 
 /**
+ * Validação rigorosa dos dígitos verificadores do CNPJ
+ */
+export function isValidCnpj(cnpj?: string | null): boolean {
+  if (!cnpj) return false
+  const digits = cnpj.replace(/\D/g, '')
+  if (digits.length !== 14) return false
+  if (/^(\d)\1{13}$/.test(digits)) return false
+
+  const dg = digits.split('').map((x) => parseInt(x, 10))
+  const calc = (n: number, w: number[]) => {
+    let sum = 0
+    for (let i = 0; i < n; i++) sum += dg[i] * w[i]
+    const r = sum % 11
+    return r < 2 ? 0 : 11 - r
+  }
+
+  const ok1 = calc(12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === dg[12]
+  const ok2 = calc(13, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === dg[13]
+  return ok1 && ok2
+}
+
+/**
  * Formata data no formato brasileiro dd/mm/aaaa
  */
 export function formatDate(dateString?: string | null): string {
@@ -105,6 +141,14 @@ export const KIND_LABELS: Record<string, string> = {
   locatario: 'Locatário',
   proprietario: 'Proprietário',
   investidor: 'Investidor',
+}
+
+/**
+ * Rótulo amigável para tipo de pessoa do cliente
+ */
+export const PERSON_TYPE_LABELS: Record<string, string> = {
+  fisica: 'Pessoa física',
+  juridica: 'Pessoa jurídica',
 }
 
 /**
