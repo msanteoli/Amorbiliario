@@ -37,6 +37,18 @@ routerAdd(
         tx.save(d)
       })
     })
+    try {
+      const a = new Record($app.findCollectionByNameOrId('audit_log'))
+      a.set('organization_id', orgId)
+      a.set('actor_id', actor.id)
+      a.set('actor_role', role)
+      a.set('action', 'negociacao_pessoa_removida')
+      a.set('collection_name', 'negotiation_people')
+      a.set('record_id', person.id)
+      a.set('reason', person.getString('role'))
+      a.set('occurred_at', new Date().toISOString())
+      $app.save(a)
+    } catch (_) {}
     return e.json(200, { person_id: person.id, active: false })
   },
   $apis.requireAuth(),

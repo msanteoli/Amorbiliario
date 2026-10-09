@@ -25,8 +25,10 @@ routerAdd(
       'visits',
       'tasks',
       'property_visit_slots',
+      'negotiations',
+      'negotiation_people',
     ]
-    if (full) names.push('client_private')
+    if (full) names.push('client_private', 'negotiation_documents')
 
     const collections = {}
     const counts = {}
@@ -36,6 +38,7 @@ routerAdd(
       })
       collections[name] = rows.map((r) => {
         const item = r.publicExport()
+        if (name === 'negotiation_documents') delete item.file
         if (name === 'property_photos' || name === 'condominium_photos') {
           item.file_url = '/api/files/' + name + '/' + r.id + '/' + r.getString('file')
         }

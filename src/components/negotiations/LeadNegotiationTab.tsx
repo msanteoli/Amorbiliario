@@ -345,7 +345,7 @@ export function LeadNegotiationTab({
             </div>
 
             {/* Ações principais do cartão: Editar / Fechar negócio */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {canEditAndCheck && !editingCard && (
                 <Button
                   type="button"
@@ -358,15 +358,29 @@ export function LeadNegotiationTab({
                 </Button>
               )}
               {canEditAndCheck && (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setCloseModalVisible(true)}
-                  className="h-8 rounded-full px-3 text-xs font-normal gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>Fechar negócio</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  {checklist && checklist.missing > 0 && (
+                    <Badge
+                      variant="attention"
+                      className="text-[11px] px-2.5 py-1 font-medium gap-1.5"
+                    >
+                      <AlertCircle className="h-3 w-3" />
+                      <span>
+                        {checklist.missing}{' '}
+                        {checklist.missing === 1 ? 'documento pendente' : 'documentos pendentes'}
+                      </span>
+                    </Badge>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setCloseModalVisible(true)}
+                    className="h-8 rounded-full px-3 text-xs font-normal gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Fechar negócio</span>
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -478,7 +492,7 @@ export function LeadNegotiationTab({
           )}
 
           {/* SEÇÕES 4 & 5: PESSOAS E CHECKLIST DE DOCUMENTOS */}
-          <div className="pt-4 border-t border-border space-y-4">
+          <div id="checklist-section" className="pt-4 border-t border-border space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <h3 className="text-sm font-medium text-foreground">
@@ -898,6 +912,14 @@ export function LeadNegotiationTab({
           purpose={activeNegotiation.purpose}
           open={closeModalVisible}
           onOpenChange={setCloseModalVisible}
+          checklist={checklist}
+          isAdmin={isAdmin}
+          onReturnToChecklist={() => {
+            const el = document.getElementById('checklist-section')
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth' })
+            }
+          }}
           onSuccess={async () => {
             setSuccessBanner('Negócio fechado com sucesso! Imóvel atualizado e lead Ganho.')
             await loadNegotiations()

@@ -192,7 +192,7 @@ routerAdd(
         return e.json(409, { message: 'Esta pessoa já está na negociação com este papel.' })
       }
       $app.logger().error('negotiation_person_failed', 'err', String((err && err.message) || err))
-      return e.json(409, { message: 'Esta pessoa já está na negociação com este papel.' })
+      return e.json(500, { message: 'Não foi possível adicionar a pessoa. Tente de novo.' })
     }
     return e.json(200, { person_id: personId, client_id: client.id, documents: created })
   },

@@ -117,6 +117,34 @@ export interface NegotiationChecklistResponse {
   missing: number
 }
 
+export interface CloseNegotiationMissingItem {
+  person_id: string
+  doc_type: string
+}
+
+export interface CloseNegotiationConflictError {
+  status: 409
+  message: string
+  missing?: CloseNegotiationMissingItem[]
+}
+
+export class CloseNegotiationError extends Error {
+  status: number
+  missing?: CloseNegotiationMissingItem[]
+
+  constructor(message: string, status: number, missing?: CloseNegotiationMissingItem[]) {
+    super(message)
+    this.name = 'CloseNegotiationError'
+    this.status = status
+    this.missing = missing
+  }
+}
+
+export interface CloseNegotiationPayload {
+  force?: boolean
+  reason?: string
+}
+
 export interface AddPersonExistingPayload {
   role: NegotiationPersonRole
   client_id: string
@@ -241,13 +269,37 @@ export async function updateNegotiation(
  */
 export async function closeNegotiation(
   negotiationId: string,
+  payload?: CloseNegotiationPayload,
 ): Promise<{ id: string; status: 'fechada' }> {
-  return await pb.send<{ id: string; status: 'fechada' }>(
-    `/backend/v1/negotiations/${encodeURIComponent(negotiationId)}/close`,
-    {
-      method: 'POST',
-    },
-  )
+  try {
+    return await pb.send<{ id: string; status: 'fechada' }>(
+      `/backend/v1/negotiations/${encodeURIComponent(negotiationId)}/close`,
+      {
+        method: 'POST',
+        body: payload,
+      },
+    )
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null) {
+      const errorObj = err as Record<string, unknown>
+      const status = typeof errorObj.status === 'number' ? errorObj.status : 0
+      const response = (errorObj.response || errorObj.data) as Record<string, unknown> | undefined
+      const message =
+        (response && typeof response.message === 'string' && response.message) ||
+        (typeof errorObj.message === 'string' && errorObj.message) ||
+        'Não foi possível fechar a negociação.'
+
+      const missing =
+        response && Array.isArray(response.missing)
+          ? (response.missing as CloseNegotiationMissingItem[])
+          : undefined
+
+      if (status === 409 || status === 403 || status === 400) {
+        throw new CloseNegotiationError(message, status, missing)
+      }
+    }
+    throw err
+  }
 }
 
 /**

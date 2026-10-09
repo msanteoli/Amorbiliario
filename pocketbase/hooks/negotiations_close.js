@@ -1,5 +1,6 @@
 // Fecha a negociação: o imóvel vira Vendido (venda) ou Alugado (locação) e o lead vira Ganho,
-// tudo ou nada. Só o admin e o corretor responsável.
+// tudo ou nada. Só o admin e o corretor responsável. Com documento pendente no checklist, devolve 409
+// com a lista do que falta; só o admin fecha assim mesmo, com {force:true, reason}.
 routerAdd(
   'POST',
   '/backend/v1/negotiations/{id}/close',
@@ -23,14 +24,43 @@ routerAdd(
     if (['em_analise', 'aprovada'].indexOf(neg.getString('status')) < 0) {
       return e.json(409, { message: 'Esta negociação já foi encerrada.' })
     }
+    const body = e.requestInfo().body || {}
+    const force = body.force === true
+    const forceReason = String(body.reason || '').trim()
+    if (force && role !== 'admin')
+      throw new ForbiddenError('Só o admin fecha com documentos pendentes.')
+    if (force && !forceReason)
+      throw new BadRequestError('Informe o motivo de fechar com documentos pendentes.')
+    const pend = $app.findRecordsByFilter(
+      'negotiation_documents',
+      "negotiation_id = {:n} && active = true && state = 'pendente'",
+      '',
+      200,
+      0,
+      { n: neg.id },
+    )
+    if (pend.length && !force) {
+      return e.json(409, {
+        message: 'Há documentos pendentes. Complete o checklist antes de fechar.',
+        missing: pend.map((d) => ({
+          person_id: d.getString('person_id'),
+          doc_type: d.getString('doc_type'),
+        })),
+      })
+    }
     const nowIso = new Date().toISOString()
     $app.runInTransaction((tx) => {
       const n = tx.findRecordById('negotiations', neg.id)
+      if (['em_analise', 'aprovada'].indexOf(n.getString('status')) < 0) {
+        throw new BadRequestError('Esta negociação já foi encerrada.')
+      }
       const p = tx.findRecordById('properties', n.getString('property_id'))
       if (['inativo', 'vendido', 'alugado'].indexOf(p.getString('status')) >= 0) {
         throw new BadRequestError('O imóvel não está mais disponível para fechar.')
       }
       const l = tx.findRecordById('leads', n.getString('lead_id'))
+      if (l.getString('stage') === 'perdido')
+        throw new BadRequestError('O lead está perdido. Reabra o lead antes de fechar.')
       n.set('status', 'fechada')
       n.set('closed_at', nowIso)
       tx.save(n)
@@ -47,7 +77,7 @@ routerAdd(
       a.set('action', 'negociacao_fechada')
       a.set('collection_name', 'negotiations')
       a.set('record_id', neg.id)
-      a.set('reason', neg.getString('purpose'))
+      a.set('reason', neg.getString('purpose') + (pend.length ? ' | forçado: ' + forceReason : ''))
       a.set('occurred_at', nowIso)
       $app.save(a)
     } catch (_) {}

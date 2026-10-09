@@ -147,6 +147,27 @@ onRecordUpdateRequest((e) => {
   }
 
   const res = e.next()
+  if (assigneeChanged) {
+    try {
+      const open = $app.findRecordsByFilter(
+        'negotiations',
+        "lead_id = {:l} && (status = 'em_analise' || status = 'aprovada')",
+        '',
+        5,
+        0,
+        { l: rec.id },
+      )
+      open.forEach((n) => {
+        n.set('responsible_id', assignee)
+        $app.save(n)
+      })
+    } catch (err) {
+      $app
+        .logger()
+        .error('negotiation_follow_lead_failed', 'err', String((err && err.message) || err))
+    }
+  }
+
   try {
     const col = $app.findCollectionByNameOrId('lead_events')
     if (dupOf) {
