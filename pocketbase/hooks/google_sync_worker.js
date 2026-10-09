@@ -1,6 +1,8 @@
 // M11 — Sincroniza visitas com a Google Agenda dos corretores (único arquivo que escreve eventos no Google).
 // A cada minuto: até 20 visitas com google_sync = 'pendente' (mais antigas primeiro) e até 20 eventos órfãos
 // (audit_log 'google_evento_orfao' sem o sufixo '|ok'). Sem os segredos IMOB_GOOGLE_* e IMOB_APP_URL não faz nada.
+// Decisão: confirmada e futura -> cria/atualiza; cancelada, agendada ou pendente_agenda com evento -> apaga;
+// realizada, nao_compareceu ou confirmada já passada -> o evento fica (histórico), sem chamar o Google.
 // Organização: (1) decide o que fazer com cada visita olhando só os registros (decide); (2) um bloco delimitado faz
 // as chamadas HTTP (tokenFor / callEvent); (3) aplica o resultado. Nunca grava token nem corpo de resposta.
 // Regras goja: tudo declarado dentro do callback; $app, nunca app.
@@ -166,13 +168,48 @@ cronAdd('google_calendar_sync', '* * * * *', () => {
   }
   // ---------- fim do bloco HTTP ----------
 
-  // decisão só a partir dos registros: 'upsert' | 'delete' | 'none' (nada a manter no Google)
+  // decisão só a partir dos registros:
+  //  'upsert' = confirmada e futura; 'delete' = cancelada / agendada / pendente_agenda com evento;
+  //  'keep'   = realizada, nao_compareceu ou confirmada já passada: o evento fica (histórico) -> sincronizada se há
+  //             evento, senão nao_aplicavel; 'none' = nada a manter -> nao_aplicavel
   const decide = (v, now) => {
     const status = v.getString('status')
     const start = pbToIso(v.getString('start_at'))
+    const hasEvent = !!v.getString('google_event_id')
     if (status === 'confirmada' && start && start.getTime() > now.getTime()) return 'upsert'
-    if (v.getString('google_event_id')) return 'delete'
-    return 'none'
+    if (['cancelada', 'agendada', 'pendente_agenda'].indexOf(status) >= 0)
+      return hasEvent ? 'delete' : 'none'
+    return hasEvent ? 'keep' : 'none'
+  }
+  const snapOf = (v) =>
+    [
+      v.getString('status'),
+      v.getString('start_at'),
+      v.getString('end_at'),
+      v.getString('broker_id'),
+    ].join('|')
+  // grava SÓ os campos de sincronização num registro relido. Se a visita mudou desde a decisão (ou não está mais
+  // pendente), não grava o resultado — fica para a próxima rodada —, mas registra google_event_id, para que um evento
+  // criado/apagado continue rastreado. Nunca salva a cópia antiga da visita.
+  const writeOutcome = (id, snap, f) => {
+    let cur = null
+    try {
+      cur = $app.findRecordById('visits', id)
+    } catch (_) {
+      return
+    }
+    const fresh = snapOf(cur) === snap && cur.getString('google_sync') === 'pendente'
+    if (!fresh && !Object.prototype.hasOwnProperty.call(f, 'google_event_id')) return
+    if (Object.prototype.hasOwnProperty.call(f, 'google_event_id'))
+      cur.set('google_event_id', f.google_event_id)
+    if (fresh) {
+      if (Object.prototype.hasOwnProperty.call(f, 'google_sync'))
+        cur.set('google_sync', f.google_sync)
+      if (Object.prototype.hasOwnProperty.call(f, 'google_sync_attempts')) {
+        cur.set('google_sync_attempts', f.google_sync_attempts)
+      }
+    }
+    $app.save(cur)
   }
   const eventBody = (v) => {
     const start = pbToIso(v.getString('start_at'))
@@ -215,11 +252,9 @@ cronAdd('google_calendar_sync', '* * * * *', () => {
   }
 
   // ---------- visitas pendentes ----------
-  let rows = []
-  try {
-    rows = $app.findRecordsByFilter('visits', "google_sync = 'pendente'", 'updated', 200, 0)
-  } catch (_) {}
-  // corretor com conexão 'reconectar': as visitas dele esperam pendentes (não contam no limite de 20 por rodada)
+  const t0 = Date.now()
+  const BUDGET_MS = 40000 // depois de ~40 s não pega visita nova (a rodada seguinte continua)
+  // corretor com conexão 'reconectar': as visitas dele esperam pendentes, sem mudar nada, e não contam no limite
   const isWaiting = (userId) => {
     if (!userId) return false
     if (!Object.prototype.hasOwnProperty.call(waiting, userId)) {
@@ -240,71 +275,88 @@ cronAdd('google_calendar_sync', '* * * * *', () => {
     }
     return waiting[userId]
   }
-  let handled = 0
-  rows.forEach((row) => {
-    if (handled >= 20) return
-    let v = null
-    try {
-      v = $app.findRecordById('visits', row.id)
-    } catch (_) {
-      return
-    }
-    if (v.getString('google_sync') !== 'pendente') return // outra execução já tratou
-    const now = new Date()
-    const action = decide(v, now)
-    const orgId = v.getString('organization_id')
-    if (action === 'none') {
-      v.set('google_sync', 'nao_aplicavel')
+  const processVisit = (id) => {
+    let v = $app.findRecordById('visits', id)
+    if (v.getString('google_sync') !== 'pendente') return false // outra execução já tratou
+    const action = decide(v, new Date())
+    if (action === 'none' || action === 'keep') {
+      v.set('google_sync', action === 'keep' ? 'sincronizada' : 'nao_aplicavel')
       v.set('google_sync_attempts', 0)
       $app.save(v)
-      return
+      return false
     }
-    if (isWaiting(v.getString('broker_id'))) return
-    handled++
-    const c = connFor(v.getString('broker_id'))
-    if (!c && isWaiting(v.getString('broker_id'))) return // acabou de virar 'reconectar' (cifra inválida)
+    const broker = v.getString('broker_id')
+    if (isWaiting(broker)) return false
+    const c = connFor(broker)
+    if (!c && isWaiting(broker)) return false // acabou de virar 'reconectar' (cifra inválida)
     if (!c) {
-      // sem conexão utilizável do corretor da visita: nada a fazer no Google por ela
-      // (o evento antigo, se houver, sai pelo desconectar ou pelo órfão)
+      // sem conexão utilizável do corretor da visita (o evento antigo, se houver, sai pelo desconectar ou pelo órfão)
       v.set('google_sync', 'nao_aplicavel')
       v.set('google_sync_attempts', 0)
       $app.save(v)
-      return
+      return true
     }
-    // trava: conta a tentativa antes de chamar o Google
+    // trava: relê, conta a tentativa e salva antes de chamar o Google (só google_sync_attempts muda)
+    v = $app.findRecordById('visits', id)
+    if (v.getString('google_sync') !== 'pendente') return false
     const attempts = v.getInt('google_sync_attempts') + 1
     v.set('google_sync_attempts', attempts)
     $app.save(v)
+    const snap = snapOf(v)
+    const now = new Date()
+    const act = decide(v, now)
+    if (act !== 'upsert' && act !== 'delete') return true // mudou entre as leituras: a próxima rodada decide
 
-    let res = null
-    const evId = action === 'upsert' ? eventIdFor(v.id) : v.getString('google_event_id')
-    if (action === 'upsert') res = upsertEvent(c, evId, eventBody(v))
-    else res = deleteEvent(c, evId)
-
+    const evId = act === 'upsert' ? eventIdFor(v.id) : v.getString('google_event_id')
+    const res = act === 'upsert' ? upsertEvent(c, evId, eventBody(v)) : deleteEvent(c, evId)
     if (res.ok) {
-      if (action === 'upsert') {
-        v.set('google_event_id', evId)
-        v.set('google_sync', 'sincronizada')
-      } else {
-        v.set('google_event_id', '')
-        v.set('google_sync', 'nao_aplicavel')
-      }
-      v.set('google_sync_attempts', 0)
-      $app.save(v)
-      return
+      if (act === 'upsert') {
+        writeOutcome(id, snap, {
+          google_event_id: evId,
+          google_sync: 'sincronizada',
+          google_sync_attempts: 0,
+        })
+      } else
+        writeOutcome(id, snap, {
+          google_event_id: '',
+          google_sync: 'nao_aplicavel',
+          google_sync_attempts: 0,
+        })
+      return true
     }
     if (res.invalid) {
       // conexão marcada 'reconectar': a visita fica pendente e só volta quando o corretor reconectar
-      v.set('google_sync_attempts', 0)
-      $app.save(v)
-      return
+      writeOutcome(id, snap, { google_sync_attempts: 0 })
+      return true
     }
     if (attempts >= MAX_ATTEMPTS) {
-      v.set('google_sync', 'falhou')
-      $app.save(v)
-      audit(orgId, 'google_sync_falhou', String(res.code || 0), v.id)
+      writeOutcome(id, snap, { google_sync: 'falhou' })
+      audit(v.getString('organization_id'), 'google_sync_falhou', String(res.code || 0), v.id)
     }
-  })
+    return true
+  }
+  // pagina as pendentes (mais antigas primeiro) até tratar 20 que exigem o Google ou acabar o tempo
+  let handled = 0
+  for (let page = 0; page < 10 && handled < 20 && Date.now() - t0 < BUDGET_MS; page++) {
+    let rows = []
+    try {
+      rows = $app.findRecordsByFilter(
+        'visits',
+        "google_sync = 'pendente'",
+        'updated',
+        100,
+        page * 100,
+      )
+    } catch (_) {}
+    for (let i = 0; i < rows.length && handled < 20 && Date.now() - t0 < BUDGET_MS; i++) {
+      try {
+        if (processVisit(rows[i].id)) handled++
+      } catch (_) {
+        $app.logger().error('google_sync_visit_failed', 'visit', rows[i].id)
+      }
+    }
+    if (rows.length < 100) break
+  }
 
   // ---------- eventos órfãos (troca de corretor): reason = '<corretor antigo>|<id do evento>' ----------
   let orphans = []
@@ -318,21 +370,42 @@ cronAdd('google_calendar_sync', '* * * * *', () => {
     )
   } catch (_) {}
   orphans.forEach((o) => {
-    const reason = o.getString('reason')
-    const bar = reason.indexOf('|')
-    const done = () => {
-      o.set('reason', reason + '|ok')
+    if (Date.now() - t0 >= BUDGET_MS) return
+    try {
+      const reason = o.getString('reason')
+      const bar = reason.indexOf('|')
+      const done = () => {
+        o.set('reason', reason + '|ok')
+        try {
+          $app.save(o)
+        } catch (_) {}
+      }
+      if (bar < 1) return done()
+      const evId = reason.slice(bar + 1)
+      const c = connFor(reason.slice(0, bar))
+      if (!c || !evId) return done() // corretor antigo sem conexão utilizável: nada a apagar
+      // a visita voltou para o mesmo corretor com o mesmo evento (A -> B -> A): o evento não é órfão
+      let inUse = 0
       try {
-        $app.save(o)
+        inUse = $app.findRecordsByFilter(
+          'visits',
+          'broker_id = {:b} && google_event_id = {:e}',
+          '',
+          1,
+          0,
+          {
+            b: reason.slice(0, bar),
+            e: evId,
+          },
+        ).length
       } catch (_) {}
+      if (inUse > 0) return done()
+      const r = deleteEvent(c, evId)
+      // sucesso, conexão inválida ou erro definitivo (4xx que não melhora) encerram; 429/5xx/rede tentam de novo
+      if (r.ok || r.invalid || (r.code >= 400 && r.code < 500 && r.code !== 401 && r.code !== 429))
+        done()
+    } catch (_) {
+      $app.logger().error('google_sync_orphan_failed', 'audit', o.id)
     }
-    if (bar < 1) return done()
-    const evId = reason.slice(bar + 1)
-    const c = connFor(reason.slice(0, bar))
-    if (!c || !evId) return done() // corretor antigo sem conexão utilizável: nada a apagar
-    const r = deleteEvent(c, evId)
-    // sucesso, conexão inválida ou erro definitivo (4xx que não melhora) encerram; 429/5xx/rede tentam de novo
-    if (r.ok || r.invalid || (r.code >= 400 && r.code < 500 && r.code !== 401 && r.code !== 429))
-      done()
   })
 })
