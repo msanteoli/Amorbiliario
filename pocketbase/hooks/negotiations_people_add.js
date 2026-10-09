@@ -1,4 +1,5 @@
 // Liga uma pessoa à negociação (cliente existente por client_id, ou nova em "new") com um papel, e cria
+
 // o checklist de documentos daquele papel. Admin, SDR e o corretor responsável. Pessoa nova passa pela
 // verificação de duplicidade (409 com existing_client_id). Papel repetido para o mesmo cliente: 409.
 routerAdd(

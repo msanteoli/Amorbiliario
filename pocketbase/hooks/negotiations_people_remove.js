@@ -1,4 +1,5 @@
 // Tira uma pessoa da negociação (muda para inativa; não apaga a pessoa nem o cliente) e esconde os
+
 // documentos dela do checklist. Admin, SDR e o corretor responsável.
 routerAdd(
   'POST',

@@ -1,4 +1,5 @@
 // Edição de lead pela coleção. Normaliza telefone e e-mail, limita o que o corretor muda
+
 // (só etapa, motivo da perda, próximo passo e prazo), valida o atribuído e a perda com motivo,
 // e grava a linha do tempo (estágio, atribuição e próximo passo). Quem pode editar qual linha
 // já é decidido pela updateRule (corretor só os atribuídos a ele); origem, ligação com o cliente,

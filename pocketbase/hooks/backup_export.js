@@ -1,4 +1,5 @@
 // Exporta os dados da organização para um arquivo JSON (cópia de segurança própria, fora do Skip).
+
 // Só o admin e o SDR. O SDR recebe o backup OPERACIONAL (sem CPF/data de nascimento); o admin recebe o
 // COMPLETO (com client_private). Nunca exporta senhas, tokens, e-mails de usuários nem o audit_log.
 // Fotos entram só como endereço (file_url), não como arquivo. Grava o histórico sem dados.
