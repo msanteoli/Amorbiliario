@@ -12,6 +12,7 @@ import ResetPassword from '@/pages/ResetPassword'
 import BuscarPage from '@/pages/BuscarPage'
 import ImovelPublicoPage from '@/pages/ImovelPublicoPage'
 import Privacidade from '@/pages/Privacidade'
+import GoogleRetorno from '@/pages/GoogleRetorno'
 import Hoje from '@/pages/Hoje'
 import Leads from '@/pages/Leads'
 import NovoLead from '@/pages/NovoLead'
@@ -54,6 +55,9 @@ const App = () => (
 
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
+              {/* Rota de retorno da conexão Google (sem AppLayout, página limpa focada na autorização) */}
+              <Route path="/google/retorno" element={<GoogleRetorno />} />
+
               <Route element={<AppLayout />}>
                 <Route path="/hoje" element={<Hoje />} />
                 <Route path="/leads" element={<Leads />} />

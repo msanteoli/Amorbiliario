@@ -22,7 +22,25 @@ import { useAuth } from '@/contexts/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { getRoleLabel } from '@/lib/roles'
 import {
+  getGoogleStatus,
+  getGoogleConnectUrl,
+  disconnectGoogle,
+  GoogleConnectionStatus,
+  GoogleIntegrationConfigError,
+} from '@/services/googleCalendar'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Building2,
+  Calendar,
   CalendarDays,
   CheckSquare,
   ChevronRight,
@@ -35,6 +53,7 @@ import {
   UserCheck,
   Users,
 } from 'lucide-react'
+import { useEffect, useCallback } from 'react'
 
 interface NavItem {
   title: string
@@ -63,6 +82,76 @@ export function AppLayout() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
+
+  // Estado da Google Agenda (só para corretor e admin)
+  const isBrokerOrAdmin = role === 'admin' || role === 'corretor'
+  const [googleStatus, setGoogleStatus] = useState<GoogleConnectionStatus | null>(null)
+  const [googleEmail, setGoogleEmail] = useState<string>('')
+  const [disconnectModalOpen, setDisconnectModalOpen] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [connectingGoogle, setConnectingGoogle] = useState(false)
+  const [googleConfigError, setGoogleConfigError] = useState<string | null>(null)
+
+  const loadGoogleStatus = useCallback(async () => {
+    if (!isBrokerOrAdmin) {
+      setGoogleStatus(null)
+      setGoogleEmail('')
+      return
+    }
+    try {
+      const res = await getGoogleStatus()
+      setGoogleStatus(res.status)
+      setGoogleEmail(res.google_email || '')
+    } catch {
+      // Falha silenciosa
+      setGoogleStatus(null)
+      setGoogleEmail('')
+    }
+  }, [isBrokerOrAdmin])
+
+  useEffect(() => {
+    loadGoogleStatus()
+  }, [loadGoogleStatus])
+
+  // Trata conexão / reconexão
+  const handleConnectGoogle = async () => {
+    setGoogleConfigError(null)
+    setConnectingGoogle(true)
+    try {
+      const url = await getGoogleConnectUrl()
+      if (url) {
+        window.location.href = url
+      }
+    } catch (err) {
+      if (err instanceof GoogleIntegrationConfigError) {
+        setGoogleConfigError('Integração com o Google ainda não configurada')
+      } else {
+        const errorObj = err as { status?: number; data?: { message?: string } } | undefined
+        if (errorObj?.status === 503) {
+          setGoogleConfigError('Integração com o Google ainda não configurada')
+        } else {
+          setGoogleConfigError('Integração com o Google ainda não configurada')
+        }
+      }
+      setConnectingGoogle(false)
+    }
+  }
+
+  // Trata confirmação de desconexão
+  const handleConfirmDisconnect = async () => {
+    setDisconnecting(true)
+    try {
+      await disconnectGoogle()
+      setGoogleStatus('nao_conectado')
+      setGoogleEmail('')
+      setDisconnectModalOpen(false)
+    } catch {
+      // Falha tratada ou idempotente
+      setDisconnectModalOpen(false)
+    } finally {
+      setDisconnecting(false)
+    }
+  }
 
   // Itens de navegação:
   // Desktop: todos os itens disponíveis para o papel
@@ -153,6 +242,83 @@ export function AppLayout() {
           <div className="text-xs text-muted-foreground truncate" title={user?.email || ''}>
             {user?.email}
           </div>
+
+          {/* Seção Google Agenda na barra lateral desktop (só corretor e admin) */}
+          {isBrokerOrAdmin && googleStatus && (
+            <div className="pt-2 border-t border-border space-y-2">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5 shrink-0" />
+                <span className="font-medium text-foreground">Google Agenda</span>
+              </div>
+
+              {googleStatus === 'conectado' && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground truncate" title={googleEmail || ''}>
+                    conectada como {googleEmail || 'sua conta'}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDisconnectModalOpen(true)}
+                    className="w-full h-8 text-xs font-normal rounded-full"
+                  >
+                    Desconectar
+                  </Button>
+                </div>
+              )}
+
+              {googleStatus === 'reconectar' && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-attention font-medium">Precisa reconectar</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleConnectGoogle}
+                    disabled={connectingGoogle}
+                    className="w-full h-8 text-xs font-normal rounded-full"
+                  >
+                    {connectingGoogle ? 'Conectando...' : 'Conectar'}
+                  </Button>
+                  {googleConfigError && (
+                    <p className="text-[11px] text-destructive leading-tight">
+                      {googleConfigError}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    O Imobdigital só cria, atualiza e apaga eventos de visita na sua agenda. Não lê
+                    seus outros eventos. Você pode desconectar quando quiser.
+                  </p>
+                </div>
+              )}
+
+              {googleStatus === 'nao_conectado' && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">Não conectada</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleConnectGoogle}
+                    disabled={connectingGoogle}
+                    className="w-full h-8 text-xs font-normal rounded-full"
+                  >
+                    {connectingGoogle ? 'Conectando...' : 'Conectar Google Agenda'}
+                  </Button>
+                  {googleConfigError && (
+                    <p className="text-[11px] text-destructive leading-tight">
+                      {googleConfigError}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    O Imobdigital só cria, atualiza e apaga eventos de visita na sua agenda. Não lê
+                    seus outros eventos. Você pode desconectar quando quiser.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -197,7 +363,7 @@ export function AppLayout() {
                 <User className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-lg p-2">
+            <DropdownMenuContent align="end" className="w-64 rounded-lg p-2">
               <DropdownMenuLabel className="font-normal">
                 <div className="text-sm font-medium text-foreground truncate">
                   {user?.name || user?.email || 'Usuário'}
@@ -214,13 +380,100 @@ export function AppLayout() {
                 <span className="text-xs text-muted-foreground">Tema</span>
                 <ThemeToggle size="sm" />
               </div>
+
+              {/* Seção Google Agenda no Menu do usuário do celular (só corretor e admin) */}
+              {isBrokerOrAdmin && googleStatus && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-2 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-medium text-foreground">Google Agenda</span>
+                    </div>
+
+                    {googleStatus === 'conectado' && (
+                      <div className="space-y-2">
+                        <p
+                          className="text-xs text-muted-foreground truncate"
+                          title={googleEmail || ''}
+                        >
+                          conectada como {googleEmail || 'sua conta'}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setMobileMenuOpen(false)
+                            setDisconnectModalOpen(true)
+                          }}
+                          className="w-full min-h-[44px] h-10 text-xs font-normal rounded-full"
+                        >
+                          Desconectar
+                        </Button>
+                      </div>
+                    )}
+
+                    {googleStatus === 'reconectar' && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-attention font-medium">Precisa reconectar</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleConnectGoogle}
+                          disabled={connectingGoogle}
+                          className="w-full min-h-[44px] h-10 text-xs font-normal rounded-full"
+                        >
+                          {connectingGoogle ? 'Conectando...' : 'Conectar'}
+                        </Button>
+                        {googleConfigError && (
+                          <p className="text-[11px] text-destructive leading-tight">
+                            {googleConfigError}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground leading-tight">
+                          O Imobdigital só cria, atualiza e apaga eventos de visita na sua agenda.
+                          Não lê seus outros eventos. Você pode desconectar quando quiser.
+                        </p>
+                      </div>
+                    )}
+
+                    {googleStatus === 'nao_conectado' && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Não conectada</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleConnectGoogle}
+                          disabled={connectingGoogle}
+                          className="w-full min-h-[44px] h-10 text-xs font-normal rounded-full"
+                        >
+                          {connectingGoogle ? 'Conectando...' : 'Conectar Google Agenda'}
+                        </Button>
+                        {googleConfigError && (
+                          <p className="text-[11px] text-destructive leading-tight">
+                            {googleConfigError}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground leading-tight">
+                          O Imobdigital só cria, atualiza e apaga eventos de visita na sua agenda.
+                          Não lê seus outros eventos. Você pode desconectar quando quiser.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
                   setMobileMenuOpen(false)
                   logout()
                 }}
-                className="text-destructive focus:text-destructive cursor-pointer"
+                className="text-destructive focus:text-destructive cursor-pointer min-h-[44px]"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 <span>Sair</span>
@@ -305,6 +558,38 @@ export function AppLayout() {
             )
           })()}
         </nav>
+
+        {/* Modal de confirmação de desconexão da Google Agenda */}
+        <AlertDialog open={disconnectModalOpen} onOpenChange={setDisconnectModalOpen}>
+          <AlertDialogContent className="rounded-lg p-6 max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-base font-normal text-foreground">
+                Desconectar Google Agenda
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm text-muted-foreground">
+                Os eventos futuros criados pelo Imobdigital serão removidos da sua agenda.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
+              <AlertDialogCancel
+                disabled={disconnecting}
+                className="rounded-full font-normal min-h-[44px] h-11"
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleConfirmDisconnect()
+                }}
+                disabled={disconnecting}
+                className="rounded-full font-normal min-h-[44px] h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {disconnecting ? 'Desconectando...' : 'Desconectar'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Folha (Sheet) Mais opções de navegação */}
         <Sheet open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>

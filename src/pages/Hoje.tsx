@@ -19,6 +19,13 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw, ChevronRight, AlertCircle, AlertTriangle } from 'lucide-react'
 import { getRoleLabel } from '@/lib/roles'
+import {
+  getGoogleStatus,
+  getGoogleConnectUrl,
+  GoogleConnectionStatus,
+  GoogleIntegrationConfigError,
+} from '@/services/googleCalendar'
+import { Calendar } from 'lucide-react'
 
 // Mapeamento visual das situações de Lead conforme guia M9a
 function getLeadStageBadgeVariant(
@@ -49,6 +56,9 @@ export default function Hoje() {
   const [refreshing, setRefreshing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [ownersWithoutProp, setOwnersWithoutProp] = useState<OwnerWithoutPropertyItem[]>([])
+  const [googleStatus, setGoogleStatus] = useState<GoogleConnectionStatus | null>(null)
+  const [googleConnecting, setGoogleConnecting] = useState(false)
+  const [googleConfigError, setGoogleConfigError] = useState<string | null>(null)
 
   const loadOwnersWarning = useCallback(async () => {
     try {
@@ -77,6 +87,19 @@ export default function Hoje() {
         } else {
           setOwnersWithoutProp([])
         }
+
+        // Google Agenda: visível só para corretor e admin
+        if (resp.role === 'admin' || resp.role === 'corretor') {
+          try {
+            const gStatus = await getGoogleStatus()
+            setGoogleStatus(gStatus.status)
+          } catch {
+            // Falha silenciosa: não mostra nada se a chamada falhar
+            setGoogleStatus(null)
+          }
+        } else {
+          setGoogleStatus(null)
+        }
       } catch (err) {
         setErrorMessage(formatTodayErrorMessage(err))
       } finally {
@@ -90,6 +113,29 @@ export default function Hoje() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const handleConnectGoogle = async () => {
+    setGoogleConfigError(null)
+    setGoogleConnecting(true)
+    try {
+      const url = await getGoogleConnectUrl()
+      if (url) {
+        window.location.href = url
+      }
+    } catch (err) {
+      if (err instanceof GoogleIntegrationConfigError) {
+        setGoogleConfigError('Integração com o Google ainda não configurada.')
+      } else {
+        const errorObj = err as { status?: number; data?: { message?: string } } | undefined
+        if (errorObj?.status === 503) {
+          setGoogleConfigError('Integração com o Google ainda não configurada.')
+        } else {
+          setGoogleConfigError('Integração com o Google ainda não configurada.')
+        }
+      }
+      setGoogleConnecting(false)
+    }
+  }
 
   // Contagem em .eyebrow ao lado do título da seção
   const renderCountEyebrow = (section?: TodaySection<unknown>) => {
@@ -484,6 +530,53 @@ export default function Hoje() {
           <span>Atualizar</span>
         </Button>
       </div>
+
+      {/* Faixa de atenção da Google Agenda (visível só para corretor e admin se nao_conectado ou reconectar) */}
+      {(googleStatus === 'nao_conectado' || googleStatus === 'reconectar') && (
+        <div
+          role="region"
+          aria-label="Aviso de conexão da Google Agenda"
+          className="rounded-lg border border-border bg-card text-card-foreground p-4 sm:p-5 flex flex-col gap-3 shadow-none"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-foreground shrink-0 mt-0.5 sm:mt-0">
+                <Calendar className="h-4 w-4" />
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                {googleStatus === 'nao_conectado'
+                  ? 'Conecte sua agenda do Google para receber suas visitas confirmadas'
+                  : 'Reconecte sua agenda do Google'}
+              </p>
+            </div>
+            <div className="flex flex-col sm:items-end gap-1 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleConnectGoogle}
+                disabled={googleConnecting}
+                className="rounded-full font-normal min-h-[44px] h-11 px-5 text-sm self-start sm:self-auto"
+              >
+                {googleConnecting ? 'Conectando...' : 'Conectar Google Agenda'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Mensagem quando servidor responde 503 ao tentar conectar */}
+          {googleConfigError && (
+            <p className="text-xs text-destructive font-normal" role="alert">
+              {googleConfigError}
+            </p>
+          )}
+
+          {/* Texto de privacidade */}
+          <p className="text-xs text-muted-foreground leading-relaxed pt-1 border-t border-border/50">
+            O Imobdigital só cria, atualiza e apaga eventos de visita na sua agenda. Não lê seus
+            outros eventos. Você pode desconectar quando quiser.
+          </p>
+        </div>
+      )}
 
       {/* Erro de carregamento: mensagem do servidor e pílula Tentar novamente */}
       {errorMessage && (
