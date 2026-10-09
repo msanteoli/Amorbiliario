@@ -60,7 +60,7 @@ routerAdd(
       return e.json(200, { client_id: c.id })
     }
 
-    const kinds = ['comprador', 'locatario', 'proprietario', 'investidor']
+    const kinds = ['comprador', 'locatario', 'investidor']
     const kind =
       Array.isArray(body.kind) && body.kind.length ? body.kind.map((k) => String(k)) : ['comprador']
     kind.forEach((k) => {

@@ -6,6 +6,12 @@ onRecordCreateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record
 
+  const kinds = rec.getStringSlice('kind')
+  if (kinds.indexOf('proprietario') >= 0)
+    throw new BadRequestError(
+      'Proprietário só nasce ligado a um imóvel. Cadastre o imóvel e vincule o proprietário nele.',
+    )
+
   // tira também os zeros à esquerda (prefixo de DDD, ex.: 011 98765-4321)
   let phone = String(rec.get('phone') || '')
     .replace(/\D/g, '')
