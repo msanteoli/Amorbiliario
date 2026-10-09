@@ -12,6 +12,7 @@ onRecordsListRequest(
       audit_log: ['admin'],
       client_private: ['admin', 'corretor'],
       import_batches: ['admin'],
+      google_connections: ['admin'],
     }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
@@ -59,4 +60,5 @@ onRecordsListRequest(
   'negotiations',
   'negotiation_people',
   'negotiation_documents',
+  'google_connections',
 )

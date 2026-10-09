@@ -1,5 +1,5 @@
-// Muda a situação da visita para Confirmada, Realizada ou Não compareceu. Quem pode: SDR,
-// admin e o corretor da visita (o corretor de outra visita recebe 404). Visita pendente de
+// Muda a situação da visita para Confirmada, Realizada ou Não compareceu. Quem pode: SDR
+// (não confirma), admin e o corretor da visita (o corretor de outra visita recebe 404). Visita pendente de
 // agenda não sai dali por aqui (precisa de corretor e horário, por /reschedule). Realizada exige
 // o resultado em texto, que vai para a linha do tempo do lead; "não compareceu" também registra.
 routerAdd(
@@ -36,6 +36,10 @@ routerAdd(
     }
     if (allowedFrom[next].indexOf(current) < 0) {
       throw new BadRequestError('Mudança de situação não permitida.')
+    }
+
+    if (next === 'confirmada' && role === 'sdr') {
+      throw new ForbiddenError('Só o corretor responsável ou o admin confirmam a visita.')
     }
 
     const result = String(body.result || '').trim()
