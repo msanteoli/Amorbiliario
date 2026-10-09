@@ -58,13 +58,23 @@ routerAdd(
       })
       out.httpStatus = res.statusCode
       out.jsonType = typeof res.json
-      out.jsonErrKey = res.json && res.json.error
+      out.jsonErrKey = String(res.json && res.json.error)
+      out.bodyType = typeof res.body
     } catch (err) {
       out.httpErr = String(err)
     }
-    if (e.request.url.query().get('r') === '1')
-      return e.redirect(302, 'https://example.com/x?google=ok')
-    return e.json(200, out)
+    let q = ''
+    try {
+      q = String((e.requestInfo().query || {}).r || '')
+    } catch (err) {
+      out.qErr = String(err)
+    }
+    if (q === '1') return e.redirect(302, 'https://example.com/x?google=ok')
+    const safe = {}
+    Object.keys(out).forEach((k2) => {
+      safe[k2] = String(out[k2])
+    })
+    return e.json(200, safe)
   },
   $apis.requireAuth(),
 )
