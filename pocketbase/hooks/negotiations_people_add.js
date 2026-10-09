@@ -133,6 +133,12 @@ routerAdd(
       throw new BadRequestError('Informe client_id ou new.')
     }
 
+    // empresa como cliente: pede também o contrato social e o CNPJ
+    const wantedFinal = wanted.slice()
+    if (pRole === 'cliente' && client.getString('person_type') === 'juridica') {
+      wantedFinal.push('contrato_social')
+      wantedFinal.push('cnpj')
+    }
     let personId = ''
     let created = 0
     try {
@@ -167,7 +173,7 @@ routerAdd(
           person.set('role', pRole)
           person.set('active', true)
           tx.save(person)
-          wanted.forEach((t) => {
+          wantedFinal.forEach((t) => {
             const d = new Record(tx.findCollectionByNameOrId('negotiation_documents'))
             d.set('organization_id', orgId)
             d.set('negotiation_id', neg.id)

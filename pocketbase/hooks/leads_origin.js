@@ -11,7 +11,16 @@ routerAdd(
     const orgId = String(actor.get('organization_id') || '')
     const body = e.requestInfo().body || {}
     const origin = String(body.origin || '')
-    if (['whatsapp', 'portal', 'indicacao_balcao', 'site_redes_outros'].indexOf(origin) < 0) {
+    const origins = [
+      'whatsapp',
+      'portal',
+      'indicacao_balcao',
+      'site_redes_outros',
+      'ligacao',
+      'site',
+      'redes_sociais',
+    ]
+    if (origins.indexOf(origin) < 0) {
       throw new BadRequestError('Origem inválida.')
     }
     const reason = String(body.reason || '').trim()

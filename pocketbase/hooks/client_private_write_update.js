@@ -26,6 +26,24 @@ onRecordUpdateRequest((e) => {
   }
   rec.set('cpf', digits)
 
+  const cnpj = String(rec.get('cnpj') || '').replace(/\D/g, '')
+  if (cnpj) {
+    const dg = cnpj.split('').map((x) => parseInt(x, 10))
+    const calc = (n, w) => {
+      let sum = 0
+      for (let i = 0; i < n; i++) sum += dg[i] * w[i]
+      const r = sum % 11
+      return r < 2 ? 0 : 11 - r
+    }
+    const okc =
+      cnpj.length === 14 &&
+      !/^(\d)\1{13}$/.test(cnpj) &&
+      calc(12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === dg[12] &&
+      calc(13, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === dg[13]
+    if (!okc) throw new BadRequestError('CNPJ inválido.')
+  }
+  rec.set('cnpj', cnpj)
+
   const bd = rec.getString('birth_date')
   if (bd && new Date(bd.replace(' ', 'T')).getTime() > Date.now()) {
     throw new BadRequestError('Data de nascimento inválida.')

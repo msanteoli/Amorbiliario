@@ -64,6 +64,9 @@ onRecordUpdateRequest((e) => {
     'search_type',
     'search_bedrooms',
     'search_max_price',
+    'search_min_price',
+    'search_neighborhoods',
+    'notes',
     'consent_status',
     'assigned_to',
   ]

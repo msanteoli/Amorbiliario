@@ -32,7 +32,16 @@ routerAdd(
     if (!phone && !email) throw new BadRequestError('Informe ao menos telefone ou e-mail.')
 
     const origin = String(body.origin || '')
-    if (['whatsapp', 'portal', 'indicacao_balcao', 'site_redes_outros'].indexOf(origin) < 0) {
+    const origins = [
+      'whatsapp',
+      'portal',
+      'indicacao_balcao',
+      'site_redes_outros',
+      'ligacao',
+      'site',
+      'redes_sociais',
+    ]
+    if (origins.indexOf(origin) < 0) {
       throw new BadRequestError('Origem inválida.')
     }
     const consent = String(body.consent_status || 'unknown')
@@ -59,7 +68,18 @@ routerAdd(
     }
     const bedrooms = Number(body.search_bedrooms) || 0
     const maxPrice = Number(body.search_max_price) || 0
-    if (bedrooms < 0 || maxPrice < 0) throw new BadRequestError('Perfil de busca inválido.')
+    const minPrice = Number(body.search_min_price) || 0
+    if (bedrooms < 0 || maxPrice < 0 || minPrice < 0)
+      throw new BadRequestError('Perfil de busca inválido.')
+    if (minPrice > 0 && maxPrice > 0 && minPrice > maxPrice)
+      throw new BadRequestError('A faixa de valor está invertida.')
+    const neighborhoods = String(body.search_neighborhoods || '')
+      .trim()
+      .slice(0, 300)
+    const notes = String(body.notes || '')
+      .trim()
+      .slice(0, 2000)
+
     let dueIso = ''
     const dueRaw = String(body.next_step_due || '').trim()
     if (dueRaw) {
@@ -182,6 +202,10 @@ routerAdd(
     if (searchType) lead.set('search_type', searchType)
     if (bedrooms > 0) lead.set('search_bedrooms', bedrooms)
     if (maxPrice > 0) lead.set('search_max_price', maxPrice)
+    if (minPrice > 0) lead.set('search_min_price', minPrice)
+    if (neighborhoods) lead.set('search_neighborhoods', neighborhoods)
+    if (notes) lead.set('notes', notes)
+
     lead.set(
       'next_step',
       String(body.next_step || '')
