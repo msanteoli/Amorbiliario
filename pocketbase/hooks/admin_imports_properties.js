@@ -87,18 +87,27 @@ routerAdd(
         const num = /^(?:n(?:º|°|o\.?)\s*)?(\d+[A-Za-z]?)$/i.exec(parts[i])
         const sn = /^(?:n(?:º|°)\s*)?s\/?n$/i.exec(parts[i])
         if (num || sn) {
+          // a Kenlo grava 0 quando não há número: vale como S/N
+          const real = num && !/^0+$/.test(num[1])
           return {
             street: parts.slice(0, i).join(', '),
-            number: num ? num[1] : 'S/N',
-            sn: !num,
+            number: real ? num[1] : 'S/N',
+            sn: !real,
             extra: parts.slice(i + 1).join(', '),
           }
         }
       }
       // sem vírgula: número no fim, só quando a rua tem pelo menos duas palavras ("Rua 15" fica S/N)
       const tail = /^(\S+\s+\S.*?)\s+(?:n(?:º|°)\s*)?(\d+[A-Za-z]?)$/i.exec(s)
-      if (tail && parts.length === 1)
-        return { street: tail[1].trim(), number: tail[2], sn: false, extra: '' }
+      if (tail && parts.length === 1) {
+        const realTail = !/^0+$/.test(tail[2])
+        return {
+          street: tail[1].trim(),
+          number: realTail ? tail[2] : 'S/N',
+          sn: !realTail,
+          extra: '',
+        }
+      }
       const noNumber = s.replace(/,?\s*s\/?n\s*$/i, '').trim()
       return { street: noNumber, number: 'S/N', sn: true, extra: '' }
     }
