@@ -134,6 +134,15 @@ export const Privacidade: React.FC = () => {
                     autorizar.]
                   </code>
                 </li>
+                <li>
+                  Google Agenda dos corretores: se o corretor conectar a sua Google Agenda, o
+                  Imobdigital usa essa agenda, com a autorização dele, apenas para criar, atualizar
+                  e apagar eventos de visita. Guardamos o token de acesso criptografado, e o
+                  corretor pode desconectar a qualquer momento (os eventos futuros criados pelo
+                  sistema são removidos). O uso e a transferência dos dados recebidos do Google
+                  seguem a Política de Dados do Usuário dos Serviços de API do Google, inclusive os
+                  requisitos de uso limitado. O evento na agenda nunca contém o telefone do cliente.
+                </li>
               </ul>
             </section>
 
