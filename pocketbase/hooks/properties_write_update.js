@@ -124,7 +124,8 @@ onRecordUpdateRequest((e) => {
     .trim()
     .toUpperCase()
   if (uf === '') {
-    rec.set('state', 'BA')
+    // edição: UF vazia não é preenchida aqui (mudaria a data de revisão de imóveis antigos)
+    rec.set('state', orig.getString('state'))
   } else if (!/^[A-Z]{2}$/.test(uf)) {
     throw new BadRequestError('UF inválida. Use a sigla de duas letras (ex.: BA).')
   } else {
