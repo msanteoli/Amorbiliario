@@ -65,7 +65,7 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
   if (propertyCode) {
     const prows = $app.findRecordsByFilter(
       'properties',
-      "organization_id = {:o} && code = {:c} && status = 'disponivel'",
+      "organization_id = {:o} && code = {:c} && status = 'disponivel' && publish_to ~ 'site'",
       '',
       1,
       0,

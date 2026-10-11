@@ -70,7 +70,7 @@ routerAdd('GET', '/backend/v1/public/properties', (e) => {
   const perPage = Math.min(Number(perRaw), 24)
 
   const priceField = purpose === 'locacao' ? 'rent_price' : 'sale_price'
-  const conds = ['organization_id = {:o}', "status = 'disponivel'"]
+  const conds = ['organization_id = {:o}', "status = 'disponivel'", "publish_to ~ 'site'"]
   const params = { o: org.id }
   if (featuredRaw === '1') {
     conds.push(

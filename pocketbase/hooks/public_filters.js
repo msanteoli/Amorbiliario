@@ -27,7 +27,7 @@ routerAdd('GET', '/backend/v1/public/filters', (e) => {
 
   const rows = $app.findRecordsByFilter(
     'properties',
-    "organization_id = {:o} && status = 'disponivel'",
+    "organization_id = {:o} && status = 'disponivel' && publish_to ~ 'site'",
     '',
     2000,
     0,
