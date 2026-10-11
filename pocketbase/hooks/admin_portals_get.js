@@ -33,7 +33,21 @@ routerAdd(
       )
       feed.set('active', true)
       feed.set('last_count', 0)
-      $app.save(feed)
+      try {
+        $app.save(feed)
+      } catch (err) {
+        // outra chamada simultânea criou o registro (índice único organização+portal): usa o dela
+        const again = $app.findRecordsByFilter(
+          'portal_feeds',
+          "organization_id = {:o} && portal = 'chaves_na_mao'",
+          '',
+          1,
+          0,
+          { o: orgId },
+        )
+        if (!again.length) throw err
+        feed = again[0]
+      }
     }
 
     // mesmo domínio do backend usado no XML: o host pelo qual a API foi chamada
@@ -60,7 +74,13 @@ routerAdd(
       const pu = p.getString('purpose')
       const sale = Number(p.get('sale_price') || 0) > 0
       const rent = Number(p.get('rent_price') || 0) > 0
-      if (p.getString('property_type') === 'outro') r.push('tipo_outro')
+      // o enum de property_type tem 7 valores; 'outro' (ou qualquer tipo sem par no portal) é tipo_outro
+      if (
+        ['casa', 'apartamento', 'terreno', 'chacara', 'comercial', 'galpao'].indexOf(
+          p.getString('property_type'),
+        ) < 0
+      )
+        r.push('tipo_outro')
       if (
         p.get('price_on_request') === true ||
         (pu === 'venda' && !sale) ||

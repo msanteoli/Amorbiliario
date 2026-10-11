@@ -14,6 +14,7 @@ routerAdd('GET', '/backend/v1/public/feeds/{token}/chavesnamao.xml', (e) => {
     throw new NotFoundError('Não encontrado.')
   }
   const orgId = feed.getString('organization_id')
+  // organizations não tem campo active: quem liga e desliga o feed é portal_feeds.active (dono/admin)
 
   // domínio do backend: o mesmo host pelo qual o feed foi pedido (o portal busca por ele)
   const proto =
@@ -43,10 +44,17 @@ routerAdd('GET', '/backend/v1/public/feeds/{token}/chavesnamao.xml', (e) => {
     v === null || v === undefined || v === '' || !(Number(v) > 0)
       ? ''
       : String(Math.floor(Number(v)))
-  const when = (raw) =>
-    String(raw || '')
-      .substring(0, 19)
-      .replace('T', ' ')
+  // datas no horário de Feira de Santana (America/Bahia, UTC-3, sem horário de verão)
+  const when = (raw) => {
+    const t = new Date(String(raw || '').replace(' ', 'T')).getTime()
+    if (!(t > 0)) return ''
+    return new Date(t - 3 * 3600000).toISOString().substring(0, 19).replace('T', ' ')
+  }
+  // corta sem deixar meio emoji (surrogate alto sozinho) no fim
+  const cut = (v, n) =>
+    String(v || '')
+      .substring(0, n)
+      .replace(/[\uD800-\uDBFF]$/, '')
   const typeMap = (rec) => {
     const t = rec.getString('property_type')
     const cond = rec.get('in_condominium') === true
@@ -78,7 +86,13 @@ routerAdd('GET', '/backend/v1/public/feeds/{token}/chavesnamao.xml', (e) => {
     const pu = p.getString('purpose')
     const sale = Number(p.get('sale_price') || 0) > 0
     const rent = Number(p.get('rent_price') || 0) > 0
-    if (p.getString('property_type') === 'outro') r.push('tipo_outro')
+    // o enum de property_type tem 7 valores; 'outro' (ou qualquer tipo sem par no portal) é tipo_outro
+    if (
+      ['casa', 'apartamento', 'terreno', 'chacara', 'comercial', 'galpao'].indexOf(
+        p.getString('property_type'),
+      ) < 0
+    )
+      r.push('tipo_outro')
     if (
       p.get('price_on_request') === true ||
       (pu === 'venda' && !sale) ||
@@ -173,13 +187,13 @@ routerAdd('GET', '/backend/v1/public/feeds/{token}/chavesnamao.xml', (e) => {
           ['cidade', esc(p.getString('city'))],
           ['bairro', esc(p.getString('neighborhood'))],
           ['cep', zip.substring(0, 5) + '-' + zip.substring(5)],
-          ['endereco', esc(p.getString('street').substring(0, 200))],
+          ['endereco', esc(cut(p.getString('street'), 200))],
           ['numero', esc(!nro || nro === '0' ? 'S/N' : nro.substring(0, 10))],
-          ['complemento', esc(p.getString('complement').substring(0, 20))],
+          ['complemento', esc(cut(p.getString('complement'), 20))],
           ['esconder_endereco_imovel', '1'],
           ['latitude', ''],
           ['longitude', ''],
-          ['descritivo', cdata(p.getString('description').substring(0, 3000))],
+          ['descritivo', cdata(cut(p.getString('description'), 3000))],
           ['fotos_imovel', fotos],
           ['data_atualizacao', esc(when(p.getString('updated')))],
           ['video', ''],
