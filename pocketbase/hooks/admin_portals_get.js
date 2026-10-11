@@ -50,30 +50,26 @@ routerAdd(
       }
     }
 
-    // segundo código secreto (contatos): preenche quando vazio; se outra chamada gravou antes, relê
+    // segundo código secreto (contatos): preenchimento atômico só quando vazio (nunca sobrescreve) e
+    // sempre devolve o valor gravado, relido do banco (chamadas simultâneas acabam com o mesmo valor)
     if (!feed.getString('leads_token')) {
       try {
-        feed.set(
-          'leads_token',
-          $security.randomStringWithAlphabet(
-            32,
-            'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-          ),
-        )
-        $app.save(feed)
-      } catch (err) {
-        const again2 = $app.findRecordsByFilter(
-          'portal_feeds',
-          "organization_id = {:o} && portal = 'chaves_na_mao'",
-          '',
-          1,
-          0,
-          { o: orgId },
-        )
-        if (!again2.length || !again2[0].getString('leads_token')) throw err
-        feed = again2[0]
-      }
+        $app
+          .db()
+          .newQuery(
+            "UPDATE portal_feeds SET leads_token={:t} WHERE id={:id} AND (leads_token IS NULL OR leads_token='')",
+          )
+          .bind({
+            t: $security.randomStringWithAlphabet(
+              32,
+              'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+            ),
+            id: feed.id,
+          })
+          .execute()
+      } catch (_) {}
     }
+    feed = $app.findRecordById('portal_feeds', feed.id)
 
     // mesmo domínio do backend usado no XML: o host pelo qual a API foi chamada
     const proto =

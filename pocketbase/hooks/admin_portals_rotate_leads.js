@@ -19,13 +19,18 @@ routerAdd(
       { o: orgId },
     )
     if (!rows.length) throw new NotFoundError('Abra a tela Portais antes de trocar o código.')
-    const feed = rows[0]
+    let feed = rows[0]
     const token = $security.randomStringWithAlphabet(
       32,
       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
     )
-    feed.set('leads_token', token)
-    $app.save(feed)
+    // só leads_token é alterado (não regrava o registro inteiro: não pisa em troca simultânea do XML)
+    $app
+      .db()
+      .newQuery('UPDATE portal_feeds SET leads_token={:t} WHERE id={:id}')
+      .bind({ t: token, id: feed.id })
+      .execute()
+    feed = $app.findRecordById('portal_feeds', feed.id)
 
     try {
       const audit = new Record($app.findCollectionByNameOrId('audit_log'))
@@ -49,7 +54,9 @@ routerAdd(
         .split(',')[0]
         .trim() || 'https'
     const base = proto + '://' + String(e.request.host || '')
-    return e.json(200, { leads_url: base + '/backend/v1/public/portal-leads/' + token })
+    return e.json(200, {
+      leads_url: base + '/backend/v1/public/portal-leads/' + feed.getString('leads_token'),
+    })
   },
   $apis.requireAuth(),
 )
