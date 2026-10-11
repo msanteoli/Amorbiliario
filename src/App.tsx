@@ -31,6 +31,7 @@ import Agenda from '@/pages/Agenda'
 import Backup from '@/pages/Backup'
 import Admin from '@/pages/Admin'
 import ImportarImoveis from '@/pages/ImportarImoveis'
+import Portais from '@/pages/Portais'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -82,6 +83,7 @@ const App = () => (
                 <Route element={<AdminRoute />}>
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/admin/importar-imoveis" element={<ImportarImoveis />} />
+                  <Route path="/portais" element={<Portais />} />
                 </Route>
               </Route>
             </Route>

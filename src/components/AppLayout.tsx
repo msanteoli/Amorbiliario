@@ -46,6 +46,7 @@ import {
   ChevronRight,
   Database,
   Home,
+  Layers,
   LogOut,
   MoreHorizontal,
   Settings,
@@ -70,6 +71,7 @@ function getScreenTitle(pathname: string): string {
   if (pathname === '/imoveis' || pathname.startsWith('/imoveis/')) return 'Imóveis'
   if (pathname === '/condominios' || pathname.startsWith('/condominios/')) return 'Condomínios'
   if (pathname === '/backup' || pathname.startsWith('/backup/')) return 'Backup'
+  if (pathname === '/portais' || pathname.startsWith('/portais/')) return 'Portais'
   if (pathname === '/admin/importar-imoveis') return 'Importar imóveis'
   if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'Administração'
   return 'Imobdigital'
@@ -166,7 +168,12 @@ export function AppLayout() {
     { title: 'Condomínios', url: '/condominios', icon: Building2 },
     { title: 'Agenda', url: '/agenda', icon: CalendarDays },
     ...(canSeeBackup ? [{ title: 'Backup', url: '/backup', icon: Database }] : []),
-    ...(role === 'admin' ? [{ title: 'Administração', url: '/admin', icon: Settings }] : []),
+    ...(role === 'admin'
+      ? [
+          { title: 'Portais', url: '/portais', icon: Layers },
+          { title: 'Administração', url: '/admin', icon: Settings },
+        ]
+      : []),
   ]
 
   // Itens fixos do menu inferior móvel (máx 4)
@@ -182,7 +189,12 @@ export function AppLayout() {
     { title: 'Clientes', url: '/clientes', icon: UserCheck },
     { title: 'Condomínios', url: '/condominios', icon: Building2 },
     ...(canSeeBackup ? [{ title: 'Backup', url: '/backup', icon: Database }] : []),
-    ...(role === 'admin' ? [{ title: 'Administração', url: '/admin', icon: Settings }] : []),
+    ...(role === 'admin'
+      ? [
+          { title: 'Portais', url: '/portais', icon: Layers },
+          { title: 'Administração', url: '/admin', icon: Settings },
+        ]
+      : []),
   ]
 
   const currentScreenTitle = getScreenTitle(location.pathname)

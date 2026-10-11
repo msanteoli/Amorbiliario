@@ -66,6 +66,7 @@ import {
   ChevronRight,
   FilterX,
   FileSpreadsheet,
+  Layers,
 } from 'lucide-react'
 
 export default function Admin() {
@@ -527,13 +528,22 @@ export default function Admin() {
           </p>
         </div>
 
-        <Link
-          to="/admin/importar-imoveis"
-          className="inline-flex items-center gap-2 h-10 px-5 rounded-full text-xs font-normal border border-border bg-background hover:bg-muted text-foreground transition-colors self-start sm:self-auto shrink-0"
-        >
-          <FileSpreadsheet className="h-4 w-4" />
-          <span>Importar imóveis</span>
-        </Link>
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+          <Link
+            to="/portais"
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-full text-xs font-normal border border-border bg-background hover:bg-muted text-foreground transition-colors shrink-0"
+          >
+            <Layers className="h-4 w-4" />
+            <span>Portais</span>
+          </Link>
+          <Link
+            to="/admin/importar-imoveis"
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-full text-xs font-normal border border-border bg-background hover:bg-muted text-foreground transition-colors shrink-0"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            <span>Importar imóveis</span>
+          </Link>
+        </div>
       </div>
 
       {/* Alertas globais de Sucesso ou Erro */}
