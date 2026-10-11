@@ -10,6 +10,7 @@ onRecordUpdateRequest((e) => {
   const rec = e.record
   const orig = rec.original()
   const role = String(e.auth.get('role'))
+  const body = e.requestInfo().body || {}
 
   // Dinheiro: o motor troca nulo e texto inválido por 0 antes do hook, então aqui 0 só pode
   // significar "limpar" ou "sem valor"; a recusa de zero explícito vale na criação.
@@ -81,8 +82,7 @@ onRecordUpdateRequest((e) => {
   rec.set('import_batch_id', orig.getString('import_batch_id'))
 
   // destaque no site: só valida quando o destaque muda (editar outro campo de um destaque
-  // vencido não pode falhar). O nível efetivo (vencido = comum) é calculado na leitura, em
-  // public_properties_list.js e public_property_get.js: mantenha as três regras iguais.
+  // vencido não pode falhar)
   const hlNew = rec.getString('highlight_level') || 'comum'
   const hlOld = orig.getString('highlight_level') || 'comum'
   const untilNew = rec.getString('highlight_until')
@@ -95,6 +95,40 @@ onRecordUpdateRequest((e) => {
         throw new BadRequestError('A data de fim do destaque precisa ser futura.')
       }
     }
+  }
+
+  // M12 (portais): onde anunciar, CEP e UF
+  const pubAllowed = ['site', 'chaves_na_mao', 'zap', 'vivareal', 'olx']
+  const pubRaw = Array.isArray(body.publish_to) ? body.publish_to : rec.getStringSlice('publish_to')
+  for (let i = 0; i < pubRaw.length; i++) {
+    if (pubAllowed.indexOf(String(pubRaw[i])) < 0)
+      throw new BadRequestError('Opção de anúncio inválida.')
+  }
+  if (!pubRaw.length && !orig.getStringSlice('publish_to').length) rec.set('publish_to', ['site'])
+  const pubOld = orig.getStringSlice('publish_to').slice().sort().join(',')
+  const pubNew = rec.getStringSlice('publish_to').slice().sort().join(',')
+  if (pubOld !== pubNew && ['admin', 'corretor'].indexOf(role) < 0) {
+    throw new ForbiddenError('Você não pode mudar onde o imóvel é anunciado.')
+  }
+  const cnmOld = orig.getStringSlice('publish_to').indexOf('chaves_na_mao') >= 0
+  const cnmNew = rec.getStringSlice('publish_to').indexOf('chaves_na_mao') >= 0
+  const zipDigits = String(rec.getString('zip_code') || '').replace(/[^0-9]/g, '')
+  if (zipDigits === '') {
+    rec.set('zip_code', '')
+  } else if (zipDigits.length === 8) {
+    rec.set('zip_code', zipDigits.slice(0, 5) + '-' + zipDigits.slice(5))
+  } else {
+    throw new BadRequestError('CEP inválido. Use 8 dígitos (00000-000).')
+  }
+  const uf = String(rec.getString('state') || '')
+    .trim()
+    .toUpperCase()
+  if (uf === '') {
+    rec.set('state', 'BA')
+  } else if (!/^[A-Z]{2}$/.test(uf)) {
+    throw new BadRequestError('UF inválida. Use a sigla de duas letras (ex.: BA).')
+  } else {
+    rec.set('state', uf)
   }
 
   const missingItems = (r, photoCount) => {
@@ -175,14 +209,14 @@ onRecordUpdateRequest((e) => {
     'condominium_id',
     'highlight_level',
     'highlight_until',
+    'zip_code',
+    'state',
   ]
   const changed = watched.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
-  // só uma edição de verdade dos dados renova a data de revisão; marcar ou desmarcar
-  // destaque entra no histórico, mas não conta como revisão; o valor enviado nunca vale
-  const reviewChanged = changed.filter((f) => f !== 'highlight_level' && f !== 'highlight_until')
+  // só uma edição de verdade renova a data; o valor enviado pelo cliente nunca vale
   rec.set(
     'last_reviewed_at',
-    reviewChanged.length ? new Date().toISOString() : orig.get('last_reviewed_at'),
+    changed.length ? new Date().toISOString() : orig.get('last_reviewed_at'),
   )
 
   const res = e.next()
@@ -201,6 +235,18 @@ onRecordUpdateRequest((e) => {
       audit.set('occurred_at', new Date().toISOString())
       $app.save(audit)
     })
+    if (cnmOld !== cnmNew) {
+      const pa = new Record(col)
+      pa.set('organization_id', rec.get('organization_id'))
+      pa.set('actor_id', e.auth.id)
+      pa.set('actor_role', role)
+      pa.set('action', 'portal_alterado')
+      pa.set('collection_name', 'properties')
+      pa.set('record_id', rec.id)
+      pa.set('reason', cnmNew ? 'chaves_na_mao:on' : 'chaves_na_mao:off')
+      pa.set('occurred_at', new Date().toISOString())
+      $app.save(pa)
+    }
   } catch (err) {
     $app.logger().error('properties_history_failed', 'err', String((err && err.message) || err))
   }

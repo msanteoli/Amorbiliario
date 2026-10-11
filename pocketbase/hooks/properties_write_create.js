@@ -98,6 +98,33 @@ onRecordCreateRequest((e) => {
     }
   }
 
+  // M12 (portais): onde anunciar, CEP e UF
+  const pubAllowed = ['site', 'chaves_na_mao', 'zap', 'vivareal', 'olx']
+  const pubRaw = Array.isArray(body.publish_to) ? body.publish_to : rec.getStringSlice('publish_to')
+  for (let i = 0; i < pubRaw.length; i++) {
+    if (pubAllowed.indexOf(String(pubRaw[i])) < 0)
+      throw new BadRequestError('Opção de anúncio inválida.')
+  }
+  if (!pubRaw.length) rec.set('publish_to', ['site'])
+  const zipDigits = String(rec.getString('zip_code') || '').replace(/[^0-9]/g, '')
+  if (zipDigits === '') {
+    rec.set('zip_code', '')
+  } else if (zipDigits.length === 8) {
+    rec.set('zip_code', zipDigits.slice(0, 5) + '-' + zipDigits.slice(5))
+  } else {
+    throw new BadRequestError('CEP inválido. Use 8 dígitos (00000-000).')
+  }
+  const uf = String(rec.getString('state') || '')
+    .trim()
+    .toUpperCase()
+  if (uf === '') {
+    rec.set('state', 'BA')
+  } else if (!/^[A-Z]{2}$/.test(uf)) {
+    throw new BadRequestError('UF inválida. Use a sigla de duas letras (ex.: BA).')
+  } else {
+    rec.set('state', uf)
+  }
+
   rec.set('status', 'rascunho')
   rec.set('last_reviewed_at', new Date().toISOString())
 
@@ -113,6 +140,18 @@ onRecordCreateRequest((e) => {
     audit.set('record_id', rec.id)
     audit.set('occurred_at', new Date().toISOString())
     $app.save(audit)
+    if (rec.getStringSlice('publish_to').indexOf('chaves_na_mao') >= 0) {
+      const pa = new Record(col)
+      pa.set('organization_id', rec.get('organization_id'))
+      pa.set('actor_id', e.auth.id)
+      pa.set('actor_role', role)
+      pa.set('action', 'portal_alterado')
+      pa.set('collection_name', 'properties')
+      pa.set('record_id', rec.id)
+      pa.set('reason', 'chaves_na_mao:on')
+      pa.set('occurred_at', new Date().toISOString())
+      $app.save(pa)
+    }
   } catch (err) {
     $app.logger().error('properties_history_failed', 'err', String((err && err.message) || err))
   }

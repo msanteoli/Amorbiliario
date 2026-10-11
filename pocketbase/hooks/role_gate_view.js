@@ -10,6 +10,7 @@ onRecordViewRequest(
       client_private: ['admin', 'corretor'],
       import_batches: ['admin'],
       google_connections: ['admin'],
+      portal_feeds: ['admin'],
     }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
@@ -58,4 +59,5 @@ onRecordViewRequest(
   'negotiation_people',
   'negotiation_documents',
   'google_connections',
+  'portal_feeds',
 )
