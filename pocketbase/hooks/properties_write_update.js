@@ -215,9 +215,11 @@ onRecordUpdateRequest((e) => {
   ]
   const changed = watched.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
   // só uma edição de verdade renova a data; o valor enviado pelo cliente nunca vale
+  // o destaque no site entra no histórico, mas não conta como revisão dos dados
+  const reviewed = changed.filter((f) => f !== 'highlight_level' && f !== 'highlight_until')
   rec.set(
     'last_reviewed_at',
-    changed.length ? new Date().toISOString() : orig.get('last_reviewed_at'),
+    reviewed.length ? new Date().toISOString() : orig.get('last_reviewed_at'),
   )
 
   const res = e.next()
