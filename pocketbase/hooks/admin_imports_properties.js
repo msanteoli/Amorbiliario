@@ -430,6 +430,10 @@ routerAdd(
           rec.set('captured_by', p.prop.captured_by)
           rec.set('in_condominium', !!p.condKey)
           rec.set('condominium_id', p.condKey ? condoIds[p.condKey] : '')
+          // M12: importado vai para o site, UF padrão BA; a planilha da Kenlo não traz CEP;
+          // a Chaves na Mão nunca é marcada pela importação
+          rec.set('publish_to', ['site'])
+          rec.set('state', 'BA')
           rec.set('source', 'importacao')
           rec.set('import_batch_id', batch.id)
           rec.set('last_reviewed_at', p.prop.reviewed ? p.prop.reviewed + ' 00:00:00.000Z' : now)

@@ -100,7 +100,12 @@ onRecordCreateRequest((e) => {
 
   // M12 (portais): onde anunciar, CEP e UF
   const pubAllowed = ['site', 'chaves_na_mao', 'zap', 'vivareal', 'olx']
-  const pubRaw = Array.isArray(body.publish_to) ? body.publish_to : rec.getStringSlice('publish_to')
+  const pubBody = body.publish_to
+  const pubRaw = Array.isArray(pubBody)
+    ? pubBody
+    : typeof pubBody === 'string' && pubBody !== ''
+      ? [pubBody]
+      : rec.getStringSlice('publish_to')
   for (let i = 0; i < pubRaw.length; i++) {
     if (pubAllowed.indexOf(String(pubRaw[i])) < 0)
       throw new BadRequestError('Opção de anúncio inválida.')
