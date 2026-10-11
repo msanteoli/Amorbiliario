@@ -50,6 +50,31 @@ routerAdd(
       }
     }
 
+    // segundo código secreto (contatos): preenche quando vazio; se outra chamada gravou antes, relê
+    if (!feed.getString('leads_token')) {
+      try {
+        feed.set(
+          'leads_token',
+          $security.randomStringWithAlphabet(
+            32,
+            'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+          ),
+        )
+        $app.save(feed)
+      } catch (err) {
+        const again2 = $app.findRecordsByFilter(
+          'portal_feeds',
+          "organization_id = {:o} && portal = 'chaves_na_mao'",
+          '',
+          1,
+          0,
+          { o: orgId },
+        )
+        if (!again2.length || !again2[0].getString('leads_token')) throw err
+        feed = again2[0]
+      }
+    }
+
     // mesmo domínio do backend usado no XML: o host pelo qual a API foi chamada
     const proto =
       String(e.request.header.get('X-Forwarded-Proto') || 'https')
@@ -126,6 +151,9 @@ routerAdd(
       pending_count: marked - published,
       last_fetched_at: feed.getString('last_fetched_at') || null,
       last_count: Number(feed.get('last_count') || 0),
+      leads_url: base + '/backend/v1/public/portal-leads/' + feed.getString('leads_token'),
+      last_lead_at: feed.getString('last_lead_at') || null,
+      leads_count: Number(feed.get('leads_count') || 0),
     })
   },
   $apis.requireAuth(),
