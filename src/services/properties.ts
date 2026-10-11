@@ -102,6 +102,8 @@ export interface PropertyCondominiumRecord extends RecordModel {
   }
 }
 
+export type PublishDestination = 'site' | 'chaves_na_mao' | 'zap' | 'vivareal' | 'olx'
+
 export interface PropertyRecord extends RecordModel {
   organization_id: string
   code: string
@@ -119,6 +121,9 @@ export interface PropertyRecord extends RecordModel {
   complement?: string
   neighborhood?: string
   city?: string
+  state?: string
+  zip_code?: string
+  publish_to?: string[]
   bedrooms?: number
   bathrooms?: number
   parking?: number
@@ -153,6 +158,9 @@ export interface CreatePropertyInput {
   complement?: string
   neighborhood?: string
   city?: string
+  state?: string
+  zip_code?: string
+  publish_to?: string[]
   bedrooms?: number
   bathrooms?: number
   parking?: number
@@ -181,6 +189,9 @@ export interface UpdatePropertyInput {
   complement?: string
   neighborhood?: string
   city?: string
+  state?: string
+  zip_code?: string
+  publish_to?: string[]
   bedrooms?: number
   bathrooms?: number
   parking?: number
@@ -193,6 +204,170 @@ export interface UpdatePropertyInput {
   description?: string
   owner_id?: string
   captured_by?: string
+}
+
+/**
+ * 27 Estados brasileiros (UF) com nome e sigla
+ */
+export const BRAZIL_STATES = [
+  { uf: 'AC', name: 'Acre' },
+  { uf: 'AL', name: 'Alagoas' },
+  { uf: 'AP', name: 'Amapá' },
+  { uf: 'AM', name: 'Amazonas' },
+  { uf: 'BA', name: 'Bahia' },
+  { uf: 'CE', name: 'Ceará' },
+  { uf: 'DF', name: 'Distrito Federal' },
+  { uf: 'ES', name: 'Espírito Santo' },
+  { uf: 'GO', name: 'Goiás' },
+  { uf: 'MA', name: 'Maranhão' },
+  { uf: 'MT', name: 'Mato Grosso' },
+  { uf: 'MS', name: 'Mato Grosso do Sul' },
+  { uf: 'MG', name: 'Minas Gerais' },
+  { uf: 'PA', name: 'Pará' },
+  { uf: 'PB', name: 'Paraíba' },
+  { uf: 'PR', name: 'Paraná' },
+  { uf: 'PE', name: 'Pernambuco' },
+  { uf: 'PI', name: 'Piauí' },
+  { uf: 'RJ', name: 'Rio de Janeiro' },
+  { uf: 'RN', name: 'Rio Grande do Norte' },
+  { uf: 'RS', name: 'Rio Grande do Sul' },
+  { uf: 'RO', name: 'Rondônia' },
+  { uf: 'RR', name: 'Roraima' },
+  { uf: 'SC', name: 'Santa Catarina' },
+  { uf: 'SP', name: 'São Paulo' },
+  { uf: 'SE', name: 'Sergipe' },
+  { uf: 'TO', name: 'Tocantins' },
+] as const
+
+/**
+ * Avalia se uma foto é PNG pelo nome do arquivo
+ */
+export function isPngPhoto(fileNameOrUrl?: string): boolean {
+  if (!fileNameOrUrl) return false
+  const clean = fileNameOrUrl.split('?')[0].toLowerCase()
+  return clean.endsWith('.png')
+}
+
+/**
+ * Avalia se uma foto é aceita pelo portal (JPEG ou WebP)
+ */
+export function isPortalEligiblePhoto(fileNameOrUrl?: string): boolean {
+  if (!fileNameOrUrl) return false
+  const clean = fileNameOrUrl.split('?')[0].toLowerCase()
+  return /\.(jpg|jpeg|webp)$/.test(clean)
+}
+
+/**
+ * Calcula os motivos pelos quais o imóvel não está pronto para o portal Chaves na Mão.
+ * Regra calculada NA PRÓPRIA TELA:
+ * - Se não for Disponível: "Só imóveis Disponíveis saem no portal"
+ * - tipo Outro → "Tipo Outro não é aceito pelo portal"
+ * - preço da finalidade em branco ou zero, ou "preço sob consulta" → "Informe o preço"
+ * - sem bairro → "Informe o bairro"; sem cidade → "Informe a cidade"; sem UF → "Informe a UF"
+ * - CEP sem 8 dígitos → "Informe o CEP"
+ * - sem descrição → "Informe a descrição"
+ * - nenhuma foto JPEG ou WebP → "Envie ao menos uma foto JPEG ou WebP"
+ */
+export function getPortalPendingReasons(params: {
+  status?: string
+  property_type?: string
+  purpose?: string
+  sale_price?: number | string | null
+  rent_price?: number | string | null
+  price_on_request?: boolean
+  neighborhood?: string
+  city?: string
+  state?: string
+  zip_code?: string
+  description?: string
+  photos?: Array<{ file: string; is_active?: boolean }>
+}): string[] {
+  const {
+    status,
+    property_type,
+    purpose,
+    sale_price,
+    rent_price,
+    price_on_request,
+    neighborhood,
+    city,
+    state,
+    zip_code,
+    description,
+    photos = [],
+  } = params
+
+  if (status !== 'disponivel') {
+    return ['Só imóveis Disponíveis saem no portal']
+  }
+
+  const reasons: string[] = []
+
+  // tipo Outro → "Tipo Outro não é aceito pelo portal"
+  const acceptedTypes = ['casa', 'apartamento', 'terreno', 'chacara', 'comercial', 'galpao']
+  if (!property_type || !acceptedTypes.includes(property_type)) {
+    reasons.push('Tipo Outro não é aceito pelo portal')
+  }
+
+  // preço da finalidade em branco ou zero, ou "preço sob consulta" → "Informe o preço"
+  const numSale =
+    typeof sale_price === 'number'
+      ? sale_price
+      : Number(String(sale_price || '').replace(/\D/g, '')) / 100
+  const numRent =
+    typeof rent_price === 'number'
+      ? rent_price
+      : Number(String(rent_price || '').replace(/\D/g, '')) / 100
+
+  const hasSale = !isNaN(numSale) && numSale > 0
+  const hasRent = !isNaN(numRent) && numRent > 0
+
+  if (
+    price_on_request ||
+    (purpose === 'venda' && !hasSale) ||
+    (purpose === 'locacao' && !hasRent) ||
+    (purpose === 'ambos' && (!hasSale || !hasRent)) ||
+    (purpose !== 'venda' && purpose !== 'locacao' && purpose !== 'ambos')
+  ) {
+    reasons.push('Informe o preço')
+  }
+
+  // sem bairro → "Informe o bairro"
+  if (!neighborhood || !neighborhood.trim()) {
+    reasons.push('Informe o bairro')
+  }
+
+  // sem cidade → "Informe a cidade"
+  if (!city || !city.trim()) {
+    reasons.push('Informe a cidade')
+  }
+
+  // sem UF → "Informe a UF"
+  if (!state || !state.trim()) {
+    reasons.push('Informe a UF')
+  }
+
+  // CEP sem 8 dígitos → "Informe o CEP"
+  const zipDigits = (zip_code || '').replace(/\D/g, '')
+  if (zipDigits.length !== 8) {
+    reasons.push('Informe o CEP')
+  }
+
+  // sem descrição → "Informe a descrição"
+  if (!description || !description.trim()) {
+    reasons.push('Informe a descrição')
+  }
+
+  // nenhuma foto JPEG ou WebP → "Envie ao menos uma foto JPEG ou WebP"
+  const validPhotos = photos.filter((p) => {
+    if (p.is_active === false) return false
+    return isPortalEligiblePhoto(p.file)
+  })
+  if (validPhotos.length === 0) {
+    reasons.push('Envie ao menos uma foto JPEG ou WebP')
+  }
+
+  return reasons
 }
 
 export interface ListPropertiesParams {
@@ -276,6 +451,14 @@ function translateFieldMessage(field: string, msg: string): string {
       return 'Preço de venda inválido.'
     case 'rent_price':
       return 'Preço de locação inválido.'
+    case 'zip_code':
+      return 'CEP inválido. Use 8 dígitos (00000-000).'
+    case 'state':
+      return 'UF inválida. Use a sigla de duas letras (ex.: BA).'
+    case 'publish_to':
+      return 'Opção de anúncio inválida.'
+    case 'file':
+      return msg || 'Arquivo inválido. Envie apenas JPEG ou WebP de até 3 MB.'
     default:
       return msg || 'Campo inválido.'
   }
@@ -529,6 +712,9 @@ export async function createProperty(
   if (input.complement?.trim()) payload.complement = input.complement.trim()
   if (input.neighborhood?.trim()) payload.neighborhood = input.neighborhood.trim()
   if (input.city?.trim()) payload.city = input.city.trim()
+  if (input.state !== undefined) payload.state = input.state.trim()
+  if (input.zip_code !== undefined) payload.zip_code = input.zip_code.trim()
+  if (Array.isArray(input.publish_to)) payload.publish_to = input.publish_to
   if (typeof input.bedrooms === 'number' && input.bedrooms > 0) payload.bedrooms = input.bedrooms
   if (typeof input.bathrooms === 'number' && input.bathrooms > 0)
     payload.bathrooms = input.bathrooms
@@ -580,6 +766,9 @@ export async function updateProperty(
   if (input.complement !== undefined) payload.complement = input.complement.trim()
   if (input.neighborhood !== undefined) payload.neighborhood = input.neighborhood.trim()
   if (input.city !== undefined) payload.city = input.city.trim()
+  if (input.state !== undefined) payload.state = input.state.trim()
+  if (input.zip_code !== undefined) payload.zip_code = input.zip_code.trim()
+  if (input.publish_to !== undefined) payload.publish_to = input.publish_to
 
   if (input.bedrooms !== undefined) payload.bedrooms = input.bedrooms > 0 ? input.bedrooms : 0
   if (input.bathrooms !== undefined) payload.bathrooms = input.bathrooms > 0 ? input.bathrooms : 0

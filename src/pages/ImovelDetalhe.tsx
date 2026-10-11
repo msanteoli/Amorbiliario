@@ -22,6 +22,8 @@ import {
   PROPERTY_STATUS_LABELS,
   PropertyStatus,
   publishProperty,
+  isPngPhoto,
+  getPortalPendingReasons,
 } from '@/services/properties'
 import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
 import { getCondoPhotoUrl } from '@/services/condominiums'
@@ -119,8 +121,8 @@ const STATUS_BADGE_VARIANT_MAP: Record<
   inativo: 'destructive',
 }
 
-const ACCEPTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024 // 8 MB
+const ACCEPTED_MIME_TYPES = ['image/jpeg', 'image/webp']
+const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024 // 3 MB
 
 interface UploadProgressItem {
   name: string
@@ -315,15 +317,15 @@ export default function ImovelDetalhe() {
       return
     }
 
-    // Valida tipo e tamanho de cada arquivo antes de iniciar qualquer envio
+    // Valida tipo e tamanho de cada arquivo antes de iniciar qualquer envio (só JPEG e WebP até 3 MB)
     for (const f of fileList) {
       const ext = f.name.toLowerCase().split('.').pop() || ''
-      const isValidExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext)
+      const isValidExt = ['jpg', 'jpeg', 'webp'].includes(ext)
       const isValidMime = ACCEPTED_MIME_TYPES.includes(f.type)
       if (!isValidExt && !isValidMime) {
         toast({
           title: 'Tipo de arquivo não permitido',
-          description: `O arquivo "${f.name}" não é suportado. Formatos aceitos: JPG, PNG ou WebP.`,
+          description: `O arquivo "${f.name}" não é suportado. Envie apenas JPEG ou WebP (PNG deixou de ser aceito).`,
           variant: 'destructive',
         })
         return
@@ -332,7 +334,7 @@ export default function ImovelDetalhe() {
       if (f.size > MAX_FILE_SIZE_BYTES) {
         toast({
           title: 'Arquivo muito grande',
-          description: `O arquivo "${f.name}" ultrapassa o limite de 8 MB.`,
+          description: `O arquivo "${f.name}" ultrapassa o limite de 3 MB. Envie fotos de até 3 MB cada.`,
           variant: 'destructive',
         })
         return
@@ -802,7 +804,7 @@ export default function ImovelDetalhe() {
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 multiple
-                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                accept=".jpg,.jpeg,.webp,image/jpeg,image/webp"
                 className="hidden"
                 disabled={isUploading || photos.length >= 20}
               />
@@ -841,6 +843,7 @@ export default function ImovelDetalhe() {
           <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
             {photos.map((photo, index) => {
               const isCover = index === 0
+              const isPng = isPngPhoto(photo.file)
               return (
                 <div
                   key={photo.id}
@@ -862,6 +865,14 @@ export default function ImovelDetalhe() {
                       </Badge>
                     </div>
                   )}
+
+                  {/* Selo para fotos PNG existentes */}
+                  {isPng && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-amber-600/90 text-white p-1 text-[9px] font-normal text-center leading-tight">
+                      não vai para o portal; substitua por JPEG ou WebP
+                    </div>
+                  )}
+
                   {canManage && (
                     <button
                       type="button"
@@ -890,6 +901,91 @@ export default function ImovelDetalhe() {
             <Building2 className="h-3.5 w-3.5" />
             <span>Identificação e Localização</span>
           </div>
+
+          {/* Seção Onde anunciar / Indicador Chaves na Mão na Ficha */}
+          {(() => {
+            const pubList = Array.isArray(property.publish_to) ? property.publish_to : []
+            const hasSite = pubList.includes('site')
+            const hasChaves = pubList.includes('chaves_na_mao')
+
+            const portalReasons = hasChaves
+              ? getPortalPendingReasons({
+                  status: property.status,
+                  property_type: property.property_type,
+                  purpose: property.purpose,
+                  sale_price: property.sale_price,
+                  rent_price: property.rent_price,
+                  price_on_request: property.price_on_request,
+                  neighborhood: property.neighborhood,
+                  city: property.city,
+                  state: property.state,
+                  zip_code: property.zip_code,
+                  description: property.description,
+                  photos: photos,
+                })
+              : []
+            const isPortalReady = hasChaves && portalReasons.length === 0
+
+            return (
+              <div className="p-3.5 rounded-lg bg-muted/20 border border-border space-y-2.5 text-xs">
+                <span className="eyebrow text-muted-foreground block text-[10px]">
+                  Onde anunciar
+                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge
+                    variant={hasSite ? 'default' : 'outline'}
+                    className={`text-xs ${
+                      hasSite
+                        ? 'bg-primary text-primary-foreground font-medium'
+                        : 'text-muted-foreground border-border'
+                    }`}
+                  >
+                    {hasSite ? '✓ Site da imobiliária' : 'Site da imobiliária (não)'}
+                  </Badge>
+                  <Badge
+                    variant={hasChaves ? 'default' : 'outline'}
+                    className={`text-xs ${
+                      hasChaves
+                        ? 'bg-primary text-primary-foreground font-medium'
+                        : 'text-muted-foreground border-border'
+                    }`}
+                  >
+                    {hasChaves ? '✓ Chaves na Mão' : 'Chaves na Mão (não)'}
+                  </Badge>
+                </div>
+
+                {/* Indicador Pronto para o portal na Ficha */}
+                {hasChaves && (
+                  <div
+                    className={`p-3 rounded-lg border text-xs space-y-1.5 mt-2 ${
+                      isPortalReady
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
+                        : 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 font-medium">
+                      {isPortalReady ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-600 text-white">
+                          ● Pronto para o portal
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-600 text-white">
+                          ▲ Pendências para o portal Chaves na Mão
+                        </span>
+                      )}
+                    </div>
+                    {!isPortalReady && (
+                      <ul className="space-y-0.5 list-disc list-inside text-xs">
+                        {portalReasons.map((r, i) => (
+                          <li key={i}>{r}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           <div className="space-y-3 text-xs">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
@@ -919,9 +1015,15 @@ export default function ImovelDetalhe() {
                   <p className="text-muted-foreground">Complemento: {property.complement}</p>
                 )}
                 <p className="text-muted-foreground">
-                  {[property.neighborhood, property.city].filter(Boolean).join(' • ') ||
-                    'Bairro/Cidade não informados'}
+                  {[property.neighborhood, property.city, property.state]
+                    .filter(Boolean)
+                    .join(' • ') || 'Bairro/Cidade/UF não informados'}
                 </p>
+                {property.zip_code && (
+                  <p className="text-muted-foreground tabular">
+                    CEP: {property.zip_code.replace(/(\d{5})(\d{3})/, '$1-$2')}
+                  </p>
+                )}
               </div>
             </div>
 

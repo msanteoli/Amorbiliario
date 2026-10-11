@@ -13,7 +13,14 @@ routerAdd(
 
     const goodPhotos = (pid) =>
       $app
-        .findRecordsByFilter('property_photos', 'property_id = {:p} && is_active = true', 'created', 100, 0, { p: pid })
+        .findRecordsByFilter(
+          'property_photos',
+          'property_id = {:p} && is_active = true',
+          'created',
+          100,
+          0,
+          { p: pid },
+        )
         .filter((ph) => /\.(jpg|jpeg|webp)$/.test(ph.getString('file').toLowerCase()))
     // REGRA ÚNICA DE ELEGIBILIDADE (mesmos códigos e ordem em portal_feed_chaves_na_mao.js e admin_portals_pending.js)
     const reasonsOf = (p, photos) => {
@@ -22,7 +29,12 @@ routerAdd(
       const sale = Number(p.get('sale_price') || 0) > 0
       const rent = Number(p.get('rent_price') || 0) > 0
       // o enum de property_type tem 7 valores; 'outro' (ou qualquer tipo sem par no portal) é tipo_outro
-      if (['casa', 'apartamento', 'terreno', 'chacara', 'comercial', 'galpao'].indexOf(p.getString('property_type')) < 0) r.push('tipo_outro')
+      if (
+        ['casa', 'apartamento', 'terreno', 'chacara', 'comercial', 'galpao'].indexOf(
+          p.getString('property_type'),
+        ) < 0
+      )
+        r.push('tipo_outro')
       if (
         p.get('price_on_request') === true ||
         (pu === 'venda' && !sale) ||
@@ -57,7 +69,12 @@ routerAdd(
         continue
       }
       if (reasons.length)
-        items.push({ id: page[i].id, code: page[i].getString('code'), title: page[i].getString('title'), reasons: reasons })
+        items.push({
+          id: page[i].id,
+          code: page[i].getString('code'),
+          title: page[i].getString('title'),
+          reasons: reasons,
+        })
     }
     return e.json(200, { items: items })
   },

@@ -26,7 +26,10 @@ routerAdd(
       feed.set('active', true)
       feed.set('last_count', 0)
     }
-    const token = $security.randomStringWithAlphabet(32, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+    const token = $security.randomStringWithAlphabet(
+      32,
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+    )
     feed.set('token', token)
     $app.save(feed)
 
@@ -45,9 +48,14 @@ routerAdd(
       $app.logger().error('portal_rotate_audit_failed', 'err', String((err && err.message) || err))
     }
 
-    const proto = String(e.request.header.get('X-Forwarded-Proto') || 'https').split(',')[0].trim() || 'https'
+    const proto =
+      String(e.request.header.get('X-Forwarded-Proto') || 'https')
+        .split(',')[0]
+        .trim() || 'https'
     const base = proto + '://' + String(e.request.host || '')
-    return e.json(200, { feed_url: base + '/backend/v1/public/feeds/' + token + '/chavesnamao.xml' })
+    return e.json(200, {
+      feed_url: base + '/backend/v1/public/feeds/' + token + '/chavesnamao.xml',
+    })
   },
   $apis.requireAuth(),
 )

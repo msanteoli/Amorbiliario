@@ -12,9 +12,11 @@ routerAdd(
     const orgId = String(actor.get('organization_id') || '')
     const body = e.requestInfo().body || {}
     const ids = body.property_ids
-    if (!Array.isArray(ids) || ids.length < 1) throw new BadRequestError('Informe ao menos um imóvel.')
+    if (!Array.isArray(ids) || ids.length < 1)
+      throw new BadRequestError('Informe ao menos um imóvel.')
     if (ids.length > 200) throw new BadRequestError('No máximo 200 imóveis por vez.')
-    if (body.enabled !== true && body.enabled !== false) throw new BadRequestError('Informe se deve ligar ou desligar.')
+    if (body.enabled !== true && body.enabled !== false)
+      throw new BadRequestError('Informe se deve ligar ou desligar.')
     const enabled = body.enabled === true
 
     let changed = 0
@@ -40,7 +42,9 @@ routerAdd(
       const cur = rec.getStringSlice('publish_to')
       const has = cur.indexOf('chaves_na_mao') >= 0
       if (has === enabled) continue
-      const next = enabled ? cur.concat(['chaves_na_mao']) : cur.filter((v) => v !== 'chaves_na_mao')
+      const next = enabled
+        ? cur.concat(['chaves_na_mao'])
+        : cur.filter((v) => v !== 'chaves_na_mao')
       $app.runInTransaction((tx) => {
         rec.set('publish_to', next)
         tx.save(rec)

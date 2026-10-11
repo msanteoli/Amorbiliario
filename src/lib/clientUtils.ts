@@ -43,8 +43,15 @@ export function maskPhoneInput(value: string): string {
 }
 
 /**
- * Aplica máscara de CPF: 000.000.000-00
+ * Aplica máscara de CEP: 00000-000
  */
+export function maskCepInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  if (!digits) return ''
+  if (digits.length <= 5) return digits
+  return `${digits.slice(0, 5)}-${digits.slice(5, 8)}`
+}
+
 export function maskCpfInput(value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 11)
   if (!digits) return ''

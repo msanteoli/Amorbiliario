@@ -8,14 +8,17 @@ import {
   PROPERTY_TYPE_LABELS,
   PROPERTY_USE_TYPE_LABELS,
   PROPERTY_STATUS_LABELS,
+  BRAZIL_STATES,
+  getPortalPendingReasons,
   searchOwners,
   PropertyOwnerRecord,
   suggestPropertyTitles,
+  listPropertyPhotos,
 } from '@/services/properties'
 import { listActiveCondominiums, CondominiumRecord } from '@/services/condominiums'
 import { QuickCondominiumModal } from '@/components/properties/QuickCondominiumModal'
 import { ResponsibleUser } from '@/services/clients'
-import { formatPhoneNumber } from '@/lib/clientUtils'
+import { formatPhoneNumber, maskCepInput } from '@/lib/clientUtils'
 import { maskCurrencyInput, parseCurrencyInput } from '@/lib/currencyUtils'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -57,6 +60,11 @@ export interface PropertyFormData {
   complement: string
   neighborhood: string
   city: string
+  state: string
+  zip_code: string
+
+  // Onde anunciar
+  publish_to: string[]
 
   // Características
   bedrooms: string
@@ -154,6 +162,30 @@ export function PropertyForm({
   const [complement, setComplement] = useState(initialData?.complement || '')
   const [neighborhood, setNeighborhood] = useState(initialData?.neighborhood || '')
   const [city, setCity] = useState(initialData?.city || '')
+  const [state, setState] = useState(initialData?.state || 'BA')
+  const [zipCode, setZipCode] = useState(
+    initialData?.zip_code ? maskCepInput(initialData.zip_code) : '',
+  )
+
+  // Onde anunciar: "site" marcado por padrão em imóvel novo, "chaves_na_mao" desmarcado
+  const initialPublishList = Array.isArray(initialData?.publish_to)
+    ? initialData.publish_to
+    : isEditing
+      ? []
+      : ['site']
+  const [publishSite, setPublishSite] = useState(
+    initialData?.publish_to !== undefined ? initialPublishList.includes('site') : true, // padrão novo: true
+  )
+  const [publishChavesNaMao, setPublishChavesNaMao] = useState(
+    initialData?.publish_to !== undefined ? initialPublishList.includes('chaves_na_mao') : false, // padrão novo: false
+  )
+  // Guarda valores não exibidos na tela (zap, vivareal, olx) para preservar ao salvar
+  const [hiddenPublishTargets, setHiddenPublishTargets] = useState<string[]>(
+    initialPublishList.filter((p) => p !== 'site' && p !== 'chaves_na_mao'),
+  )
+
+  // Fotos para cálculo do indicador no formulário (quando em edição)
+  const [formPhotos, setFormPhotos] = useState<Array<{ file: string; is_active?: boolean }>>([])
 
   // Características
   const [bedrooms, setBedrooms] = useState(initialData?.bedrooms || '')
@@ -179,6 +211,18 @@ export function PropertyForm({
       : initialData?.captured_by || currentUser.id
   const [capturedBy, setCapturedBy] = useState(defaultCapturedBy)
 
+  // Permissão de editar Onde anunciar: admin e corretor captador
+  // SDR: somente leitura (desabilitado)
+  const canEditPublishTo = (() => {
+    if (isAdmin) return true
+    if (isCorretor) {
+      if (!isEditing) return true
+      const captadorId = initialData?.captured_by || capturedBy
+      return captadorId === currentUser.id
+    }
+    return false
+  })()
+
   // Proprietário
   const [selectedOwner, setSelectedOwner] = useState<PropertyOwnerRecord | null>(initialOwner)
   const [linkOwnerModalOpen, setLinkOwnerModalOpen] = useState(false)
@@ -202,7 +246,7 @@ export function PropertyForm({
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([])
   const [suggestError, setSuggestError] = useState<string | null>(null)
 
-  // Carrega lista de condomínios
+  // Carrega lista de condomínios e fotos do imóvel (se editing)
   useEffect(() => {
     let active = true
     setLoadingCondos(true)
@@ -216,10 +260,21 @@ export function PropertyForm({
       .finally(() => {
         if (active) setLoadingCondos(false)
       })
+
+    if (propertyId) {
+      listPropertyPhotos(propertyId)
+        .then((items) => {
+          if (active) setFormPhotos(items)
+        })
+        .catch(() => {
+          if (active) setFormPhotos([])
+        })
+    }
+
     return () => {
       active = false
     }
-  }, [])
+  }, [propertyId])
 
   // Manipulação de inputs de valor com máscara e bloqueio de zero
   const handleCurrencyChange = (
@@ -273,6 +328,19 @@ export function PropertyForm({
       if (initialData.complement !== undefined) setComplement(initialData.complement)
       if (initialData.neighborhood !== undefined) setNeighborhood(initialData.neighborhood)
       if (initialData.city !== undefined) setCity(initialData.city)
+      if (initialData.state !== undefined && initialData.state.trim()) {
+        setState(initialData.state.trim().toUpperCase())
+      }
+      if (initialData.zip_code !== undefined) {
+        setZipCode(maskCepInput(initialData.zip_code))
+      }
+      if (initialData.publish_to !== undefined) {
+        setPublishSite(initialData.publish_to.includes('site'))
+        setPublishChavesNaMao(initialData.publish_to.includes('chaves_na_mao'))
+        setHiddenPublishTargets(
+          initialData.publish_to.filter((p) => p !== 'site' && p !== 'chaves_na_mao'),
+        )
+      }
 
       if (initialData.bedrooms !== undefined) setBedrooms(initialData.bedrooms)
       if (initialData.bathrooms !== undefined) setBathrooms(initialData.bathrooms)
@@ -390,6 +458,14 @@ export function PropertyForm({
 
     const finalStreetNumber = isSN ? 'S/N' : streetNumber.trim()
 
+    // Monta lista publish_to mantendo valores ocultos existentes
+    const nextPublishTo: string[] = []
+    if (publishSite) nextPublishTo.push('site')
+    if (publishChavesNaMao) nextPublishTo.push('chaves_na_mao')
+    for (const h of hiddenPublishTargets) {
+      if (!nextPublishTo.includes(h)) nextPublishTo.push(h)
+    }
+
     await onSubmit({
       code: code.trim(),
       title: title.trim(),
@@ -404,6 +480,9 @@ export function PropertyForm({
       complement: complement.trim(),
       neighborhood: neighborhood.trim(),
       city: city.trim(),
+      state: state.trim().toUpperCase() || 'BA',
+      zip_code: zipCode.trim(),
+      publish_to: nextPublishTo,
       bedrooms: bedrooms.trim(),
       bathrooms: bathrooms.trim(),
       parking: parking.trim(),
@@ -756,7 +835,7 @@ export function PropertyForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-1.5">
             <label
               htmlFor="prop-complement"
@@ -802,6 +881,161 @@ export function PropertyForm({
               className="h-12 text-sm border-border"
             />
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <label htmlFor="prop-cep" className="text-[13px] font-normal text-foreground block">
+                CEP
+              </label>
+              <Input
+                id="prop-cep"
+                placeholder="00000-000"
+                value={zipCode}
+                onChange={(e) => setZipCode(maskCepInput(e.target.value))}
+                maxLength={9}
+                className="h-12 text-sm border-border tabular"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="prop-state" className="text-[13px] font-normal text-foreground block">
+                UF
+              </label>
+              <Select value={state} onValueChange={(val) => setState(val)}>
+                <SelectTrigger id="prop-state" className="h-12 text-sm border-border tabular">
+                  <SelectValue placeholder="UF" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {BRAZIL_STATES.map((st) => (
+                    <SelectItem key={st.uf} value={st.uf} className="text-xs">
+                      {st.uf} - {st.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <hr className="border-t border-border" />
+
+      {/* SEÇÃO: ONDE ANUNCIAR */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-[20px] font-normal text-foreground">Onde anunciar</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Defina em quais canais e portais imobiliários o imóvel será publicado.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-lg border border-border bg-card space-y-4">
+          {/* Checkbox: Site da imobiliária */}
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="prop-publish-site"
+              checked={publishSite}
+              disabled={!canEditPublishTo}
+              onCheckedChange={(c) => setPublishSite(Boolean(c))}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <label
+                htmlFor="prop-publish-site"
+                className={`text-sm font-normal ${
+                  canEditPublishTo ? 'text-foreground cursor-pointer' : 'text-muted-foreground'
+                }`}
+              >
+                Site da imobiliária
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Publica na busca e vitrines públicas do site oficial da imobiliária.
+              </p>
+            </div>
+          </div>
+
+          <hr className="border-t border-border/60" />
+
+          {/* Checkbox: Chaves na Mão */}
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="prop-publish-chaves"
+              checked={publishChavesNaMao}
+              disabled={!canEditPublishTo}
+              onCheckedChange={(c) => setPublishChavesNaMao(Boolean(c))}
+              className="mt-0.5"
+            />
+            <div className="space-y-1">
+              <label
+                htmlFor="prop-publish-chaves"
+                className={`text-sm font-normal ${
+                  canEditPublishTo ? 'text-foreground cursor-pointer' : 'text-muted-foreground'
+                }`}
+              >
+                Chaves na Mão
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Só ligue num imóvel que a Kenlo já parou de publicar nesse portal, para não duplicar
+                o anúncio.
+              </p>
+            </div>
+          </div>
+
+          {!canEditPublishTo && (
+            <p className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/40">
+              Apenas administradores e o corretor captador podem alterar os destinos de publicação.
+            </p>
+          )}
+
+          {/* Indicador Pronto para o portal (quando Chaves na Mão estiver marcado) */}
+          {publishChavesNaMao &&
+            (() => {
+              const calculatedPurpose: PropertyPurpose =
+                purposeVenda && purposeLocacao ? 'ambos' : purposeVenda ? 'venda' : 'locacao'
+              const reasons = getPortalPendingReasons({
+                status: isEditing ? status : 'disponivel',
+                property_type: propertyType,
+                purpose: calculatedPurpose,
+                sale_price: salePrice,
+                rent_price: rentPrice,
+                price_on_request: priceOnRequest,
+                neighborhood: neighborhood,
+                city: city,
+                state: state,
+                zip_code: zipCode,
+                description: description,
+                photos: formPhotos,
+              })
+              const isReady = reasons.length === 0
+
+              return (
+                <div
+                  className={`p-3.5 rounded-lg border text-xs space-y-2 mt-3 ${
+                    isReady
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
+                      : 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-medium">
+                    {isReady ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-600 text-white">
+                        ● Pronto para o portal
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-600 text-white">
+                        ▲ Pendências para o portal Chaves na Mão
+                      </span>
+                    )}
+                  </div>
+
+                  {!isReady && (
+                    <ul className="space-y-1 list-disc list-inside text-xs">
+                      {reasons.map((r, idx) => (
+                        <li key={idx}>{r}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )
+            })()}
         </div>
       </section>
 

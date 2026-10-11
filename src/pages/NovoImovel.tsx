@@ -90,6 +90,9 @@ export default function NovoImovel() {
           complement: formData.complement || undefined,
           neighborhood: formData.neighborhood || undefined,
           city: formData.city || undefined,
+          state: formData.state || 'BA',
+          zip_code: formData.zip_code ? formData.zip_code.replace(/\D/g, '') : undefined,
+          publish_to: formData.publish_to,
           bedrooms:
             typeof bedrooms === 'number' && !isNaN(bedrooms) && bedrooms > 0 ? bedrooms : undefined,
           bathrooms:
