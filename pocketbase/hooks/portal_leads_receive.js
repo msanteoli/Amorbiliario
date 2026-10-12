@@ -21,7 +21,11 @@ routerAdd('POST', '/backend/v1/public/portal-leads/{token}', (e) => {
     const ip = e.realIP()
     const bkey = 'thr:plbad:' + ip + ':' + win
     // incremento atômico (setFunc segura a trava do store)
-    const bn = Number($app.store().setFunc(bkey, (old) => Number(old || 0) + 1))
+    let bn = 0
+    $app.store().setFunc(bkey, (old) => {
+      bn = Number(old || 0) + 1
+      return bn
+    })
     $app.store().remove('thr:plbad:' + ip + ':' + (win - 1))
     if (bn > 30)
       throw new TooManyRequestsError('Muitas tentativas. Aguarde um minuto e tente de novo.')
@@ -31,7 +35,11 @@ routerAdd('POST', '/backend/v1/public/portal-leads/{token}', (e) => {
   // limite por token (chave pelo id da linha, nunca pelo token)
   const tkey = 'thr:pltok:' + feed.id + ':' + win
   // incremento atômico: requisições simultâneas não passam do limite
-  const tn = Number($app.store().setFunc(tkey, (old) => Number(old || 0) + 1))
+  let tn = 0
+  $app.store().setFunc(tkey, (old) => {
+    tn = Number(old || 0) + 1
+    return tn
+  })
   $app.store().remove('thr:pltok:' + feed.id + ':' + (win - 1))
   if (tn > 120)
     throw new TooManyRequestsError('Muitas tentativas. Aguarde um minuto e tente de novo.')
