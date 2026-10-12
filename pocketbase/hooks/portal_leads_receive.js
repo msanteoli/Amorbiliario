@@ -84,7 +84,10 @@ routerAdd('POST', '/backend/v1/public/portal-leads/{token}', (e) => {
   const message = clean(body.message, 1000)
   const reference = clean(body.reference, 60)
 
-  const intentKey = 'portal:' + $security.sha256(JSON.stringify([reference, phone, email, message]))
+  // o dia (UTC) entra na chave: reenvios no mesmo dia não duplicam; o mesmo pedido noutro dia é registrado
+  const day = new Date().toISOString().slice(0, 10)
+  const intentKey =
+    'portal:' + $security.sha256(JSON.stringify([day, reference, phone, email, message]))
 
   // imóvel do anúncio: qualquer situação, só nesta organização, parâmetros ligados
   let property = null
@@ -287,10 +290,14 @@ routerAdd('POST', '/backend/v1/public/portal-leads/{token}', (e) => {
   }
   audit(outcome.kind === 'repeat' ? 'lead_contato_portal' : 'lead_criado_portal', outcome.lead.id)
   try {
-    const f = $app.findRecordById('portal_feeds', feed.id)
-    f.set('last_lead_at', nowIso)
-    f.set('leads_count', Number(f.get('leads_count') || 0) + 1)
-    $app.save(f)
+    // UPDATE direcionado e atômico: não perde contagem nem desfaz troca de código
+    $app
+      .db()
+      .newQuery(
+        'UPDATE portal_feeds SET last_lead_at={:t}, leads_count=COALESCE(leads_count,0)+1 WHERE id={:id}',
+      )
+      .bind({ t: nowIso.replace('T', ' '), id: feed.id })
+      .execute()
   } catch (err) {
     $app.logger().error('portal_lead_counter_failed')
   }

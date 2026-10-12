@@ -30,8 +30,17 @@ routerAdd(
       32,
       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
     )
-    feed.set('token', token)
-    $app.save(feed)
+    if (feed.isNew()) {
+      feed.set('token', token)
+      $app.save(feed)
+    } else {
+      // UPDATE direcionado: não regrava contadores nem o código dos contatos com valores antigos
+      $app
+        .db()
+        .newQuery('UPDATE portal_feeds SET token={:t} WHERE id={:id}')
+        .bind({ t: token, id: feed.id })
+        .execute()
+    }
 
     try {
       const audit = new Record($app.findCollectionByNameOrId('audit_log'))

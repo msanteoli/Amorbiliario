@@ -226,9 +226,12 @@ routerAdd('GET', '/backend/v1/public/feeds/{token}/chavesnamao.xml', (e) => {
     '</imoveis></Document>\n'
 
   try {
-    feed.set('last_fetched_at', new DateTime())
-    feed.set('last_count', count)
-    $app.save(feed)
+    // UPDATE direcionado: nunca regrava a linha inteira (lida antes) e não desfaz troca de código
+    $app
+      .db()
+      .newQuery('UPDATE portal_feeds SET last_fetched_at={:t}, last_count={:n} WHERE id={:id}')
+      .bind({ t: new Date().toISOString().replace('T', ' '), n: count, id: feed.id })
+      .execute()
   } catch (_) {
     console.log('feed_chaves_na_mao: leitura nao registrada motivo=erro_salvar')
   }
