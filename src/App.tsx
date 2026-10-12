@@ -9,9 +9,6 @@ import { AppLayout } from '@/components/AppLayout'
 
 import Login from '@/pages/Login'
 import ResetPassword from '@/pages/ResetPassword'
-import BuscarPage from '@/pages/BuscarPage'
-import ImovelPublicoPage from '@/pages/ImovelPublicoPage'
-import Privacidade from '@/pages/Privacidade'
 import GoogleRetorno from '@/pages/GoogleRetorno'
 import Hoje from '@/pages/Hoje'
 import Leads from '@/pages/Leads'
@@ -46,13 +43,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
-            {/* Public site routes (fora de ProtectedRoute e de AppLayout) */}
-            <Route path="/buscar" element={<BuscarPage />} />
-            <Route path="/buscar/:codigo" element={<ImovelPublicoPage />} />
-            <Route path="/privacidade" element={<Privacidade />} />
-
-            {/* Root route: responde na mesma página inicial pública (/ e /buscar) */}
-            <Route path="/" element={<BuscarPage />} />
+            {/* O site público agora é outro projeto; a raiz do sistema leva ao painel (ou ao login) */}
+            <Route path="/" element={<Navigate to="/hoje" replace />} />
 
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
