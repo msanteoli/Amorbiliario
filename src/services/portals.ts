@@ -9,6 +9,9 @@ export interface PortalSummaryResponse {
   pending_count: number
   last_fetched_at: string | null
   last_count: number
+  leads_url?: string
+  last_lead_at?: string | null
+  leads_count?: number
 }
 
 export type PortalPendingReasonCode =
@@ -45,6 +48,10 @@ export interface PortalBatchPropertiesResponse {
 
 export interface PortalRotateResponse {
   feed_url: string
+}
+
+export interface PortalRotateLeadsResponse {
+  leads_url: string
 }
 
 export const PORTAL_REASON_LABELS: Record<string, string> = {
@@ -107,10 +114,12 @@ export function formatPortalErrorMessage(
 }
 
 function sanitizePortalErrorText(text: string): string {
-  // Mascara qualquer URL de feed ou tokens por segurança
+  // Mascara qualquer URL de feed, leads ou tokens por segurança
   return text
     .replace(/https?:\/\/[^\s]+feeds\/[^\s]+/gi, '[endereço protegido]')
     .replace(/feeds\/[a-zA-Z0-9_-]+\/chavesnamao\.xml/gi, '[endereço protegido]')
+    .replace(/https?:\/\/[^\s]+leads\/[^\s]+/gi, '[endereço protegido]')
+    .replace(/leads\/[a-zA-Z0-9_-]+/gi, '[endereço protegido]')
 }
 
 /**
@@ -159,6 +168,18 @@ export async function rotateChavesNaMaoFeed(): Promise<PortalRotateResponse> {
   return await pb.send<PortalRotateResponse>('/backend/v1/admin/portals/chaves-na-mao/rotate', {
     method: 'POST',
   })
+}
+
+/**
+ * POST /backend/v1/admin/portals/chaves-na-mao/rotate-leads
+ */
+export async function rotateChavesNaMaoLeads(): Promise<PortalRotateLeadsResponse> {
+  return await pb.send<PortalRotateLeadsResponse>(
+    '/backend/v1/admin/portals/chaves-na-mao/rotate-leads',
+    {
+      method: 'POST',
+    },
+  )
 }
 
 export interface AvailablePropertyForPortal {

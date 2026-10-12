@@ -5,6 +5,7 @@ import {
   getChavesNaMaoPending,
   updateChavesNaMaoProperties,
   rotateChavesNaMaoFeed,
+  rotateChavesNaMaoLeads,
   searchAvailableProperties,
   translatePortalReason,
   formatPortalErrorMessage,
@@ -50,6 +51,7 @@ export default function Portais() {
   const [loadingSummary, setLoadingSummary] = useState(true)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [copiedFeed, setCopiedFeed] = useState(false)
+  const [copiedLeads, setCopiedLeads] = useState(false)
 
   // 2. Pendências
   const [pendingItems, setPendingItems] = useState<PortalPendingItem[]>([])
@@ -68,11 +70,17 @@ export default function Portais() {
   } | null>(null)
   const [confirmEnableOpen, setConfirmEnableOpen] = useState(false)
 
-  // 4. Trocar código do endereço
+  // 4. Trocar código do endereço do XML
   const [confirmRotateOpen, setConfirmRotateOpen] = useState(false)
   const [rotating, setRotating] = useState(false)
   const [rotateSuccessUrl, setRotateSuccessUrl] = useState<string | null>(null)
   const [copiedRotatedUrl, setCopiedRotatedUrl] = useState(false)
+
+  // 5. Trocar código dos contatos
+  const [confirmRotateLeadsOpen, setConfirmRotateLeadsOpen] = useState(false)
+  const [rotatingLeads, setRotatingLeads] = useState(false)
+  const [rotateLeadsSuccessUrl, setRotateLeadsSuccessUrl] = useState<string | null>(null)
+  const [copiedRotatedLeadsUrl, setCopiedRotatedLeadsUrl] = useState(false)
 
   // Carregar dados de resumo
   const loadSummary = useCallback(async () => {
@@ -134,23 +142,29 @@ export default function Portais() {
     return () => clearTimeout(handler)
   }, [searchTerm, loadAvailableProps])
 
+  // Copiar texto para área de transferência (sem log ou vazamento)
+  const copyToClipboard = async (text: string) => {
+    if (!text) return
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+  }
+
   // Copiar feed_url
   const handleCopyUrl = async (url: string, isRotated = false) => {
     if (!url) return
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url)
-      } else {
-        const textarea = document.createElement('textarea')
-        textarea.value = url
-        textarea.style.position = 'fixed'
-        textarea.style.opacity = '0'
-        document.body.appendChild(textarea)
-        textarea.focus()
-        textarea.select()
-        document.execCommand('copy')
-        document.body.removeChild(textarea)
-      }
+      await copyToClipboard(url)
       if (isRotated) {
         setCopiedRotatedUrl(true)
         setTimeout(() => setCopiedRotatedUrl(false), 2500)
@@ -159,7 +173,24 @@ export default function Portais() {
         setTimeout(() => setCopiedFeed(false), 2500)
       }
     } catch {
-      // Fallback sem log da URL
+      // Fallback silencioso sem log da URL
+    }
+  }
+
+  // Copiar leads_url
+  const handleCopyLeadsUrl = async (url: string, isRotated = false) => {
+    if (!url) return
+    try {
+      await copyToClipboard(url)
+      if (isRotated) {
+        setCopiedRotatedLeadsUrl(true)
+        setTimeout(() => setCopiedRotatedLeadsUrl(false), 2500)
+      } else {
+        setCopiedLeads(true)
+        setTimeout(() => setCopiedLeads(false), 2500)
+      }
+    } catch {
+      // Fallback silencioso sem log da URL
     }
   }
 
@@ -238,7 +269,7 @@ export default function Portais() {
     }
   }
 
-  // Executar rotação do token
+  // Executar rotação do token do XML
   const handleConfirmRotate = async () => {
     setRotating(true)
     try {
@@ -250,12 +281,33 @@ export default function Portais() {
     } catch (err) {
       const errMsg = formatPortalErrorMessage(
         err,
-        'Erro ao trocar o código do endereço. Tente novamente mais tarde.',
+        'Erro ao trocar o código do endereço do XML. Tente novamente mais tarde.',
       )
       setSummaryError(errMsg)
       setConfirmRotateOpen(false)
     } finally {
       setRotating(false)
+    }
+  }
+
+  // Executar rotação do token de leads (contatos)
+  const handleConfirmRotateLeads = async () => {
+    setRotatingLeads(true)
+    try {
+      const res = await rotateChavesNaMaoLeads()
+      setRotateLeadsSuccessUrl(res.leads_url)
+      setConfirmRotateLeadsOpen(false)
+      // Atualiza o resumo depois
+      await loadSummary()
+    } catch (err) {
+      const errMsg = formatPortalErrorMessage(
+        err,
+        'Erro ao trocar o código dos contatos. Tente novamente mais tarde.',
+      )
+      setSummaryError(errMsg)
+      setConfirmRotateLeadsOpen(false)
+    } finally {
+      setRotatingLeads(false)
     }
   }
 
@@ -515,20 +567,152 @@ export default function Portais() {
             <AlertTriangle className="h-4 w-4 text-attention shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-normal text-foreground">
-                Para ativar, envie o endereço do XML, o nome e o CNPJ ou CPF do responsável para{' '}
+                Para ativar, envie o endereço do XML e o endereço dos contatos, o nome e o CNPJ ou
+                CPF do responsável para{' '}
                 <a
                   href="mailto:atendimento@chavesnamao.com.br"
                   className="font-medium text-foreground underline hover:text-attention transition-colors"
                 >
                   atendimento@chavesnamao.com.br
                 </a>
-                .
-              </p>
-              <p className="text-muted-foreground">
-                O portal lê o arquivo uma vez por dia; alterações podem levar até 24 horas úteis
+                . O portal lê o arquivo uma vez por dia; alterações podem levar até 24 horas úteis
                 para aparecer.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {/* ENDEREÇO DOS CONTATOS */}
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-[20px] font-normal text-foreground">Endereço dos contatos</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            É o endereço para onde a Chaves na Mão envia os contatos dos interessados. Os contatos
+            entram como lead com origem Portal e sem responsável, na lista do SDR.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-5">
+          {/* Campo de leitura com o leads_url e botão Copiar */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="leads-url-input"
+                className="text-xs font-normal text-foreground flex items-center gap-1.5"
+              >
+                <span>Endereço de recebimento de contatos</span>
+                <span className="text-[10px] text-muted-foreground">(webhook Chaves na Mão)</span>
+              </label>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmRotateLeadsOpen(true)}
+                className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1 text-muted-foreground hover:text-foreground"
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                <span>Trocar código dos contatos</span>
+              </Button>
+            </div>
+
+            {loadingSummary ? (
+              <Skeleton className="h-11 w-full rounded-lg" />
+            ) : (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="leads-url-input"
+                    readOnly
+                    value={summary?.leads_url || ''}
+                    onFocus={(e) => e.target.select()}
+                    className="h-11 text-xs font-mono border-border bg-muted/40 pr-3 tabular truncate cursor-text"
+                    placeholder="Carregando endereço dos contatos..."
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => summary?.leads_url && handleCopyLeadsUrl(summary.leads_url)}
+                  disabled={!summary?.leads_url}
+                  className="h-11 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2 shrink-0 min-h-[44px]"
+                >
+                  {copiedLeads ? (
+                    <>
+                      <Check className="h-4 w-4 text-primary-foreground" />
+                      <span>Copiado</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      <span>Copiar</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Feedback de troca de código dos contatos recém-realizada com botão Copiar dedicado */}
+          {rotateLeadsSuccessUrl && (
+            <div className="p-3.5 rounded-lg border border-success/40 bg-success/10 text-xs text-foreground space-y-2">
+              <div className="flex items-center gap-2 text-success font-medium">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>
+                  Código dos contatos trocado com sucesso! Envie o novo endereço para o portal:
+                </span>
+              </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                <Input
+                  readOnly
+                  value={rotateLeadsSuccessUrl}
+                  onFocus={(e) => e.target.select()}
+                  className="h-10 text-xs font-mono border-border bg-background truncate flex-1"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleCopyLeadsUrl(rotateLeadsSuccessUrl, true)}
+                  className="h-10 rounded-full px-4 text-xs font-normal border-border gap-1.5 shrink-0"
+                >
+                  {copiedRotatedLeadsUrl ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-success" />
+                      <span>Copiado</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copiar</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Linha de situação */}
+          <div className="pt-2 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span className="font-normal text-foreground">Situação:</span>
+              {loadingSummary ? (
+                <Skeleton className="h-4 w-48 rounded" />
+              ) : summary?.last_lead_at ? (
+                <span className="tabular text-foreground">
+                  Último contato recebido em {formatDateTimeBahia(summary.last_lead_at)} (
+                  {summary.leads_count ?? 0} no total)
+                </span>
+              ) : (
+                <span className="text-muted-foreground">Nenhum contato recebido ainda</span>
+              )}
+            </div>
+
+            <span className="text-[11px] text-muted-foreground">
+              Trocar o código dos contatos não afeta o endereço do XML.
+            </span>
           </div>
         </div>
       </section>
@@ -877,7 +1061,7 @@ export default function Portais() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirmação de Troca de Código do Endereço */}
+      {/* Confirmação de Troca de Código do Endereço do XML */}
       <AlertDialog open={confirmRotateOpen} onOpenChange={setConfirmRotateOpen}>
         <AlertDialogContent className="rounded-lg p-6 max-w-md">
           <AlertDialogHeader>
@@ -887,8 +1071,13 @@ export default function Portais() {
                 Trocar código do endereço do XML
               </AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
-              O endereço atual deixa de funcionar e a Chaves na Mão precisará receber o novo.
+            <AlertDialogDescription className="text-xs sm:text-sm text-foreground/90 leading-relaxed space-y-2">
+              <span className="block">
+                O endereço atual deixa de funcionar e a Chaves na Mão precisará receber o novo.
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Atenção: trocar o código do XML não altera o endereço dos contatos.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
@@ -906,7 +1095,47 @@ export default function Portais() {
               disabled={rotating}
               className="rounded-full font-normal min-h-[44px] h-11 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {rotating ? 'Trocando...' : 'Trocar código'}
+              {rotating ? 'Trocando...' : 'Trocar código do XML'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmação de Troca de Código dos Contatos */}
+      <AlertDialog open={confirmRotateLeadsOpen} onOpenChange={setConfirmRotateLeadsOpen}>
+        <AlertDialogContent className="rounded-lg p-6 max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2 text-destructive mb-1">
+              <ShieldAlert className="h-5 w-5 shrink-0" />
+              <AlertDialogTitle className="text-base font-normal text-foreground">
+                Trocar código dos contatos
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-xs sm:text-sm text-foreground/90 leading-relaxed space-y-2">
+              <span className="block">
+                O endereço atual deixa de funcionar e a Chaves na Mão precisará receber o novo.
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Atenção: trocar o código dos contatos não altera o endereço do XML.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
+            <AlertDialogCancel
+              disabled={rotatingLeads}
+              className="rounded-full font-normal min-h-[44px] h-11 text-xs"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleConfirmRotateLeads()
+              }}
+              disabled={rotatingLeads}
+              className="rounded-full font-normal min-h-[44px] h-11 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {rotatingLeads ? 'Trocando...' : 'Trocar código dos contatos'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
