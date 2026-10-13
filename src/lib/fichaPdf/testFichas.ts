@@ -1,28 +1,41 @@
 import { parseFichaPdfText } from './index'
 
-export const FICHA_A_TEXT = `Ficha de Imóvel CA9999 (Casa)
+export const FICHA_A_TEXT = `Rua Venezuela, 123 - Imobiliaria Teste
+Ficha de Imóvel CA9999 (Casa)
 Valor de locação: R$ 10.000,00
+Pacote (locação + condomínio + IPTU): 12.000,00
 Proprietário: ZZ TESTE Casa Proprietario
 Celular:(75) 90000-0001
-Rua Teste, nº 1 Cond. Teste Lumiere, Casa 1, Teste - Feira de Santana/BA CEP: 44000000
+Rua Teste Falsa, nº 320 Cond. Teste Lumiere, Casa 66, BAIRRO TESTE - Feira de
+Santana/BA CEP: 44000000
 Finalidade: Residencial
-Empreendimento: Condomínio: Condomínio Teste Lumiere R$ cond. 0,00
+Condomínio: Condomínio Teste Lumiere
+Empreendimento: R$ cond. 0,00
+Valor do IPTU: R$ 0,00
 Área construída: 0,00   Área do terreno: 150,00
 Dormitórios: (3)Dormitórios (2)Suítes (3)Nº de banheiros (2)Vagas cobertas
 Lazer: (X)Churrasqueira (X)Piscina
-Local da chave: Na imobiliaria`
+Local da chave: Na imobiliaria
+Comentários internos: CASA DUPLEX TESTE FALSA TODA MOBILIADA`
 
-export const FICHA_B_TEXT = `Ficha de Imóvel AP9998 (Apartamento)
+export const FICHA_B_TEXT = `Rua Venezuela, 123 - Imobiliaria Teste
+Ficha de Imóvel AP9998 (Apartamento)
 Valor de venda: R$ 500.000,00
 Valor de locação: R$ 3.000,00
 Proprietário: ZZ TESTE Apto Proprietario
 Celular:(71) 90000-0002
-Rua Teste, nº 2 Apto 101, Teste - Feira de Santana/BA CEP: 44000001
+Teste Falsa Dois, nº 897 Apto 801, Bairro Dois - Feira de Santana/BA CEP:
+44000001
 Finalidade: Residencial
-Empreendimento: Edifício: Teste Residence R$ cond. 0,00
+Edifício: Teste Residence
+Empreendimento: R$ cond. 0,00
+Valor do IPTU: 250,00
 Área útil: 80,00   Área total: 0,00
 Íntima: (3)Dormitórios (1)Suítes (3)Nº de banheiros
-Infraestrutura: (X)Elevador (X)Mobiliado Tipo de vaga: Não informado`
+Infraestrutura: (X)Elevador (X)Mobiliado Tipo de vaga: Não informado
+Apto nascente teste. Taxa incluso no aluguel. Para aluguel é com a mobília que
+Comentários internos:
+apresenta nas fotos.`
 
 export interface TestResultItem {
   field: string
@@ -50,9 +63,15 @@ export function testFichas(): {
     'imovel.area': undefined,
     'imovel.condominium_name': 'Teste Lumiere',
     'imovel.condo_fee': undefined,
-    'imovel.street': 'Teste',
-    'imovel.street_number': '1',
-    'imovel.complement': 'Cond. Teste Lumiere, Casa 1',
+    'imovel.iptu': undefined,
+    'imovel.street': 'Teste Falsa',
+    'imovel.street_number': '320',
+    'imovel.complement': 'Cond. Teste Lumiere, Casa 66',
+    'imovel.neighborhood': 'BAIRRO TESTE',
+    'imovel.city': 'Feira de Santana',
+    'imovel.state': 'BA',
+    'imovel.zip_code': '44000000',
+    'imovel.comentario_interno': 'CASA DUPLEX TESTE FALSA TODA MOBILIADA',
     'proprietario.name': 'ZZ TESTE Casa Proprietario',
     'proprietario.phone': '(75) 90000-0001',
     'proprietario.cpf': undefined,
@@ -68,9 +87,15 @@ export function testFichas(): {
     'imovel.area': resA.imovel.area,
     'imovel.condominium_name': resA.imovel.condominium_name,
     'imovel.condo_fee': resA.imovel.condo_fee,
+    'imovel.iptu': resA.imovel.iptu,
     'imovel.street': resA.imovel.street,
     'imovel.street_number': resA.imovel.street_number,
     'imovel.complement': resA.imovel.complement,
+    'imovel.neighborhood': resA.imovel.neighborhood,
+    'imovel.city': resA.imovel.city,
+    'imovel.state': resA.imovel.state,
+    'imovel.zip_code': resA.imovel.zip_code,
+    'imovel.comentario_interno': resA.imovel.comentario_interno,
     'proprietario.name': resA.proprietario.name,
     'proprietario.phone': resA.proprietario.phone,
     'proprietario.cpf': resA.proprietario.cpf,
@@ -97,9 +122,15 @@ export function testFichas(): {
     'imovel.parking': undefined,
     'imovel.area': 80,
     'imovel.condominium_name': 'Teste Residence',
-    'imovel.street': 'Teste',
-    'imovel.street_number': '2',
-    'imovel.complement': 'Apto 101',
+    'imovel.iptu': 250,
+    'imovel.street': 'Teste Falsa Dois',
+    'imovel.street_number': '897',
+    'imovel.complement': 'Apto 801',
+    'imovel.neighborhood': 'Bairro Dois',
+    'imovel.city': 'Feira de Santana',
+    'imovel.zip_code': '44000001',
+    'imovel.comentario_interno':
+      'Apto nascente teste. Taxa incluso no aluguel. Para aluguel é com a mobília que apresenta nas fotos.',
     'proprietario.phone': '(71) 90000-0002',
   }
 
@@ -112,9 +143,14 @@ export function testFichas(): {
     'imovel.parking': resB.imovel.parking,
     'imovel.area': resB.imovel.area,
     'imovel.condominium_name': resB.imovel.condominium_name,
+    'imovel.iptu': resB.imovel.iptu,
     'imovel.street': resB.imovel.street,
     'imovel.street_number': resB.imovel.street_number,
     'imovel.complement': resB.imovel.complement,
+    'imovel.neighborhood': resB.imovel.neighborhood,
+    'imovel.city': resB.imovel.city,
+    'imovel.zip_code': resB.imovel.zip_code,
+    'imovel.comentario_interno': resB.imovel.comentario_interno,
     'proprietario.phone': resB.proprietario.phone,
   }
 

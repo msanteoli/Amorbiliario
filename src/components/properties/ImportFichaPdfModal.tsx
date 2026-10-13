@@ -73,6 +73,7 @@ export function ImportFichaPdfModal({
   const [matching, setMatching] = useState(false)
   const [committing, setCommitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [errorDetail, setErrorDetail] = useState<string | null>(null)
 
   // Dados lidos e de correspondência
   const [parsedData, setParsedData] = useState<{
@@ -109,6 +110,7 @@ export function ImportFichaPdfModal({
     setMatching(false)
     setCommitting(false)
     setErrorMessage(null)
+    setErrorDetail(null)
     setParsedData(null)
     setMatchResult(null)
     setShowingPhoneQuestion(false)
@@ -139,6 +141,7 @@ export function ImportFichaPdfModal({
     if (!file) return
 
     setErrorMessage(null)
+    setErrorDetail(null)
     setParsedData(null)
     setMatchResult(null)
     setCommitSuccess(null)
@@ -149,6 +152,7 @@ export function ImportFichaPdfModal({
 
     if (!isPdf || !isUnder5Mb) {
       setErrorMessage('Escolha um arquivo PDF de até 5 MB.')
+      setErrorDetail(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
       return
     }
@@ -183,7 +187,10 @@ export function ImportFichaPdfModal({
       // 2. CONSULTA (/ficha/match)
       await runMatch(imovel, proprietario)
     } catch (err: any) {
+      const errDetail = err?.message || ''
+      console.error('[ficha-pdf]', errDetail)
       setErrorMessage('Não foi possível ler o arquivo PDF. Tente de novo.')
+      setErrorDetail(errDetail)
     } finally {
       setReading(false)
       // O arquivo PDF NÃO é guardado em memória nem no disco
@@ -876,7 +883,12 @@ export function ImportFichaPdfModal({
         {errorMessage && (
           <div className="p-3.5 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal flex items-start gap-2">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>{errorMessage}</span>
+            <div className="space-y-1">
+              <span>{errorMessage}</span>
+              {errorDetail && (
+                <p className="text-[10px] text-destructive/80 font-mono break-all">{errorDetail}</p>
+              )}
+            </div>
           </div>
         )}
 

@@ -193,36 +193,35 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
     purpose = 'venda'
   }
 
-  // Taxa de condomínio e IPTU: zero continua undefined (pendência), nunca 0.
-  const rawCondoFee = parseNumber(
-    findPattern([/(?:R\$\s*cond\.?|Condomínio|Condominio|R\$ Cond\.?)[\s:]*R?\$?\s*([\d.,]+)/i]),
-  )
+  // Taxa de condomínio e IPTU: apenas pelos rótulos certos. Zero continua undefined (nunca 0).
+  const rawCondoFee = parseNumber(findPattern([/R\$\s*cond\.?\s*([\d.,]+)/i]))
   const condo_fee = rawCondoFee && rawCondoFee > 0 ? rawCondoFee : undefined
 
-  const rawIptu = parseNumber(findPattern([/(?:IPTU|R\$ IPTU)[\s:]+R?\$?\s*([\d.,]+)/i]))
+  const rawIptu = parseNumber(findPattern([/Valor do IPTU[\s:]+R?\$?\s*([\d.,]+)/i]))
   const iptu = rawIptu && rawIptu > 0 ? rawIptu : undefined
 
-  // Condomínio ou Edifício
-  // O nome do condomínio para em "R$" ou no fim do rótulo:
-  // "Condomínio: Condomínio Teste Lumiere R$ cond. 0,00" -> condominium_name = "Teste Lumiere"
-  // "Edifício: Teste Residence R$ cond. 0,00" -> "Teste Residence"
+  // Condomínio ou Edifício:
+  // Use só linhas que comecem com o rótulo: ^(?:Condomínio|Condominio|Edifício|Edificio)\s*:\s*(.+)$ (flag m)
+  // Ignora linhas como "Pacote (locação + condomínio + IPTU): 12.000,00"
   let condoName = ''
-  // Pode ser "Empreendimento: Condomínio: Condomínio Teste Lumiere R$ cond. 0,00" ou "Empreendimento: Edifício: Teste Residence R$ cond. 0,00"
-  // ou sem o prefixo "Empreendimento:"
-  const condoRawMatch =
-    /(?:Empreendimento[\s:]+)?(?:Condomínio|Condominio|Edifício|Edificio)[\s:]+([^\n\r]+)/i.exec(
-      text,
-    )
-  if (condoRawMatch && condoRawMatch[1]) {
-    let rawCName = condoRawMatch[1].trim()
-    // Corta antes de "R$"
-    const rDollarIdx = rawCName.indexOf('R$')
-    if (rDollarIdx !== -1) {
-      rawCName = rawCName.substring(0, rDollarIdx).trim()
+  const condoRegex = /^(?:Condomínio|Condominio|Edifício|Edificio)\s*:\s*(.+)$/gim
+  let condoMatch: RegExpExecArray | null = null
+  while ((condoMatch = condoRegex.exec(text)) !== null) {
+    if (condoMatch[1]) {
+      let rawCName = condoMatch[1].trim()
+      // Se tiver "R$" ou "Empreendimento:", corta antes de "R$"
+      const rDollarIdx = rawCName.indexOf('R$')
+      if (rDollarIdx !== -1) {
+        rawCName = rawCName.substring(0, rDollarIdx).trim()
+      }
+      // Remove prefixos redundantes repetidos como "Condomínio:", "Edifício:", "Condomínio", "Edifício"
+      rawCName = rawCName.replace(/^(?:Condomínio|Condominio|Edifício|Edificio)[\s:]*/i, '').trim()
+      const cleaned = cleanVal(rawCName)
+      if (cleaned) {
+        condoName = cleaned
+        break
+      }
     }
-    // Remove prefixos redundantes repetidos como "Condomínio:", "Edifício:", "Condomínio", "Edifício"
-    rawCName = rawCName.replace(/^(?:Condomínio|Condominio|Edifício|Edificio)[\s:]*/i, '').trim()
-    condoName = cleanVal(rawCName)
   }
 
   // in_condominium = true quando houver nome. Edifício é condomínio quando o imóvel for apartamento
@@ -231,8 +230,10 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
   )
 
   // Endereço do imóvel:
-  // Ex: "Rua Teste, nº 1 Cond. Teste Lumiere, Casa 1, Teste - Feira de Santana/BA CEP: 44000000"
-  // Ex: "Rua Teste, nº 2 Apto 101, Teste - Feira de Santana/BA CEP: 44000001"
+  // No PDF real o endereço do imóvel vem quebrado em linhas depois do proprietário.
+  // Regra B1: depois da linha do proprietário (Proprietário:), procure a primeira linha que contenha ", nº <algo>" (ou ", n° <algo>");
+  // junte essa linha com as duas linhas seguintes (separadas por espaço) e aplique a expressão de endereço sobre o texto juntado.
+  // O fallback por "Rua" deve ignorar as linhas anteriores à linha do proprietário.
   let street: string | undefined
   let street_number: string | undefined
   let complement: string | undefined
@@ -241,11 +242,33 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
   let state: string = 'BA'
   let zip_code: string | undefined
 
-  // Procura linha de endereço completa com CEP
-  // Formato: <Rua>, nº <Num> <Complemento/Bairro> - <Cidade>/<UF> CEP: <CEP>
+  const lines = text.split('\n')
+  const propLineIndex = lines.findIndex((l) =>
+    /^(?:Proprietário|Proprietario|Nome do proprietário|Cliente)[\s:]/i.test(l.trim()),
+  )
+  const linesAfterProp = propLineIndex !== -1 ? lines.slice(propLineIndex + 1) : lines
+
+  const addressCandidateIdx = linesAfterProp.findIndex((l) => /,\s*n[º°o]\s*\S+/i.test(l))
+
   const fullAddressRegex =
     /([^\n\r]+?)(?:,\s*(?:nº|n°|número|numero)\s*([0-9A-Za-z]+|\bS\/N\b))\s*([^-\n\r]*?)\s*-\s*([^\n\r/-]+)\s*\/\s*([A-Za-z]{2})\s*CEP:?\s*([\d.-]+)/i
-  const addrMatch = fullAddressRegex.exec(text)
+
+  let addrMatch: RegExpExecArray | null = null
+
+  if (addressCandidateIdx !== -1) {
+    const chunk = linesAfterProp
+      .slice(addressCandidateIdx, addressCandidateIdx + 3)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join(' ')
+    addrMatch = fullAddressRegex.exec(chunk)
+  }
+
+  if (!addrMatch) {
+    // Tenta encontrar em qualquer texto após o proprietário
+    const afterPropText = linesAfterProp.join('\n')
+    addrMatch = fullAddressRegex.exec(afterPropText)
+  }
 
   if (addrMatch) {
     let rawStreet = addrMatch[1].trim()
@@ -260,8 +283,6 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
     street_number = addrMatch[2].trim()
 
     let rawMiddle = addrMatch[3].trim()
-    // Ex Ficha A: "Cond. Teste Lumiere, Casa 1, Teste"
-    // Ex Ficha B: "Apto 101, Teste"
     // Remove vírgula inicial se houver
     rawMiddle = rawMiddle.replace(/^,\s*/, '').trim()
 
@@ -271,9 +292,9 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
         .map((p) => p.trim())
         .filter(Boolean)
       if (parts.length > 1) {
-        // O último segmento é o bairro (ex: "Teste")
+        // O último segmento é o bairro (ex: "BAIRRO TESTE")
         neighborhood = parts[parts.length - 1]
-        // Os segmentos anteriores compõem o complemento (ex: "Cond. Teste Lumiere, Casa 1")
+        // Os segmentos anteriores compõem o complemento (ex: "Cond. Teste Lumiere, Casa 66")
         complement = parts.slice(0, parts.length - 1).join(', ')
       } else if (parts.length === 1) {
         // Se só tem um pedaço:
@@ -294,8 +315,19 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
     state = (addrMatch[5] || 'BA').toUpperCase()
     zip_code = addrMatch[6].replace(/\D/g, '')
   } else {
-    // Fallback para campos individuais se a linha completa não bater
-    const rawSt = findPattern([
+    // Fallback para campos individuais ignorando linhas anteriores à linha do proprietário
+    const afterPropText = linesAfterProp.join('\n')
+    const findPatternAfterProp = (patterns: RegExp[]): string => {
+      for (const pat of patterns) {
+        const match = pat.exec(afterPropText)
+        if (match && match[1]) {
+          return cleanVal(match[1])
+        }
+      }
+      return ''
+    }
+
+    const rawSt = findPatternAfterProp([
       /(?:Endereço|Endereco|Logradouro|Rua|Av\.?|Avenida)[\s:]+([^\n\r,]+)/i,
       /Logradouro[\s:]+([^\n\r]+)/i,
     ])
@@ -303,12 +335,13 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
       rawSt.replace(/^(?:Rua|Avenida|Av\.?|Travessa|Alameda|Praça|Praca|Rodovia)\s+/i, '').trim() ||
       rawSt ||
       undefined
-    street_number = findPattern([/(?:Número|Numero|Nº|N°)[\s:]+([A-Za-z0-9_-]+)/i]) || 'S/N'
-    complement = findPattern([/(?:Complemento|Compl\.?)[\s:]+([^\n\r]+)/i]) || undefined
-    neighborhood = findPattern([/(?:Bairro)[\s:]+([^\n\r,]+)/i]) || undefined
-    city = findPattern([/(?:Cidade|Município|Municipio)[\s:]+([^\n\r,]+)/i]) || undefined
-    state = (findPattern([/(?:Estado|UF)[\s:]+([A-Za-z]{2})/i]) || 'BA').toUpperCase()
-    const rawZip = findPattern([/(?:CEP)[\s:]+([\d.-]+)/i]).replace(/\D/g, '')
+    street_number =
+      findPatternAfterProp([/(?:Número|Numero|Nº|N°)[\s:]+([A-Za-z0-9_-]+)/i]) || 'S/N'
+    complement = findPatternAfterProp([/(?:Complemento|Compl\.?)[\s:]+([^\n\r]+)/i]) || undefined
+    neighborhood = findPatternAfterProp([/(?:Bairro)[\s:]+([^\n\r,]+)/i]) || undefined
+    city = findPatternAfterProp([/(?:Cidade|Município|Municipio)[\s:]+([^\n\r,]+)/i]) || undefined
+    state = (findPatternAfterProp([/(?:Estado|UF)[\s:]+([A-Za-z]{2})/i]) || 'BA').toUpperCase()
+    const rawZip = findPatternAfterProp([/(?:CEP)[\s:]+([\d.-]+)/i]).replace(/\D/g, '')
     zip_code = rawZip || undefined
   }
 
@@ -367,9 +400,60 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
   // Textos para compor a descrição
   const lazer = findPattern([/(?:Lazer|Área de lazer|Itens de lazer)[\s:]+([^\n\r]+)/i])
   const infraestrutura = findPattern([/(?:Infraestrutura|Estrutura)[\s:]+([^\n\r]+)/i])
-  const comentario_interno = findPattern([
-    /(?:Comentário interno|Comentario interno|Observações|Observacoes|Notas)[\s:]+([^\n\r]+)/i,
-  ])
+
+  // B3. Comentários internos:
+  // Aceite Coment[áa]rios? internos?.
+  // Valor = texto depois do : na mesma linha, mais a linha imediatamente acima do rótulo (só se ela não tiver :),
+  // mais todas as linhas abaixo até o fim da página (ou fim do texto / quebra de página).
+  let comentario_interno: string | undefined = undefined
+
+  // Trabalhar sobre páginas se houver quebra de página (\n\n) ou no texto inteiro
+  const pages = text.split(/\n\s*\n/)
+  for (const page of pages) {
+    const pageLines = page.split('\n')
+    const commentLineIdx = pageLines.findIndex((l) => /Coment[áa]rios?\s+internos?\s*:/i.test(l))
+    if (commentLineIdx !== -1) {
+      const commentLine = pageLines[commentLineIdx]
+      const afterColonMatch = /Coment[áa]rios?\s+internos?\s*:\s*(.*)$/i.exec(commentLine)
+      const afterColon = afterColonMatch ? afterColonMatch[1].trim() : ''
+
+      const collectedParts: string[] = []
+
+      // Linha imediatamente acima (só se ela não tiver :)
+      if (commentLineIdx > 0) {
+        const prevLine = pageLines[commentLineIdx - 1].trim()
+        if (prevLine && !prevLine.includes(':')) {
+          collectedParts.push(prevLine)
+        }
+      }
+
+      // Texto depois do : na mesma linha
+      if (afterColon) {
+        collectedParts.push(afterColon)
+      }
+
+      // Linhas abaixo até o fim da página
+      for (let i = commentLineIdx + 1; i < pageLines.length; i++) {
+        const nextLine = pageLines[i].trim()
+        if (nextLine) {
+          collectedParts.push(nextLine)
+        }
+      }
+
+      if (collectedParts.length > 0) {
+        comentario_interno = cleanVal(collectedParts.join(' '))
+      }
+      break
+    }
+  }
+
+  // Fallback caso não encontre "Comentários internos": busca por observações/notas
+  if (!comentario_interno) {
+    comentario_interno =
+      findPattern([
+        /(?:Comentário interno|Comentario interno|Observações|Observacoes|Notas)[\s:]+([^\n\r]+)/i,
+      ]) || undefined
+  }
 
   const descParts: string[] = []
   if (lazer) descParts.push(`Lazer: ${lazer}`)
