@@ -1,5 +1,4 @@
-// M13 — grava o imóvel e o proprietário da ficha PDF numa transação só. Preenche só campos vazios de um imóvel
-// existente e nunca sobrescreve valor já preenchido. Código automático: prefixo por tipo + sequência por organização.
+// M13 — grava o imóvel e o proprietário da ficha PDF numa transação só (DIAGNÓSTICO: cada passo diz em qual falhou).
 routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
   const actor = e.auth
   const role = String(actor.get('role') || '')
@@ -58,7 +57,6 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
     outro: 'Imóvel',
   }
 
-  // validação do corpo: o que não pode faltar; o que falta na ficha vira pendência, não erro
   const name = String(pr.name || '').trim()
   if (name.length < 2) throw new BadRequestError('Informe o nome do proprietário.')
   if (!im.street || String(im.street).trim().length < 2)
@@ -80,10 +78,15 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
   if (!im.zip_code) pendencias.push('CEP')
   if (!im.state) pendencias.push('UF')
 
+  let fase = 'inicio'
   let res = null
   try {
     res = $app.runInTransaction((tx) => {
-      // 1) proprietário: id informado (confirmado na prévia) > CPF > telefone com o mesmo nome > novo
+      const S = (label, r) => {
+        fase = 'save:' + label
+        tx.save(r)
+      }
+      fase = 'owner-busca'
       let owner = null
       if (body.owner_id) {
         try {
@@ -125,19 +128,21 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
       }
       const ownerNew = !owner
       if (!owner) {
+        fase = 'owner-criar-collection'
         const cl = new Record(tx.findCollectionByNameOrId('clients'))
         cl.set('organization_id', orgId)
         cl.set('name', name)
         if (phone) cl.set('phone', phone)
         cl.set('kind', ['proprietario'])
         cl.set('responsible_id', actor.id)
-        tx.save(cl)
+        S('cliente', cl)
         owner = cl
       } else if (!owner.getString('phone') && phone) {
         owner.set('phone', phone)
-        tx.save(owner)
+        S('cliente-telefone', owner)
       }
       if (cpf) {
+        fase = 'cpf-busca'
         const cp = tx.findRecordsByFilter(
           'client_private',
           'organization_id = {:o} && client_id = {:c}',
@@ -149,18 +154,19 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
         if (cp.length) {
           if (!cp[0].getString('cpf')) {
             cp[0].set('cpf', cpf)
-            tx.save(cp[0])
+            S('client_private-atualiza', cp[0])
           }
         } else {
+          fase = 'cpf-criar-collection'
           const rec = new Record(tx.findCollectionByNameOrId('client_private'))
           rec.set('organization_id', orgId)
           rec.set('client_id', owner.id)
           rec.set('cpf', cpf)
-          tx.save(rec)
+          S('client_private', rec)
         }
       }
 
-      // 2) imóvel: o informado, ou o do mesmo endereço e proprietário, ou um novo
+      fase = 'imovel-busca'
       let prop = null
       if (body.property_id) {
         try {
@@ -187,7 +193,6 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
         )
         if (rows.length) prop = rows[0]
       }
-
       const fields = {
         street: im.street,
         street_number: String(im.street_number || 'S/N'),
@@ -207,9 +212,7 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
         description: im.description,
       }
       const wanted = Array.isArray(body.selected_imovel_fields) ? body.selected_imovel_fields : null
-
       if (prop) {
-        // imóvel existente: só campos vazios (ou os que o usuário marcou explicitamente)
         Object.keys(fields).forEach((k) => {
           const v = fields[k]
           if (isEmpty(v)) return
@@ -217,19 +220,18 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
           if (isEmpty(prop.get(k)) || explicit) prop.set(k, v)
         })
         prop.set('owner_id', prop.getString('owner_id') || owner.id)
-        tx.save(prop)
+        S('imovel-atualiza', prop)
         return { prop, owner, criado: false, ownerNew }
       }
 
-      // imóvel novo: código automático
-      tx.db()
-        .newQuery(
-          'UPDATE organizations SET property_code_seq = COALESCE(property_code_seq, 0) + 1 WHERE id = {:id}',
-        )
-        .bind({ id: orgId })
-        .execute()
-      const seq = tx.findRecordById('organizations', orgId).getInt('property_code_seq')
+      fase = 'codigo-org'
+      const orgRec = tx.findRecordById('organizations', orgId)
+      const seq = orgRec.getInt('property_code_seq') + 1
+      orgRec.set('property_code_seq', seq)
+      S('organizacao-sequencia', orgRec)
       const code = TYPE_CODE[type] + '-' + String(seq).padStart(4, '0')
+
+      fase = 'imovel-criar-collection'
       const np = new Record(tx.findCollectionByNameOrId('properties'))
       np.set('organization_id', orgId)
       np.set('code', code)
@@ -253,20 +255,15 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
       Object.keys(fields).forEach((k) => {
         if (!isEmpty(fields[k])) np.set(k, fields[k])
       })
-      tx.save(np)
+      S('imovel', np)
       return { prop: np, owner, criado: true, ownerNew }
     })
   } catch (err) {
-    console.log(
-      'FICHA_DEBUG ' +
-        String(err && err.value) +
-        ' | ' +
-        JSON.stringify((err && err.value && err.value.data) || {}),
-    )
-    return e.json(500, {
-      debug: String((err && err.message) || err),
-      tipo: typeof err,
-      keys: Object.keys(err || {}).join(','),
+    return e.json(400, {
+      fase: fase,
+      detalhe: String(
+        (err && err.message) || (err && err.value && err.value.message) || 'sem mensagem',
+      ),
     })
   }
 
