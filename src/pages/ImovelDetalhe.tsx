@@ -849,16 +849,21 @@ export default function ImovelDetalhe() {
                   />
                   {isCover && (
                     <div className="absolute top-2 left-2">
-                      <Badge variant="default" className="text-[10px] px-1.5 py-0">
+                      <span className="inline-flex items-center text-[10px] font-normal text-body bg-background/90 rounded-[4px] px-1.5 py-0.5 border border-border/40 shadow-xs">
                         Capa
-                      </Badge>
+                      </span>
                     </div>
                   )}
 
                   {/* Selo para fotos PNG existentes */}
                   {isPng && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-amber-600/90 text-white p-1 text-[9px] font-normal text-center leading-tight">
-                      não vai para o portal; substitua por JPEG ou WebP
+                    <div className="absolute bottom-2 left-2 right-2 flex justify-center">
+                      <Badge
+                        variant="attention"
+                        className="text-[9px] px-1.5 py-0.5 h-auto text-center leading-tight shadow-xs"
+                      >
+                        não vai para o portal; substitua por JPEG ou WebP
+                      </Badge>
                     </div>
                   )}
 
@@ -948,23 +953,19 @@ export default function ImovelDetalhe() {
                   <div
                     className={`p-3 rounded-lg border text-xs space-y-1.5 mt-2 ${
                       isPortalReady
-                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
-                        : 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                        ? 'border-success/30 bg-success/10 text-success'
+                        : 'border-attention/30 bg-attention/10 text-attention'
                     }`}
                   >
                     <div className="flex items-center gap-2 font-medium">
                       {isPortalReady ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-600 text-white">
-                          ● Pronto para o portal
-                        </span>
+                        <Badge variant="success">Pronto para o portal</Badge>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-600 text-white">
-                          ▲ Pendências para o portal Chaves na Mão
-                        </span>
+                        <Badge variant="attention">Pendências para o portal Chaves na Mão</Badge>
                       )}
                     </div>
                     {!isPortalReady && (
-                      <ul className="space-y-0.5 list-disc list-inside text-xs">
+                      <ul className="space-y-0.5 list-disc list-inside text-xs text-foreground">
                         {portalReasons.map((r, i) => (
                           <li key={i}>{r}</li>
                         ))}

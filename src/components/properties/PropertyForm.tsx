@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/dialog'
 import { Loader2, User, X, Plus, Building2, UserPlus } from 'lucide-react'
 import { AiBadge } from '@/components/AiBadge'
+import { Badge } from '@/components/ui/badge'
 import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
 import { getPropertyById } from '@/services/properties'
 
@@ -1010,24 +1011,20 @@ export function PropertyForm({
                 <div
                   className={`p-3.5 rounded-lg border text-xs space-y-2 mt-3 ${
                     isReady
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
-                      : 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                      ? 'border-success/30 bg-success/10 text-success'
+                      : 'border-attention/30 bg-attention/10 text-attention'
                   }`}
                 >
                   <div className="flex items-center gap-2 font-medium">
                     {isReady ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-600 text-white">
-                        ● Pronto para o portal
-                      </span>
+                      <Badge variant="success">Pronto para o portal</Badge>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-600 text-white">
-                        ▲ Pendências para o portal Chaves na Mão
-                      </span>
+                      <Badge variant="attention">Pendências para o portal Chaves na Mão</Badge>
                     )}
                   </div>
 
                   {!isReady && (
-                    <ul className="space-y-1 list-disc list-inside text-xs">
+                    <ul className="space-y-1 list-disc list-inside text-xs text-foreground">
                       {reasons.map((r, idx) => (
                         <li key={idx}>{r}</li>
                       ))}

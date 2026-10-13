@@ -634,7 +634,7 @@ export function ImportFichaPdfModal({
                     </div>
 
                     {isZeroOrMissing ? (
-                      <div className="p-1.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px]">
+                      <div className="p-1.5 rounded bg-attention/10 border border-attention/20 text-attention text-[11px]">
                         Preencha depois de confirmar.
                       </div>
                     ) : (
@@ -702,7 +702,7 @@ export function ImportFichaPdfModal({
                     </div>
 
                     {isZeroOrMissing ? (
-                      <div className="p-1.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px]">
+                      <div className="p-1.5 rounded bg-attention/10 border border-attention/20 text-attention text-[11px]">
                         Preencha depois de confirmar.
                       </div>
                     ) : (
@@ -933,8 +933,8 @@ export function ImportFichaPdfModal({
         {/* RESULTADO DE SUCESSO DO COMMIT */}
         {commitSuccess ? (
           <div className="space-y-4 py-4">
-            <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 text-foreground space-y-2">
-              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium text-sm">
+            <div className="p-4 rounded-xl border border-success/30 bg-success/10 text-foreground space-y-2">
+              <div className="flex items-center gap-2 text-success font-medium text-sm">
                 <CheckCircle2 className="h-5 w-5 shrink-0" />
                 <span>
                   {commitSuccess.criado
@@ -1018,7 +1018,7 @@ export function ImportFichaPdfModal({
             {/* DIÁLOGO / AVISO: PERGUNTA TELEFONE */}
             {showingPhoneQuestion && (
               <div className="p-5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-foreground space-y-3">
-                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-medium text-sm">
+                <div className="flex items-center gap-2 text-attention font-medium text-sm">
                   <HelpCircle className="h-5 w-5 shrink-0" />
                   <span>Este telefone já está cadastrado com outro nome. É a mesma pessoa?</span>
                 </div>
