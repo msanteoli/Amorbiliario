@@ -257,6 +257,12 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
       return { prop: np, owner, criado: true, ownerNew }
     })
   } catch (err) {
+    console.log(
+      'FICHA_DEBUG ' +
+        String(err && err.value) +
+        ' | ' +
+        JSON.stringify((err && err.value && err.value.data) || {}),
+    )
     return e.json(500, {
       debug: String((err && err.message) || err),
       tipo: typeof err,
