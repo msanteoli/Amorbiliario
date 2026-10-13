@@ -281,7 +281,26 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
             )
             .join(' | ')
         : ''
-    return e.json(400, { fase: fase, chaves: ks, campos: dd, texto: String(vv) })
+    const ee = vv && vv.error
+    let eks = ''
+    let ed = ''
+    try {
+      eks = ee ? Object.keys(ee).join(',') : ''
+      ed = ee
+        ? Object.keys(ee)
+            .map((k) => k + '=' + String(ee[k] && (ee[k].message || ee[k].code || ee[k])))
+            .join(' | ')
+        : ''
+    } catch (_) {}
+    return e.json(400, {
+      fase: fase,
+      chaves: ks,
+      campos: dd,
+      texto: String(vv),
+      erro_chaves: eks,
+      erro_detalhe: ed,
+      erro_texto: String(ee),
+    })
     return e.json(400, {
       fase: fase,
       detalhe: String(
