@@ -247,7 +247,7 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
       np.set('property_type', type)
       np.set('use_type', 'residencial')
       np.set('status', 'rascunho')
-      np.set('source', 'ficha_pdf')
+      np.set('source', 'manual')
       np.set('captured_by', actor.id)
       np.set('owner_id', owner.id)
       np.set('publish_to', ['site'])
