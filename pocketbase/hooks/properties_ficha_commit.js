@@ -248,6 +248,17 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
       np.set('use_type', 'residencial')
       np.set('status', 'rascunho')
       np.set('source', 'manual')
+      np.set('state', String(im.state || 'BA').toUpperCase())
+      np.set('city', im.city || 'Feira de Santana')
+      np.set('neighborhood', im.neighborhood || '')
+      np.set(
+        'zip_code',
+        String(im.zip_code || '').replace(/\D/g, '').length === 8
+          ? String(im.zip_code).replace(/\D/g, '').slice(0, 5) +
+              '-' +
+              String(im.zip_code).replace(/\D/g, '').slice(5)
+          : '',
+      )
       np.set('captured_by', actor.id)
       np.set('owner_id', owner.id)
       np.set('publish_to', ['site'])
