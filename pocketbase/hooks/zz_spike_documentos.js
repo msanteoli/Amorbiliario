@@ -1,4 +1,4 @@
-// SPIKE DESCARTÁVEL (M14, T0, cópia de arquivo, rodada 2). Será removido logo após o teste.
+// SPIKE DESCARTÁVEL (M14, T0, cópia de arquivo, rodada 3). Será removido logo após o teste.
 routerAdd('GET', '/backend/v1/zz-spike-copia/{pid}', (e) => {
   const actor = e.auth
   if (actor.get('active') !== true || String(actor.get('role')) !== 'admin') {
@@ -11,33 +11,56 @@ routerAdd('GET', '/backend/v1/zz-spike-copia/{pid}', (e) => {
   })
   if (!rows.length) return e.json(200, { origem: 'sem foto' })
   const src = rows[0]
-  const nomes = src.getStringSlice('file')
-  const caminho = src.baseFilesPath() + '/' + nomes[0]
-  out.caminho = caminho
+  const caminho = src.baseFilesPath() + '/' + src.getStringSlice('file')[0]
   const fs = $app.newFilesystem()
-  const f = fs.getFile(caminho)
-  out.getFile_tipo = typeof f
-  out.getFile_chaves = Object.keys(f || {}).join(',')
   const r = fs.getReader(caminho)
-  out.getReader_tipo = typeof r
-  out.getReader_chaves = Object.keys(r || {}).join(',')
-  out.getReader_metodos = ['read', 'readAll', 'bytes', 'close', 'seek']
-    .filter((m) => typeof r[m] === 'function')
-    .join(',')
-  // laço de leitura manual
-  try {
-    const chunks = []
-    let total = 0
-    for (let i = 0; i < 2000; i++) {
-      const buf = new Uint8Array(8192)
-      const n = r.read(buf)
-      if (!n || n <= 0) break
-      chunks.push(buf.slice(0, n))
-      total += n
+  out.tamanho = r.size
+  const parts = []
+  let total = 0
+  for (let i = 0; i < 5000; i++) {
+    const buf = new Uint8Array(8192)
+    let n = 0
+    try {
+      n = r.read(buf)
+    } catch (err) {
+      out.fim = String((err && err.message) || err)
+      break
     }
-    out.laço_bytes = total
+    if (!n || n <= 0) break
+    parts.push(buf.slice(0, n))
+    total += n
+  }
+  out.lidos = total
+  // junta os pedaços num único array de bytes
+  const bytes = new Uint8Array(total)
+  let off = 0
+  parts.forEach((p) => {
+    bytes.set(p, off)
+    off += p.length
+  })
+  out.bytes_montados = bytes.length
+  // cria um registro novo com esses bytes, na mesma transação, e depois remove
+  let copia = null
+  try {
+    $app.runInTransaction((tx) => {
+      const novo = new Record(tx.findCollectionByNameOrId('property_photos'))
+      novo.set('organization_id', src.getString('organization_id'))
+      novo.set('property_id', pid)
+      novo.set('file', $filesystem.fileFromBytes(bytes, 'copia-spike.jpg'))
+      tx.save(novo)
+      copia = novo.id
+    })
+    out.copia_gravada = copia ? 'sim' : 'não'
   } catch (err) {
-    out.laço_erro = String((err && err.message) || err)
+    out.copia_erro = String((err && err.message) || err)
+  }
+  if (copia) {
+    try {
+      $app.delete($app.findRecordById('property_photos', copia))
+      out.copia_removida = 'sim'
+    } catch (err) {
+      out.limpeza_erro = String((err && err.message) || err)
+    }
   }
   return e.json(200, out)
 })
