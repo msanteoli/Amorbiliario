@@ -281,6 +281,16 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
             )
             .join(' | ')
         : ''
+    const ee0 = vv && vv.error
+    if (typeof ee0 === 'function') {
+      let m = ''
+      try {
+        m = String(ee0.call(vv))
+      } catch (_) {
+        m = 'chamada falhou'
+      }
+      return e.json(400, { fase: fase, mensagem: m })
+    }
     const ee = vv && vv.error
     let eks = ''
     let ed = ''
