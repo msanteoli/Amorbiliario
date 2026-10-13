@@ -7,19 +7,14 @@ import {
   CalendarDays,
   Building2,
   Building,
-  UserCog,
-  Landmark,
-  UserX,
-  ScrollText,
-  Globe,
-  Database,
+  Settings,
 } from 'lucide-react'
 
 export interface NavItemConfig {
   id: string
   label: string
   href: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
   roles: UserRole[]
 }
 
@@ -31,32 +26,42 @@ export interface NavGroupConfig {
 }
 
 /**
- * Item isolado do topo ("Hoje")
+ * Item isolado do topo ("Painel" - rota /hoje)
  */
-export const HOJE_NAV_ITEM: NavItemConfig = {
-  id: 'hoje',
-  label: 'Hoje',
+export const PAINEL_NAV_ITEM: NavItemConfig = {
+  id: 'painel',
+  label: 'Painel',
   href: '/hoje',
   icon: LayoutDashboard,
   roles: ['admin', 'sdr', 'corretor'],
 }
 
 /**
+ * Para retrocompatibilidade caso algo ainda importe HOJE_NAV_ITEM
+ */
+export const HOJE_NAV_ITEM: NavItemConfig = PAINEL_NAV_ITEM
+
+/**
+ * Item de rodapé ("Configurações" - rota /configuracoes)
+ */
+export const CONFIGURACOES_NAV_ITEM: NavItemConfig = {
+  id: 'configuracoes',
+  label: 'Configurações',
+  href: '/configuracoes',
+  icon: Settings,
+  roles: ['admin', 'sdr', 'corretor'],
+}
+
+/**
  * Grupos principais de navegação:
- * - Atendimento: Leads, Clientes, Agenda
- * - Imóveis: Imóveis, Condomínios
- * - Configurações: Equipe, Organização, Proprietários sem imóvel, Auditoria, Portais, Backup
- *
- * Visibilidade por papel:
- * - Hoje, Leads, Clientes, Agenda, Imóveis, Condomínios: admin, SDR e corretor.
- * - Equipe, Organização, Proprietários sem imóvel, Auditoria, Portais: só admin.
- * - Backup: admin e SDR.
+ * - Atendimento: Leads (/leads), Clientes (/clientes), Agenda (/agenda)
+ * - Imóveis: Imóveis (/imoveis), Condomínios (/condominios)
  */
 export const NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'atendimento',
     title: 'Atendimento',
-    collapsible: false,
+    collapsible: true,
     items: [
       {
         id: 'leads',
@@ -84,7 +89,7 @@ export const NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'imoveis',
     title: 'Imóveis',
-    collapsible: false,
+    collapsible: true,
     items: [
       {
         id: 'imoveis',
@@ -102,63 +107,15 @@ export const NAV_GROUPS: NavGroupConfig[] = [
       },
     ],
   },
-  {
-    id: 'configuracoes',
-    title: 'Configurações',
-    collapsible: true,
-    items: [
-      {
-        id: 'equipe',
-        label: 'Equipe',
-        href: '/admin?aba=usuarios',
-        icon: UserCog,
-        roles: ['admin'],
-      },
-      {
-        id: 'organizacao',
-        label: 'Organização',
-        href: '/admin?aba=organizacao',
-        icon: Landmark,
-        roles: ['admin'],
-      },
-      {
-        id: 'proprietarios',
-        label: 'Proprietários sem imóvel',
-        href: '/admin?aba=proprietarios',
-        icon: UserX,
-        roles: ['admin'],
-      },
-      {
-        id: 'auditoria',
-        label: 'Auditoria',
-        href: '/admin?aba=auditoria',
-        icon: ScrollText,
-        roles: ['admin'],
-      },
-      {
-        id: 'portais',
-        label: 'Portais',
-        href: '/portais',
-        icon: Globe,
-        roles: ['admin'],
-      },
-      {
-        id: 'backup',
-        label: 'Backup',
-        href: '/backup',
-        icon: Database,
-        roles: ['admin', 'sdr'],
-      },
-    ],
-  },
 ]
 
 /**
- * Lista plana com todos os itens do sistema, útil para conferência ou buscas.
+ * Lista plana com todos os itens do sistema para conferência, busca e checagem de papéis.
  */
 export const ALL_NAV_ITEMS: NavItemConfig[] = [
-  HOJE_NAV_ITEM,
+  PAINEL_NAV_ITEM,
   ...NAV_GROUPS.flatMap((group) => group.items),
+  CONFIGURACOES_NAV_ITEM,
 ]
 
 /**
@@ -182,40 +139,81 @@ export function getVisibleGroupsForRole(role?: UserRole): NavGroupConfig[] {
 }
 
 /**
- * Avalia se um item do menu corresponde à rota atual (inclusive subrotas e parâmetros de aba).
- * Exemplo:
- * - /imoveis/123 corresponde a /imoveis
- * - /leads/abc corresponde a /leads
- * - /admin?aba=usuarios corresponde a /admin?aba=usuarios
- * - /admin (sem parâmetro) corresponde a /admin?aba=usuarios (aba padrão)
- * - /admin?aba=organizacao corresponde a /admin?aba=organizacao
- * - /admin?tab=sem-imovel corresponde a /admin?aba=proprietarios
+ * Avalia se um item do menu corresponde à rota atual (inclusive subrotas).
  */
 export function isNavItemActive(
   itemHref: string,
   currentPath: string,
-  currentSearch: string,
+  _currentSearch = '',
 ): boolean {
-  const [itemPath, itemQuery] = itemHref.split('?')
-  const currentParams = new URLSearchParams(currentSearch)
+  const [itemPath] = itemHref.split('?')
 
-  // Tratamento específico para itens apontados para /admin
-  if (itemPath === '/admin') {
-    if (currentPath !== '/admin') {
-      return false
-    }
-    const itemAba = itemQuery ? new URLSearchParams(itemQuery).get('aba') : null
-    const currentAbaRaw = currentParams.get('aba') || currentParams.get('tab')
-    // Mapeamento de retrocompatibilidade para sem-imovel <-> proprietarios
-    const currentAba =
-      currentAbaRaw === 'sem-imovel' ? 'proprietarios' : currentAbaRaw || 'usuarios'
-
-    return itemAba === currentAba
+  // Tratamento específico de rota raiz e Hoje/Painel
+  if (itemPath === '/hoje') {
+    return currentPath === '/hoje' || currentPath.startsWith('/hoje/')
   }
 
   // Demais rotas: correspondência exata ou de subrota (/imoveis -> /imoveis, /imoveis/123)
   if (currentPath === itemPath) return true
   if (currentPath.startsWith(`${itemPath}/`)) return true
 
+  // Configurações: /admin, /portais, /backup também fazem parte de Configurações para efeito de menu
+  if (itemPath === '/configuracoes') {
+    if (
+      currentPath === '/configuracoes' ||
+      currentPath.startsWith('/configuracoes/') ||
+      currentPath === '/admin' ||
+      currentPath.startsWith('/admin/') ||
+      currentPath === '/portais' ||
+      currentPath.startsWith('/portais/') ||
+      currentPath === '/backup' ||
+      currentPath.startsWith('/backup/')
+    ) {
+      return true
+    }
+  }
+
   return false
+}
+
+/**
+ * Encontra a informação de breadcrumb para a rota atual:
+ * { group: 'Atendimento', screen: 'Leads' } ou { screen: 'Painel' }
+ */
+export function getBreadcrumbForPath(pathname: string): { group?: string; screen: string } {
+  if (pathname === '/hoje' || pathname.startsWith('/hoje/')) {
+    return { screen: 'Painel' }
+  }
+
+  if (pathname === '/leads' || pathname.startsWith('/leads/')) {
+    return { group: 'Atendimento', screen: 'Leads' }
+  }
+  if (pathname === '/clientes' || pathname.startsWith('/clientes/')) {
+    return { group: 'Atendimento', screen: 'Clientes' }
+  }
+  if (pathname === '/agenda' || pathname.startsWith('/agenda/')) {
+    return { group: 'Atendimento', screen: 'Agenda' }
+  }
+
+  if (pathname === '/imoveis' || pathname.startsWith('/imoveis/')) {
+    return { group: 'Imóveis', screen: 'Imóveis' }
+  }
+  if (pathname === '/condominios' || pathname.startsWith('/condominios/')) {
+    return { group: 'Imóveis', screen: 'Condomínios' }
+  }
+
+  if (
+    pathname === '/configuracoes' ||
+    pathname.startsWith('/configuracoes/') ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/') ||
+    pathname === '/portais' ||
+    pathname.startsWith('/portais/') ||
+    pathname === '/backup' ||
+    pathname.startsWith('/backup/')
+  ) {
+    return { screen: 'Configurações' }
+  }
+
+  return { screen: 'Imobdigital' }
 }

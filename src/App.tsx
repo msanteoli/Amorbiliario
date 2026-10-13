@@ -29,6 +29,7 @@ import Backup from '@/pages/Backup'
 import Admin from '@/pages/Admin'
 import ImportarImoveis from '@/pages/ImportarImoveis'
 import Portais from '@/pages/Portais'
+import Configuracoes from '@/pages/Configuracoes'
 import NotFound from '@/pages/NotFound'
 
 const App = () => (
@@ -53,7 +54,8 @@ const App = () => (
 
               <Route element={<AppLayout />}>
                 <Route path="/hoje" element={<Hoje />} />
-                <Route path="/leads" element={<Leads />} />
+                <Route path="/configuracoes" element={<Configuracoes />} />
+                <Route path="/leads" element={<Leads />} />{' '}
                 <Route path="/leads/novo" element={<NovoLead />} />
                 <Route path="/leads/:id" element={<LeadDetalhe />} />
                 <Route path="/clientes" element={<Clientes />} />

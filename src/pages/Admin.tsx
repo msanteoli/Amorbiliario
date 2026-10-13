@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { ConfigSidebar } from '@/components/ConfigSidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   AdminUserItem,
@@ -511,6 +512,14 @@ export default function Admin() {
     selectedActor !== 'all' ||
     selectedCollection !== 'all'
 
+  const currentConfigSection = useMemo(() => {
+    if (activeTab === 'usuarios') return 'equipe'
+    if (activeTab === 'organizacao') return 'organizacao'
+    if (activeTab === 'sem-imovel') return 'proprietarios'
+    if (activeTab === 'auditoria') return 'auditoria'
+    return 'equipe'
+  }, [activeTab])
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       {/* Top Header */}
@@ -568,694 +577,708 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Abas como pílulas */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(val) => {
-          setGlobalSuccess(null)
-          setGlobalError(null)
-          const nextTab = val as 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel'
-          setActiveTab(nextTab)
-          // Atualiza o parâmetro na URL mantendo qualquer outro parâmetro existente
-          const nextParams = new URLSearchParams(searchParams)
-          nextParams.delete('tab') // remove chave legada se houver
-          const paramValue = nextTab === 'sem-imovel' ? 'proprietarios' : nextTab
-          nextParams.set('aba', paramValue)
-          setSearchParams(nextParams, { replace: true })
-        }}
-        className="w-full space-y-6"
-      >
-        <TabsList className="h-auto p-1 bg-muted/40 border border-border rounded-full inline-flex gap-1 flex-wrap">
-          <TabsTrigger
-            value="usuarios"
-            className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            Usuários
-          </TabsTrigger>
-          <TabsTrigger
-            value="sem-imovel"
-            className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            Proprietários sem imóvel
-          </TabsTrigger>
-          <TabsTrigger
-            value="organizacao"
-            className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            Organização
-          </TabsTrigger>
-          <TabsTrigger
-            value="auditoria"
-            className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            Auditoria
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col md:flex-row gap-6 items-start">
+        {/* Barra lateral de Configurações */}
+        <ConfigSidebar currentSection={currentConfigSection} />
 
-        {/* ═════════════════════════════════════════════════════════════ */}
-        {/* ABA 1: USUÁRIOS */}
-        {/* ═════════════════════════════════════════════════════════════ */}
-        <TabsContent value="usuarios" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h2 className="text-[20px] font-normal text-foreground">Equipe da organização</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Controle de acessos, papéis e convites de novos colaboradores
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                setInviteError(null)
-                setInviteName('')
-                setInviteEmail('')
-                setInviteRole('corretor')
-                setSendInviteNow(true)
-                setInviteModalOpen(true)
-              }}
-              className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground gap-1.5 shrink-0 self-start sm:self-auto"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Convidar usuário</span>
-            </Button>
-          </div>
+        <div className="flex-1 min-w-0 w-full space-y-6">
+          {/* Abas como pílulas */}
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => {
+              setGlobalSuccess(null)
+              setGlobalError(null)
+              const nextTab = val as 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel'
+              setActiveTab(nextTab)
+              // Atualiza o parâmetro na URL mantendo qualquer outro parâmetro existente
+              const nextParams = new URLSearchParams(searchParams)
+              nextParams.delete('tab') // remove chave legada se houver
+              const paramValue = nextTab === 'sem-imovel' ? 'proprietarios' : nextTab
+              nextParams.set('aba', paramValue)
+              setSearchParams(nextParams, { replace: true })
+            }}
+            className="w-full space-y-6"
+          >
+            <TabsList className="h-auto p-1 bg-muted/40 border border-border rounded-full inline-flex gap-1 flex-wrap">
+              <TabsTrigger
+                value="usuarios"
+                className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                Usuários
+              </TabsTrigger>
+              <TabsTrigger
+                value="sem-imovel"
+                className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                Proprietários sem imóvel
+              </TabsTrigger>
+              <TabsTrigger
+                value="organizacao"
+                className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                Organização
+              </TabsTrigger>
+              <TabsTrigger
+                value="auditoria"
+                className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                Auditoria
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="usuarios" className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-[20px] font-normal text-foreground">Equipe da organização</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Controle de acessos, papéis e convites de novos colaboradores
+                  </p>
+                </div>
+                <Button
+                  onClick={() => {
+                    setInviteError(null)
+                    setInviteName('')
+                    setInviteEmail('')
+                    setInviteRole('corretor')
+                    setSendInviteNow(true)
+                    setInviteModalOpen(true)
+                  }}
+                  className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground gap-1.5 shrink-0 self-start sm:self-auto"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Convidar usuário</span>
+                </Button>
+              </div>
 
-          {loadingUsers ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : users.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-10">
-              Nenhum usuário cadastrado. Convide um membro da equipe para começar.
-            </p>
-          ) : (
-            <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
-              {users.map((u) => {
-                const isSelf = u.id === currentUser?.id
-                return (
-                  <div
-                    key={u.id}
-                    className={`p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors ${
-                      !u.active ? 'opacity-60' : ''
-                    }`}
-                  >
-                    {/* Identificação do Usuário */}
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-normal text-foreground truncate">
-                          {u.name || 'Sem nome'}
-                        </span>
-                        {isSelf && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
-                            Você
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className="text-[11px] font-normal">
-                          {getRoleLabel(u.role)}
-                        </Badge>
-                        <Badge
-                          variant={u.active ? 'success' : 'destructive'}
-                          className="text-[11px] font-normal"
-                        >
-                          {u.active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                    </div>
-
-                    {/* Ações no Desktop (pílulas de contorno) */}
-                    <div className="hidden sm:flex items-center gap-2 shrink-0">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenEdit(u)}
-                        className="h-8 rounded-full px-3 text-xs font-normal border-border"
+              {loadingUsers ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : users.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-10">
+                  Nenhum usuário cadastrado. Convide um membro da equipe para começar.
+                </p>
+              ) : (
+                <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
+                  {users.map((u) => {
+                    const isSelf = u.id === currentUser?.id
+                    return (
+                      <div
+                        key={u.id}
+                        className={`p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors ${
+                          !u.active ? 'opacity-60' : ''
+                        }`}
                       >
-                        Editar
-                      </Button>
+                        {/* Identificação do Usuário */}
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-normal text-foreground truncate">
+                              {u.name || 'Sem nome'}
+                            </span>
+                            {isSelf && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 font-normal"
+                              >
+                                Você
+                              </Badge>
+                            )}
+                            <Badge variant="secondary" className="text-[11px] font-normal">
+                              {getRoleLabel(u.role)}
+                            </Badge>
+                            <Badge
+                              variant={u.active ? 'success' : 'destructive'}
+                              className="text-[11px] font-normal"
+                            >
+                              {u.active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                        </div>
 
-                      {u.active && (
-                        <div className="flex flex-col items-end">
+                        {/* Ações no Desktop (pílulas de contorno) */}
+                        <div className="hidden sm:flex items-center gap-2 shrink-0">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => handleReinvite(u)}
-                            disabled={reinvitingId === u.id}
-                            className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                            onClick={() => handleOpenEdit(u)}
+                            className="h-8 rounded-full px-3 text-xs font-normal border-border"
                           >
-                            {reinvitingId === u.id && <Loader2 className="h-3 w-3 animate-spin" />}
-                            <span>Reenviar convite</span>
-                          </Button>
-                          <span className="text-[11px] text-muted-foreground mt-0.5">
-                            Envia o e-mail para a pessoa criar a senha.
-                          </span>
-                        </div>
-                      )}
-
-                      {!isSelf && (
-                        <>
-                          {u.active ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleStartDeactivate(u)}
-                              className="h-8 rounded-full px-3 text-xs font-normal border-border text-destructive hover:bg-destructive/10"
-                            >
-                              Desativar
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleReactivate(u)}
-                              className="h-8 rounded-full px-3 text-xs font-normal border-border"
-                            >
-                              Reativar
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Ações no Celular (menu três pontos de 44px de alvo) */}
-                    <div className="sm:hidden shrink-0">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            aria-label="Ações do usuário"
-                            className="w-11 h-11 rounded-full border border-border flex items-center justify-center hover:bg-muted text-foreground"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => handleOpenEdit(u)}>
                             Editar
-                          </DropdownMenuItem>
+                          </Button>
+
                           {u.active && (
-                            <DropdownMenuItem
-                              onClick={() => handleReinvite(u)}
-                              disabled={reinvitingId === u.id}
-                              className="flex flex-col items-start gap-0.5"
-                            >
-                              <span>Reenviar convite</span>
-                              <span className="text-[10px] text-muted-foreground font-normal">
+                            <div className="flex flex-col items-end">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleReinvite(u)}
+                                disabled={reinvitingId === u.id}
+                                className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                              >
+                                {reinvitingId === u.id && (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                )}
+                                <span>Reenviar convite</span>
+                              </Button>
+                              <span className="text-[11px] text-muted-foreground mt-0.5">
                                 Envia o e-mail para a pessoa criar a senha.
                               </span>
-                            </DropdownMenuItem>
+                            </div>
                           )}
+
                           {!isSelf && (
                             <>
                               {u.active ? (
-                                <DropdownMenuItem
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => handleStartDeactivate(u)}
-                                  className="text-destructive focus:text-destructive"
+                                  className="h-8 rounded-full px-3 text-xs font-normal border-border text-destructive hover:bg-destructive/10"
                                 >
                                   Desativar
-                                </DropdownMenuItem>
+                                </Button>
                               ) : (
-                                <DropdownMenuItem onClick={() => handleReactivate(u)}>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleReactivate(u)}
+                                  className="h-8 rounded-full px-3 text-xs font-normal border-border"
+                                >
                                   Reativar
-                                </DropdownMenuItem>
+                                </Button>
                               )}
                             </>
                           )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </div>
+
+                        {/* Ações no Celular (menu três pontos de 44px de alvo) */}
+                        <div className="sm:hidden shrink-0">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                aria-label="Ações do usuário"
+                                className="w-11 h-11 rounded-full border border-border flex items-center justify-center hover:bg-muted text-foreground"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem onClick={() => handleOpenEdit(u)}>
+                                Editar
+                              </DropdownMenuItem>
+                              {u.active && (
+                                <DropdownMenuItem
+                                  onClick={() => handleReinvite(u)}
+                                  disabled={reinvitingId === u.id}
+                                  className="flex flex-col items-start gap-0.5"
+                                >
+                                  <span>Reenviar convite</span>
+                                  <span className="text-[10px] text-muted-foreground font-normal">
+                                    Envia o e-mail para a pessoa criar a senha.
+                                  </span>
+                                </DropdownMenuItem>
+                              )}
+                              {!isSelf && (
+                                <>
+                                  {u.active ? (
+                                    <DropdownMenuItem
+                                      onClick={() => handleStartDeactivate(u)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      Desativar
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem onClick={() => handleReactivate(u)}>
+                                      Reativar
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ═════════════════════════════════════════════════════════════ */}
+            {/* ABA 2: ORGANIZAÇÃO */}
+            {/* ═════════════════════════════════════════════════════════════ */}
+            <TabsContent value="organizacao" className="space-y-6">
+              <div>
+                <h2 className="text-[20px] font-normal text-foreground">Dados da organização</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Informações cadastrais e dados de contato corporativo exibidos aos clientes
+                </p>
+              </div>
+
+              {loadingOrg ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-12 w-full rounded-lg" />
+                  <Skeleton className="h-12 w-full rounded-lg" />
+                  <Skeleton className="h-12 w-full rounded-lg" />
+                </div>
+              ) : (
+                <form onSubmit={handleOrgSubmit} className="space-y-6 max-w-3xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="org-name"
+                        className="text-[13px] font-normal text-foreground block"
+                      >
+                        Nome da organização <span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        id="org-name"
+                        value={orgName}
+                        onChange={(e) => setOrgName(e.target.value)}
+                        placeholder="Ex: Imobiliária Modelo"
+                        required
+                        disabled={submittingOrg}
+                        className="h-12 text-sm border-border"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="org-phone"
+                        className="text-[13px] font-normal text-foreground block"
+                      >
+                        Telefone de contato
+                      </label>
+                      <Input
+                        id="org-phone"
+                        value={orgPhone}
+                        onChange={(e) => setOrgPhone(e.target.value)}
+                        placeholder="Ex: (71) 99999-9999"
+                        disabled={submittingOrg}
+                        className="h-12 text-sm border-border tabular"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="org-email"
+                        className="text-[13px] font-normal text-foreground block"
+                      >
+                        E-mail de contato
+                      </label>
+                      <Input
+                        id="org-email"
+                        type="email"
+                        value={orgEmail}
+                        onChange={(e) => setOrgEmail(e.target.value)}
+                        placeholder="contato@empresa.com.br"
+                        disabled={submittingOrg}
+                        className="h-12 text-sm border-border"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="org-address"
+                        className="text-[13px] font-normal text-foreground block"
+                      >
+                        Endereço
+                      </label>
+                      <Input
+                        id="org-address"
+                        value={orgAddress}
+                        onChange={(e) => setOrgAddress(e.target.value)}
+                        placeholder="Ex: Av. Tancredo Neves, 1000 - Salvador/BA"
+                        disabled={submittingOrg}
+                        className="h-12 text-sm border-border"
+                      />
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </TabsContent>
 
-        {/* ═════════════════════════════════════════════════════════════ */}
-        {/* ABA 2: ORGANIZAÇÃO */}
-        {/* ═════════════════════════════════════════════════════════════ */}
-        <TabsContent value="organizacao" className="space-y-6">
-          <div>
-            <h2 className="text-[20px] font-normal text-foreground">Dados da organização</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Informações cadastrais e dados de contato corporativo exibidos aos clientes
-            </p>
-          </div>
-
-          {loadingOrg ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-            </div>
-          ) : (
-            <form onSubmit={handleOrgSubmit} className="space-y-6 max-w-3xl">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="org-name"
-                    className="text-[13px] font-normal text-foreground block"
-                  >
-                    Nome da organização <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    id="org-name"
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    placeholder="Ex: Imobiliária Modelo"
-                    required
-                    disabled={submittingOrg}
-                    className="h-12 text-sm border-border"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="org-phone"
-                    className="text-[13px] font-normal text-foreground block"
-                  >
-                    Telefone de contato
-                  </label>
-                  <Input
-                    id="org-phone"
-                    value={orgPhone}
-                    onChange={(e) => setOrgPhone(e.target.value)}
-                    placeholder="Ex: (71) 99999-9999"
-                    disabled={submittingOrg}
-                    className="h-12 text-sm border-border tabular"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="org-email"
-                    className="text-[13px] font-normal text-foreground block"
-                  >
-                    E-mail de contato
-                  </label>
-                  <Input
-                    id="org-email"
-                    type="email"
-                    value={orgEmail}
-                    onChange={(e) => setOrgEmail(e.target.value)}
-                    placeholder="contato@empresa.com.br"
-                    disabled={submittingOrg}
-                    className="h-12 text-sm border-border"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="org-address"
-                    className="text-[13px] font-normal text-foreground block"
-                  >
-                    Endereço
-                  </label>
-                  <Input
-                    id="org-address"
-                    value={orgAddress}
-                    onChange={(e) => setOrgAddress(e.target.value)}
-                    placeholder="Ex: Av. Tancredo Neves, 1000 - Salvador/BA"
-                    disabled={submittingOrg}
-                    className="h-12 text-sm border-border"
-                  />
-                </div>
-              </div>
-
-              {/* Identificador (slug) e fuso horário em texto de apoio, não editáveis */}
-              <div className="rounded-lg border border-border bg-card p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <span className="eyebrow text-muted-foreground block">Identificador (slug)</span>
-                  <p className="text-xs font-mono text-foreground">{org?.slug || '-'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Definido no provisionamento e não editável.
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <span className="eyebrow text-muted-foreground block">Fuso horário</span>
-                  <p className="text-xs font-mono text-foreground">
-                    {org?.timezone || 'America/Bahia'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Horário padrão do sistema (America/Bahia).
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <Button
-                  type="submit"
-                  disabled={submittingOrg}
-                  className="h-10 rounded-full px-6 text-xs font-normal bg-primary text-primary-foreground gap-2"
-                >
-                  {submittingOrg && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  <span>Salvar alterações</span>
-                </Button>
-              </div>
-            </form>
-          )}
-        </TabsContent>
-
-        {/* ═════════════════════════════════════════════════════════════ */}
-        {/* ABA 4: PROPRIETÁRIOS SEM IMÓVEL */}
-        {/* ═════════════════════════════════════════════════════════════ */}
-        <TabsContent value="sem-imovel" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h2 className="text-[20px] font-normal text-foreground">Proprietários sem imóvel</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Clientes marcados como proprietários que ainda não possuem nenhum imóvel ativo ou
-                rascunho vinculado.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={loadOwnersWithoutProp}
-              disabled={loadingOwnersWithoutProp}
-              className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5 shrink-0 self-start sm:self-auto"
-            >
-              {loadingOwnersWithoutProp && <Loader2 className="h-3 w-3 animate-spin" />}
-              <span>Atualizar lista</span>
-            </Button>
-          </div>
-
-          {/* Busca na lista */}
-          <div className="relative max-w-sm">
-            <Input
-              placeholder="Buscar proprietário por nome..."
-              value={ownersSearchTerm}
-              onChange={(e) => setOwnersSearchTerm(e.target.value)}
-              className="h-10 text-xs border-border rounded-full px-4"
-            />
-          </div>
-
-          {loadingOwnersWithoutProp ? (
-            <div className="space-y-2">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : ownersWithoutProp.length === 0 ? (
-            <div className="rounded-lg border border-border bg-card p-12 text-center">
-              <p className="text-xs text-muted-foreground">
-                Nenhum proprietário sem imóvel encontrado. Todos os proprietários possuem imóveis
-                cadastrados.
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
-              {ownersWithoutProp
-                .filter((owner) =>
-                  ownersSearchTerm.trim()
-                    ? owner.name.toLowerCase().includes(ownersSearchTerm.trim().toLowerCase())
-                    : true,
-                )
-                .map((owner) => (
-                  <div
-                    key={owner.id}
-                    className="p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="space-y-0.5 min-w-0">
-                      <span className="font-normal text-sm text-foreground block truncate">
-                        {owner.name}
+                  {/* Identificador (slug) e fuso horário em texto de apoio, não editáveis */}
+                  <div className="rounded-lg border border-border bg-card p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="eyebrow text-muted-foreground block">
+                        Identificador (slug)
                       </span>
-                      <span className="text-xs text-muted-foreground block font-mono text-[11px]">
-                        ID: {owner.id}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-full px-3.5 text-xs font-normal border-border"
-                      >
-                        <Link to={`/clientes/${owner.id}`}>
-                          <span>Ver cliente</span>
-                        </Link>
-                      </Button>
-                      <Button
-                        asChild
-                        size="sm"
-                        className="h-8 rounded-full px-3.5 text-xs font-normal bg-primary text-primary-foreground gap-1"
-                      >
-                        <Link to={`/imoveis/novo`}>
-                          <Plus className="h-3 w-3" />
-                          <span>Cadastrar imóvel</span>
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ═════════════════════════════════════════════════════════════ */}
-        {/* ABA 3: AUDITORIA */}
-        {/* ═════════════════════════════════════════════════════════════ */}
-        <TabsContent value="auditoria" className="space-y-6">
-          <div>
-            <h2 className="text-[20px] font-normal text-foreground">Registro de auditoria</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Rastreabilidade de ações críticas executadas na organização
-            </p>
-          </div>
-
-          {/* Filtros em pílulas */}
-          <div className="p-4 rounded-lg border border-border bg-card space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              {/* Data inicial */}
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-normal text-foreground block">
-                  Data inicial (Bahia)
-                </label>
-                <Input
-                  type="date"
-                  value={startDateBahia}
-                  onChange={(e) => {
-                    setStartDateBahia(e.target.value)
-                    setAuditPage(1)
-                  }}
-                  className="h-10 text-xs border-border tabular"
-                />
-              </div>
-
-              {/* Data final */}
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-normal text-foreground block">
-                  Data final (Bahia)
-                </label>
-                <Input
-                  type="date"
-                  value={endDateBahia}
-                  onChange={(e) => {
-                    setEndDateBahia(e.target.value)
-                    setAuditPage(1)
-                  }}
-                  className="h-10 text-xs border-border tabular"
-                />
-              </div>
-
-              {/* Ação */}
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-normal text-foreground block">Ação</label>
-                <Select
-                  value={selectedAction}
-                  onValueChange={(val) => {
-                    setSelectedAction(val)
-                    setAuditPage(1)
-                  }}
-                >
-                  <SelectTrigger className="h-10 text-xs border-border rounded-full">
-                    <SelectValue placeholder="Todas as ações" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as ações</SelectItem>
-                    {Object.entries(AUDIT_ACTION_LABELS).map(([actionKey, actionLabel]) => (
-                      <SelectItem key={actionKey} value={actionKey} className="text-xs">
-                        {actionLabel}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Usuário (quem) */}
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-normal text-foreground block">Usuário</label>
-                <Select
-                  value={selectedActor}
-                  onValueChange={(val) => {
-                    setSelectedActor(val)
-                    setAuditPage(1)
-                  }}
-                >
-                  <SelectTrigger className="h-10 text-xs border-border rounded-full">
-                    <SelectValue placeholder="Todos os usuários" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os usuários</SelectItem>
-                    {users.map((u) => (
-                      <SelectItem key={u.id} value={u.id} className="text-xs">
-                        {u.name || u.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Coleção */}
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-normal text-foreground block">Coleção</label>
-                <Select
-                  value={selectedCollection}
-                  onValueChange={(val) => {
-                    setSelectedCollection(val)
-                    setAuditPage(1)
-                  }}
-                >
-                  <SelectTrigger className="h-10 text-xs border-border rounded-full">
-                    <SelectValue placeholder="Todas as coleções" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as coleções</SelectItem>
-                    {KNOWN_COLLECTIONS.map((c) => (
-                      <SelectItem key={c} value={c} className="text-xs">
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {hasAuditFilters && (
-              <div className="flex justify-end pt-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearAuditFilters}
-                  className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1.5"
-                >
-                  <FilterX className="h-3 w-3" />
-                  <span>Limpar filtros</span>
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Linhas com divisores de 1px */}
-          {loadingAudit ? (
-            <div className="space-y-2">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : auditLogs.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-10">
-              Nenhum registro de auditoria encontrado.
-            </p>
-          ) : (
-            <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
-              {auditLogs.map((log) => {
-                const actorName = log.actor_id
-                  ? userMap.get(log.actor_id) || log.actor_id
-                  : 'Sistema'
-                const actionLabel = AUDIT_ACTION_LABELS[log.action] || log.action
-                const reasonLabel = log.reason ? AUDIT_REASON_LABELS[log.reason] || log.reason : '-'
-
-                return (
-                  <div
-                    key={log.id}
-                    className="p-3.5 sm:p-4 text-xs space-y-1 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="tabular text-muted-foreground font-normal">
-                          {formatDateTimeBahia(log.occurred_at || log.created)}
-                        </span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="text-foreground">{actionLabel}</span>
-                        {log.collection_name && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] px-1.5 py-0 font-normal border-border"
-                          >
-                            {log.collection_name}
-                          </Badge>
-                        )}
-                        {log.field_name && (
-                          <span className="text-muted-foreground">campo: {log.field_name}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <span>por</span>
-                        <span className="text-foreground">{actorName}</span>
-                        {log.actor_role && (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] px-1.5 py-0 font-normal"
-                          >
-                            {getRoleLabel(log.actor_role)}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    {reasonLabel !== '-' && (
-                      <p className="text-muted-foreground pt-0.5">
-                        Motivo: <span className="text-foreground">{reasonLabel}</span>
+                      <p className="text-xs font-mono text-foreground">{org?.slug || '-'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Definido no provisionamento e não editável.
                       </p>
-                    )}
+                    </div>
+                    <div className="space-y-1">
+                      <span className="eyebrow text-muted-foreground block">Fuso horário</span>
+                      <p className="text-xs font-mono text-foreground">
+                        {org?.timezone || 'America/Bahia'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Horário padrão do sistema (America/Bahia).
+                      </p>
+                    </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
 
-          {/* Paginação */}
-          {!loadingAudit && auditTotalPages > 1 && (
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-muted-foreground tabular">
-                Página {auditPage} de {auditTotalPages} ({auditTotalItems} registros)
-              </span>
-              <div className="flex items-center gap-2">
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      type="submit"
+                      disabled={submittingOrg}
+                      className="h-10 rounded-full px-6 text-xs font-normal bg-primary text-primary-foreground gap-2"
+                    >
+                      {submittingOrg && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      <span>Salvar alterações</span>
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </TabsContent>
+
+            {/* ═════════════════════════════════════════════════════════════ */}
+            {/* ABA 4: PROPRIETÁRIOS SEM IMÓVEL */}
+            {/* ═════════════════════════════════════════════════════════════ */}
+            <TabsContent value="sem-imovel" className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-[20px] font-normal text-foreground">
+                    Proprietários sem imóvel
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Clientes marcados como proprietários que ainda não possuem nenhum imóvel ativo
+                    ou rascunho vinculado.
+                  </p>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
-                  disabled={auditPage <= 1}
-                  className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                  onClick={loadOwnersWithoutProp}
+                  disabled={loadingOwnersWithoutProp}
+                  className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5 shrink-0 self-start sm:self-auto"
                 >
-                  <ChevronLeft className="h-3 w-3" />
-                  <span>Anterior</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))}
-                  disabled={auditPage >= auditTotalPages}
-                  className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
-                >
-                  <span>Próxima</span>
-                  <ChevronRight className="h-3 w-3" />
+                  {loadingOwnersWithoutProp && <Loader2 className="h-3 w-3 animate-spin" />}
+                  <span>Atualizar lista</span>
                 </Button>
               </div>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+
+              {/* Busca na lista */}
+              <div className="relative max-w-sm">
+                <Input
+                  placeholder="Buscar proprietário por nome..."
+                  value={ownersSearchTerm}
+                  onChange={(e) => setOwnersSearchTerm(e.target.value)}
+                  className="h-10 text-xs border-border rounded-full px-4"
+                />
+              </div>
+
+              {loadingOwnersWithoutProp ? (
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : ownersWithoutProp.length === 0 ? (
+                <div className="rounded-lg border border-border bg-card p-12 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Nenhum proprietário sem imóvel encontrado. Todos os proprietários possuem
+                    imóveis cadastrados.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
+                  {ownersWithoutProp
+                    .filter((owner) =>
+                      ownersSearchTerm.trim()
+                        ? owner.name.toLowerCase().includes(ownersSearchTerm.trim().toLowerCase())
+                        : true,
+                    )
+                    .map((owner) => (
+                      <div
+                        key={owner.id}
+                        className="p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <span className="font-normal text-sm text-foreground block truncate">
+                            {owner.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground block font-mono text-[11px]">
+                            ID: {owner.id}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="h-8 rounded-full px-3.5 text-xs font-normal border-border"
+                          >
+                            <Link to={`/clientes/${owner.id}`}>
+                              <span>Ver cliente</span>
+                            </Link>
+                          </Button>
+                          <Button
+                            asChild
+                            size="sm"
+                            className="h-8 rounded-full px-3.5 text-xs font-normal bg-primary text-primary-foreground gap-1"
+                          >
+                            <Link to={`/imoveis/novo`}>
+                              <Plus className="h-3 w-3" />
+                              <span>Cadastrar imóvel</span>
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ═════════════════════════════════════════════════════════════ */}
+            {/* ABA 3: AUDITORIA */}
+            {/* ═════════════════════════════════════════════════════════════ */}
+            <TabsContent value="auditoria" className="space-y-6">
+              <div>
+                <h2 className="text-[20px] font-normal text-foreground">Registro de auditoria</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Rastreabilidade de ações críticas executadas na organização
+                </p>
+              </div>
+
+              {/* Filtros em pílulas */}
+              <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  {/* Data inicial */}
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-normal text-foreground block">
+                      Data inicial (Bahia)
+                    </label>
+                    <Input
+                      type="date"
+                      value={startDateBahia}
+                      onChange={(e) => {
+                        setStartDateBahia(e.target.value)
+                        setAuditPage(1)
+                      }}
+                      className="h-10 text-xs border-border tabular"
+                    />
+                  </div>
+
+                  {/* Data final */}
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-normal text-foreground block">
+                      Data final (Bahia)
+                    </label>
+                    <Input
+                      type="date"
+                      value={endDateBahia}
+                      onChange={(e) => {
+                        setEndDateBahia(e.target.value)
+                        setAuditPage(1)
+                      }}
+                      className="h-10 text-xs border-border tabular"
+                    />
+                  </div>
+
+                  {/* Ação */}
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-normal text-foreground block">Ação</label>
+                    <Select
+                      value={selectedAction}
+                      onValueChange={(val) => {
+                        setSelectedAction(val)
+                        setAuditPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="h-10 text-xs border-border rounded-full">
+                        <SelectValue placeholder="Todas as ações" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as ações</SelectItem>
+                        {Object.entries(AUDIT_ACTION_LABELS).map(([actionKey, actionLabel]) => (
+                          <SelectItem key={actionKey} value={actionKey} className="text-xs">
+                            {actionLabel}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Usuário (quem) */}
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-normal text-foreground block">Usuário</label>
+                    <Select
+                      value={selectedActor}
+                      onValueChange={(val) => {
+                        setSelectedActor(val)
+                        setAuditPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="h-10 text-xs border-border rounded-full">
+                        <SelectValue placeholder="Todos os usuários" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os usuários</SelectItem>
+                        {users.map((u) => (
+                          <SelectItem key={u.id} value={u.id} className="text-xs">
+                            {u.name || u.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Coleção */}
+                  <div className="space-y-1.5">
+                    <label className="text-[13px] font-normal text-foreground block">Coleção</label>
+                    <Select
+                      value={selectedCollection}
+                      onValueChange={(val) => {
+                        setSelectedCollection(val)
+                        setAuditPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="h-10 text-xs border-border rounded-full">
+                        <SelectValue placeholder="Todas as coleções" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as coleções</SelectItem>
+                        {KNOWN_COLLECTIONS.map((c) => (
+                          <SelectItem key={c} value={c} className="text-xs">
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {hasAuditFilters && (
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearAuditFilters}
+                      className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1.5"
+                    >
+                      <FilterX className="h-3 w-3" />
+                      <span>Limpar filtros</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Linhas com divisores de 1px */}
+              {loadingAudit ? (
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : auditLogs.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-10">
+                  Nenhum registro de auditoria encontrado.
+                </p>
+              ) : (
+                <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
+                  {auditLogs.map((log) => {
+                    const actorName = log.actor_id
+                      ? userMap.get(log.actor_id) || log.actor_id
+                      : 'Sistema'
+                    const actionLabel = AUDIT_ACTION_LABELS[log.action] || log.action
+                    const reasonLabel = log.reason
+                      ? AUDIT_REASON_LABELS[log.reason] || log.reason
+                      : '-'
+
+                    return (
+                      <div
+                        key={log.id}
+                        className="p-3.5 sm:p-4 text-xs space-y-1 hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="tabular text-muted-foreground font-normal">
+                              {formatDateTimeBahia(log.occurred_at || log.created)}
+                            </span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-foreground">{actionLabel}</span>
+                            {log.collection_name && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 font-normal border-border"
+                              >
+                                {log.collection_name}
+                              </Badge>
+                            )}
+                            {log.field_name && (
+                              <span className="text-muted-foreground">campo: {log.field_name}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <span>por</span>
+                            <span className="text-foreground">{actorName}</span>
+                            {log.actor_role && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0 font-normal"
+                              >
+                                {getRoleLabel(log.actor_role)}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {reasonLabel !== '-' && (
+                          <p className="text-muted-foreground pt-0.5">
+                            Motivo: <span className="text-foreground">{reasonLabel}</span>
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Paginação */}
+              {!loadingAudit && auditTotalPages > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-muted-foreground tabular">
+                    Página {auditPage} de {auditTotalPages} ({auditTotalItems} registros)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                      disabled={auditPage <= 1}
+                      className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                    >
+                      <ChevronLeft className="h-3 w-3" />
+                      <span>Anterior</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))}
+                      disabled={auditPage >= auditTotalPages}
+                      className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                    >
+                      <span>Próxima</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
 
       {/* ═════════════════════════════════════════════════════════════ */}
       {/* MODAL: CONVIDAR USUÁRIO */}

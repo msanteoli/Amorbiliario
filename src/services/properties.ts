@@ -931,6 +931,29 @@ export async function suggestPropertyTitles(propertyId: string): Promise<string[
 /**
  * Vincula proprietário existente ao imóvel
  */
+/**
+ * Busca rápida de imóveis por código ou título (até o limite indicado)
+ */
+export async function searchPropertiesForQuickFind(
+  term: string,
+  limit = 5,
+): Promise<Array<{ id: string; code: string; title: string }>> {
+  const cleanTerm = term.trim().replace(/['"\\]/g, '')
+  if (!cleanTerm) return []
+  const filter = `code ~ "${cleanTerm}" || title ~ "${cleanTerm}"`
+  const res = await pb.collection('properties').getList<PropertyRecord>(1, limit, {
+    filter,
+    sort: '-created',
+    fields: 'id,code,title',
+    requestKey: null,
+  })
+  return res.items.map((p) => ({
+    id: p.id,
+    code: p.code,
+    title: p.title,
+  }))
+}
+
 export async function linkExistingPropertyOwner(
   propertyId: string,
   clientId: string,

@@ -507,6 +507,34 @@ export async function listDedupePendingLeads() {
 /**
  * Busca lead por ID com expansões
  */
+/**
+ * Busca rápida de leads por nome ou telefone (até o limite indicado)
+ */
+export async function searchLeadsForQuickFind(
+  term: string,
+  limit = 5,
+): Promise<Array<{ id: string; name: string; phone: string; stage: string }>> {
+  const cleanTerm = term.trim().replace(/['"\\]/g, '')
+  if (!cleanTerm) return []
+  const digits = term.replace(/\D/g, '').replace(/^0+/, '')
+  const conditions = [`name ~ "${cleanTerm}"`]
+  if (digits) {
+    conditions.push(`phone ~ "${digits}"`)
+  }
+  const res = await pb.collection('leads').getList<LeadRecord>(1, limit, {
+    filter: `(${conditions.join(' || ')})`,
+    sort: '-created',
+    fields: 'id,name,phone,stage',
+    requestKey: null,
+  })
+  return res.items.map((l) => ({
+    id: l.id,
+    name: l.name,
+    phone: l.phone || '',
+    stage: l.stage,
+  }))
+}
+
 export async function getLeadById(id: string): Promise<LeadRecord> {
   return await pb.collection('leads').getOne<LeadRecord>(id, {
     expand: 'assigned_to,property_id,client_id',

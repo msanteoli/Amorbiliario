@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { ConfigSidebar } from '@/components/ConfigSidebar'
 import {
   getChavesNaMaoSummary,
   getChavesNaMaoPending,
@@ -376,690 +377,705 @@ export default function Portais() {
         </div>
       )}
 
-      {/* ═════════════════════════════════════════════════════════════════ */}
-      {/* 1. RESUMO */}
-      {/* ═════════════════════════════════════════════════════════════════ */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[20px] font-normal text-foreground">Resumo da integração</h2>
-            {summary && (
-              <Badge
-                variant={summary.active ? 'success' : 'outline'}
-                className="text-[11px] font-normal"
-              >
-                {summary.active ? 'Ativo' : 'Inativo'}
-              </Badge>
-            )}
-          </div>
-        </div>
+      <div className="flex flex-col md:flex-row gap-6 items-start">
+        {/* Barra lateral de Configurações */}
+        <ConfigSidebar currentSection="portais" />
 
-        {/* Cartão principal do resumo: 8px de arredondamento, variáveis semânticas */}
-        <div className="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-5">
-          {/* Campo de leitura com o feed_url e botão Copiar */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="feed-url-input"
-                className="text-xs font-normal text-foreground flex items-center gap-1.5"
-              >
-                <span>Endereço do XML</span>
-                <span className="text-[10px] text-muted-foreground">(feed Chaves na Mão)</span>
-              </label>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmRotateOpen(true)}
-                className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1 text-muted-foreground hover:text-foreground"
-              >
-                <KeyRound className="h-3.5 w-3.5" />
-                <span>Trocar código do endereço</span>
-              </Button>
-            </div>
-
-            {loadingSummary ? (
-              <Skeleton className="h-11 w-full rounded-lg" />
-            ) : (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    id="feed-url-input"
-                    readOnly
-                    value={summary?.feed_url || ''}
-                    onFocus={(e) => e.target.select()}
-                    className="h-11 text-xs font-mono border-border bg-muted/40 pr-3 tabular truncate cursor-text"
-                    placeholder="Carregando endereço do feed..."
-                  />
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => summary && handleCopyUrl(summary.feed_url)}
-                  disabled={!summary?.feed_url}
-                  className="h-11 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2 shrink-0 min-h-[44px]"
-                >
-                  {copiedFeed ? (
-                    <>
-                      <Check className="h-4 w-4 text-primary-foreground" />
-                      <span>Copiado</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      <span>Copiar</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Feedback de troca de código recém-realizada com botão Copiar dedicado */}
-          {rotateSuccessUrl && (
-            <div className="p-3.5 rounded-lg border border-success/40 bg-success/10 text-xs text-foreground space-y-2">
-              <div className="flex items-center gap-2 text-success font-medium">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>Código trocado com sucesso! Envie o novo endereço para o portal:</span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-                <Input
-                  readOnly
-                  value={rotateSuccessUrl}
-                  onFocus={(e) => e.target.select()}
-                  className="h-10 text-xs font-mono border-border bg-background truncate flex-1"
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleCopyUrl(rotateSuccessUrl, true)}
-                  className="h-10 rounded-full px-4 text-xs font-normal border-border gap-1.5 shrink-0"
-                >
-                  {copiedRotatedUrl ? (
-                    <>
-                      <Check className="h-3.5 w-3.5 text-success" />
-                      <span>Copiado</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      <span>Copiar</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Métricas do Portal: 3 contadores em pílulas/cartões */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-            <div className="rounded-lg border border-border bg-background/50 p-3.5 space-y-1">
-              <span className="eyebrow text-muted-foreground block">Saindo no portal</span>
-              {loadingSummary ? (
-                <Skeleton className="h-7 w-16 rounded" />
-              ) : (
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-normal tabular text-foreground">
-                    {summary?.published_count ?? 0}
-                  </span>
-                  <span className="text-xs text-muted-foreground">imóveis saindo no portal</span>
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-border bg-background/50 p-3.5 space-y-1">
-              <span className="eyebrow text-muted-foreground block">Pendentes</span>
-              {loadingSummary ? (
-                <Skeleton className="h-7 w-16 rounded" />
-              ) : (
-                <div className="flex items-baseline gap-2">
-                  <span
-                    className={`text-2xl font-normal tabular ${
-                      (summary?.pending_count ?? 0) > 0 ? 'text-attention' : 'text-foreground'
-                    }`}
+        <div className="flex-1 min-w-0 w-full space-y-6">
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* 1. RESUMO */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[20px] font-normal text-foreground">Resumo da integração</h2>
+                {summary && (
+                  <Badge
+                    variant={summary.active ? 'success' : 'outline'}
+                    className="text-[11px] font-normal"
                   >
-                    {summary?.pending_count ?? 0}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    marcados e ainda não prontos
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-border bg-background/50 p-3.5 space-y-1">
-              <span className="eyebrow text-muted-foreground block">Marcados no total</span>
-              {loadingSummary ? (
-                <Skeleton className="h-7 w-16 rounded" />
-              ) : (
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-normal tabular text-foreground">
-                    {summary?.marked_count ?? 0}
-                  </span>
-                  <span className="text-xs text-muted-foreground">marcados em Chaves na Mão</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Leitura do portal */}
-          <div className="pt-2 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="font-normal text-foreground">Última leitura pelo portal:</span>
-              {loadingSummary ? (
-                <Skeleton className="h-4 w-40 rounded" />
-              ) : summary?.last_fetched_at ? (
-                <span className="tabular text-foreground">
-                  {formatDateTimeBahia(summary.last_fetched_at)} •{' '}
-                  <span className="font-medium">{summary.last_count} imóveis lidos</span>
-                </span>
-              ) : (
-                <span className="text-muted-foreground italic">
-                  O portal ainda não leu o arquivo
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Aviso fixo (atenção, não erro) */}
-          <div className="rounded-lg border border-attention/40 bg-attention/5 p-4 flex items-start gap-3 text-xs leading-relaxed text-foreground">
-            <AlertTriangle className="h-4 w-4 text-attention shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-normal text-foreground">
-                Para ativar, envie o endereço do XML e o endereço dos contatos, o nome e o CNPJ ou
-                CPF do responsável para{' '}
-                <a
-                  href="mailto:atendimento@chavesnamao.com.br"
-                  className="font-medium text-foreground underline hover:text-attention transition-colors"
-                >
-                  atendimento@chavesnamao.com.br
-                </a>
-                . O portal lê o arquivo uma vez por dia; alterações podem levar até 24 horas úteis
-                para aparecer.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═════════════════════════════════════════════════════════════════ */}
-      {/* ENDEREÇO DOS CONTATOS */}
-      {/* ═════════════════════════════════════════════════════════════════ */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-[20px] font-normal text-foreground">Endereço dos contatos</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            É o endereço para onde a Chaves na Mão envia os contatos dos interessados. Os contatos
-            entram como lead com origem Portal e sem responsável, na lista do SDR.
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-5">
-          {/* Campo de leitura com o leads_url e botão Copiar */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="leads-url-input"
-                className="text-xs font-normal text-foreground flex items-center gap-1.5"
-              >
-                <span>Endereço de recebimento de contatos</span>
-                <span className="text-[10px] text-muted-foreground">(webhook Chaves na Mão)</span>
-              </label>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setConfirmRotateLeadsOpen(true)}
-                className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1 text-muted-foreground hover:text-foreground"
-              >
-                <KeyRound className="h-3.5 w-3.5" />
-                <span>Trocar código dos contatos</span>
-              </Button>
-            </div>
-
-            {loadingSummary ? (
-              <Skeleton className="h-11 w-full rounded-lg" />
-            ) : (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    id="leads-url-input"
-                    readOnly
-                    value={summary?.leads_url || ''}
-                    onFocus={(e) => e.target.select()}
-                    className="h-11 text-xs font-mono border-border bg-muted/40 pr-3 tabular truncate cursor-text"
-                    placeholder="Carregando endereço dos contatos..."
-                  />
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => summary?.leads_url && handleCopyLeadsUrl(summary.leads_url)}
-                  disabled={!summary?.leads_url}
-                  className="h-11 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2 shrink-0 min-h-[44px]"
-                >
-                  {copiedLeads ? (
-                    <>
-                      <Check className="h-4 w-4 text-primary-foreground" />
-                      <span>Copiado</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      <span>Copiar</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Feedback de troca de código dos contatos recém-realizada com botão Copiar dedicado */}
-          {rotateLeadsSuccessUrl && (
-            <div className="p-3.5 rounded-lg border border-success/40 bg-success/10 text-xs text-foreground space-y-2">
-              <div className="flex items-center gap-2 text-success font-medium">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>
-                  Código dos contatos trocado com sucesso! Envie o novo endereço para o portal:
-                </span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-                <Input
-                  readOnly
-                  value={rotateLeadsSuccessUrl}
-                  onFocus={(e) => e.target.select()}
-                  className="h-10 text-xs font-mono border-border bg-background truncate flex-1"
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleCopyLeadsUrl(rotateLeadsSuccessUrl, true)}
-                  className="h-10 rounded-full px-4 text-xs font-normal border-border gap-1.5 shrink-0"
-                >
-                  {copiedRotatedLeadsUrl ? (
-                    <>
-                      <Check className="h-3.5 w-3.5 text-success" />
-                      <span>Copiado</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      <span>Copiar</span>
-                    </>
-                  )}
-                </Button>
+                    {summary.active ? 'Ativo' : 'Inativo'}
+                  </Badge>
+                )}
               </div>
             </div>
-          )}
 
-          {/* Linha de situação */}
-          <div className="pt-2 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="font-normal text-foreground">Situação:</span>
-              {loadingSummary ? (
-                <Skeleton className="h-4 w-48 rounded" />
-              ) : summary?.last_lead_at ? (
-                <span className="tabular text-foreground">
-                  Último contato recebido em {formatDateTimeBahia(summary.last_lead_at)} (
-                  {summary.leads_count ?? 0} no total)
-                </span>
-              ) : (
-                <span className="text-muted-foreground">Nenhum contato recebido ainda</span>
-              )}
-            </div>
-
-            <span className="text-[11px] text-muted-foreground">
-              Trocar o código dos contatos não afeta o endereço do XML.
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* ═════════════════════════════════════════════════════════════════ */}
-      {/* 2. PENDÊNCIAS */}
-      {/* ═════════════════════════════════════════════════════════════════ */}
-      <section className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h2 className="text-[20px] font-normal text-foreground">Pendências</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Imóveis marcados para o portal mas que ainda não atendem a todos os requisitos
-              obrigatórios
-            </p>
-          </div>
-          {pendingItems.length > 0 && (
-            <Badge variant="attention" className="self-start sm:self-auto text-xs font-normal">
-              {pendingItems.length}{' '}
-              {pendingItems.length === 1 ? 'imóvel pendente' : 'imóveis pendentes'}
-            </Badge>
-          )}
-        </div>
-
-        {pendingError && (
-          <div className="p-3.5 rounded-lg border border-destructive/20 bg-destructive/10 text-xs text-destructive flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>{pendingError}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPendingError(null)}
-              className="text-xs text-destructive hover:underline ml-3"
-            >
-              Fechar
-            </button>
-          </div>
-        )}
-
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
-          {loadingPending ? (
-            <div className="p-4 space-y-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : pendingItems.length === 0 ? (
-            <div className="p-8 text-center space-y-2">
-              <CheckCircle2 className="h-8 w-8 text-success mx-auto" />
-              <p className="text-sm font-normal text-foreground">Nenhuma pendência</p>
-              <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                Todos os imóveis marcados para o portal estão prontos e sendo incluídos no arquivo
-                XML.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {pendingItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="space-y-1.5 min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-normal text-foreground">
-                        {item.code || 'Sem código'}
-                      </span>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-xs text-foreground font-normal truncate max-w-sm sm:max-w-md">
-                        {item.title || 'Sem título'}
-                      </span>
-                    </div>
-
-                    {/* Motivos traduzidos como pílulas */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {item.reasons.map((r, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-normal border border-attention/40 bg-attention/10 text-foreground leading-tight"
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-attention" />
-                          <span>{translatePortalReason(r)}</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Link para a ficha do imóvel */}
-                  <div className="shrink-0 self-end sm:self-auto">
-                    <Link
-                      to={`/imoveis/${item.id}`}
-                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-normal border border-border bg-background hover:bg-muted text-foreground transition-colors"
-                    >
-                      <span>Abrir ficha</span>
-                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ═════════════════════════════════════════════════════════════════ */}
-      {/* 3. LIGAR OU DESLIGAR EM LOTE */}
-      {/* ═════════════════════════════════════════════════════════════════ */}
-      <section className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h2 className="text-[20px] font-normal text-foreground">Ligar ou desligar em lote</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Busque imóveis disponíveis por código ou título, selecione até 200 e marque ou
-              desmarque a publicação na Chaves na Mão
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-xs text-muted-foreground tabular">
-              {selectedIds.size} de 200 selecionados
-            </span>
-          </div>
-        </div>
-
-        {/* Feedback da operação em lote */}
-        {batchResult && (
-          <div
-            className={`p-3.5 rounded-lg border text-xs flex items-center justify-between ${
-              batchResult.type === 'success'
-                ? 'border-success/30 bg-success/10 text-foreground'
-                : 'border-destructive/20 bg-destructive/10 text-destructive'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {batchResult.type === 'success' ? (
-                <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-              ) : (
-                <XCircle className="h-4 w-4 text-destructive shrink-0" />
-              )}
-              <span>{batchResult.message}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setBatchResult(null)}
-              className="text-xs opacity-75 hover:opacity-100 ml-3"
-            >
-              Fechar
-            </button>
-          </div>
-        )}
-
-        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-          {/* Barra de busca e ações de seleção */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por código ou título (apenas Disponíveis)..."
-                className="pl-9 h-11 text-xs border-border"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSelectAllVisible}
-                disabled={availableProps.length === 0}
-                className="h-11 rounded-full px-4 text-xs font-normal border-border min-h-[44px]"
-              >
-                {allVisibleSelected ? 'Desmarcar lista' : 'Selecionar da lista'}
-              </Button>
-
-              {selectedIds.size > 0 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearSelection}
-                  className="h-11 rounded-full px-3 text-xs font-normal text-muted-foreground hover:text-foreground min-h-[44px]"
-                >
-                  Limpar seleção
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Botões de Ação em Lote */}
-          <div className="p-3 rounded-lg bg-muted/40 border border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="text-xs text-muted-foreground">
-              {selectedIds.size === 0 ? (
-                <span>Selecione ao menos um imóvel para ligar ou desligar.</span>
-              ) : (
-                <span className="text-foreground">
-                  <span className="font-medium tabular">{selectedIds.size}</span> imóveis prontos
-                  para alteração.
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleExecuteBatch(false)}
-                disabled={selectedIds.size === 0 || batchActionRunning}
-                className="h-10 rounded-full px-4 text-xs font-normal border-border text-foreground min-h-[44px] flex-1 sm:flex-initial"
-              >
-                {batchActionRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                <span>Desligar</span>
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => setConfirmEnableOpen(true)}
-                disabled={selectedIds.size === 0 || batchActionRunning}
-                className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground min-h-[44px] flex-1 sm:flex-initial"
-              >
-                {batchActionRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                <span>Ligar na Chaves na Mão</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Lista de Imóveis Disponíveis com Checkboxes */}
-          <div className="border border-border rounded-lg overflow-hidden divide-y divide-border max-h-96 overflow-y-auto">
-            {loadingProps ? (
-              <div className="p-4 space-y-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-12 w-full rounded" />
-                ))}
-              </div>
-            ) : availableProps.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground">
-                {searchTerm
-                  ? 'Nenhum imóvel disponível encontrado com este termo.'
-                  : 'Nenhum imóvel disponível encontrado.'}
-              </div>
-            ) : (
-              availableProps.map((p) => {
-                const isSelected = selectedIds.has(p.id)
-                return (
+            {/* Cartão principal do resumo: 8px de arredondamento, variáveis semânticas */}
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-5">
+              {/* Campo de leitura com o feed_url e botão Copiar */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
                   <label
-                    key={p.id}
-                    className={`flex items-center justify-between p-3 sm:px-4 cursor-pointer text-xs transition-colors select-none ${
-                      isSelected ? 'bg-muted/60' : 'hover:bg-muted/30'
-                    }`}
+                    htmlFor="feed-url-input"
+                    className="text-xs font-normal text-foreground flex items-center gap-1.5"
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelectProperty(p.id)}
-                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary shrink-0"
+                    <span>Endereço do XML</span>
+                    <span className="text-[10px] text-muted-foreground">(feed Chaves na Mão)</span>
+                  </label>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmRotateOpen(true)}
+                    className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <KeyRound className="h-3.5 w-3.5" />
+                    <span>Trocar código do endereço</span>
+                  </Button>
+                </div>
+
+                {loadingSummary ? (
+                  <Skeleton className="h-11 w-full rounded-lg" />
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="feed-url-input"
+                        readOnly
+                        value={summary?.feed_url || ''}
+                        onFocus={(e) => e.target.select()}
+                        className="h-11 text-xs font-mono border-border bg-muted/40 pr-3 tabular truncate cursor-text"
+                        placeholder="Carregando endereço do feed..."
                       />
-                      <div className="min-w-0 space-y-0.5">
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => summary && handleCopyUrl(summary.feed_url)}
+                      disabled={!summary?.feed_url}
+                      className="h-11 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2 shrink-0 min-h-[44px]"
+                    >
+                      {copiedFeed ? (
+                        <>
+                          <Check className="h-4 w-4 text-primary-foreground" />
+                          <span>Copiado</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          <span>Copiar</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Feedback de troca de código recém-realizada com botão Copiar dedicado */}
+              {rotateSuccessUrl && (
+                <div className="p-3.5 rounded-lg border border-success/40 bg-success/10 text-xs text-foreground space-y-2">
+                  <div className="flex items-center gap-2 text-success font-medium">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>Código trocado com sucesso! Envie o novo endereço para o portal:</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                    <Input
+                      readOnly
+                      value={rotateSuccessUrl}
+                      onFocus={(e) => e.target.select()}
+                      className="h-10 text-xs font-mono border-border bg-background truncate flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopyUrl(rotateSuccessUrl, true)}
+                      className="h-10 rounded-full px-4 text-xs font-normal border-border gap-1.5 shrink-0"
+                    >
+                      {copiedRotatedUrl ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-success" />
+                          <span>Copiado</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          <span>Copiar</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Métricas do Portal: 3 contadores em pílulas/cartões */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <div className="rounded-lg border border-border bg-background/50 p-3.5 space-y-1">
+                  <span className="eyebrow text-muted-foreground block">Saindo no portal</span>
+                  {loadingSummary ? (
+                    <Skeleton className="h-7 w-16 rounded" />
+                  ) : (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-normal tabular text-foreground">
+                        {summary?.published_count ?? 0}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        imóveis saindo no portal
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-border bg-background/50 p-3.5 space-y-1">
+                  <span className="eyebrow text-muted-foreground block">Pendentes</span>
+                  {loadingSummary ? (
+                    <Skeleton className="h-7 w-16 rounded" />
+                  ) : (
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={`text-2xl font-normal tabular ${
+                          (summary?.pending_count ?? 0) > 0 ? 'text-attention' : 'text-foreground'
+                        }`}
+                      >
+                        {summary?.pending_count ?? 0}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        marcados e ainda não prontos
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-border bg-background/50 p-3.5 space-y-1">
+                  <span className="eyebrow text-muted-foreground block">Marcados no total</span>
+                  {loadingSummary ? (
+                    <Skeleton className="h-7 w-16 rounded" />
+                  ) : (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-normal tabular text-foreground">
+                        {summary?.marked_count ?? 0}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        marcados em Chaves na Mão
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Leitura do portal */}
+              <div className="pt-2 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="font-normal text-foreground">Última leitura pelo portal:</span>
+                  {loadingSummary ? (
+                    <Skeleton className="h-4 w-40 rounded" />
+                  ) : summary?.last_fetched_at ? (
+                    <span className="tabular text-foreground">
+                      {formatDateTimeBahia(summary.last_fetched_at)} •{' '}
+                      <span className="font-medium">{summary.last_count} imóveis lidos</span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground italic">
+                      O portal ainda não leu o arquivo
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Aviso fixo (atenção, não erro) */}
+              <div className="rounded-lg border border-attention/40 bg-attention/5 p-4 flex items-start gap-3 text-xs leading-relaxed text-foreground">
+                <AlertTriangle className="h-4 w-4 text-attention shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-normal text-foreground">
+                    Para ativar, envie o endereço do XML e o endereço dos contatos, o nome e o CNPJ
+                    ou CPF do responsável para{' '}
+                    <a
+                      href="mailto:atendimento@chavesnamao.com.br"
+                      className="font-medium text-foreground underline hover:text-attention transition-colors"
+                    >
+                      atendimento@chavesnamao.com.br
+                    </a>
+                    . O portal lê o arquivo uma vez por dia; alterações podem levar até 24 horas
+                    úteis para aparecer.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* ENDEREÇO DOS CONTATOS */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-[20px] font-normal text-foreground">Endereço dos contatos</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                É o endereço para onde a Chaves na Mão envia os contatos dos interessados. Os
+                contatos entram como lead com origem Portal e sem responsável, na lista do SDR.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-5">
+              {/* Campo de leitura com o leads_url e botão Copiar */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="leads-url-input"
+                    className="text-xs font-normal text-foreground flex items-center gap-1.5"
+                  >
+                    <span>Endereço de recebimento de contatos</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      (webhook Chaves na Mão)
+                    </span>
+                  </label>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmRotateLeadsOpen(true)}
+                    className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <KeyRound className="h-3.5 w-3.5" />
+                    <span>Trocar código dos contatos</span>
+                  </Button>
+                </div>
+
+                {loadingSummary ? (
+                  <Skeleton className="h-11 w-full rounded-lg" />
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="leads-url-input"
+                        readOnly
+                        value={summary?.leads_url || ''}
+                        onFocus={(e) => e.target.select()}
+                        className="h-11 text-xs font-mono border-border bg-muted/40 pr-3 tabular truncate cursor-text"
+                        placeholder="Carregando endereço dos contatos..."
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => summary?.leads_url && handleCopyLeadsUrl(summary.leads_url)}
+                      disabled={!summary?.leads_url}
+                      className="h-11 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2 shrink-0 min-h-[44px]"
+                    >
+                      {copiedLeads ? (
+                        <>
+                          <Check className="h-4 w-4 text-primary-foreground" />
+                          <span>Copiado</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          <span>Copiar</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Feedback de troca de código dos contatos recém-realizada com botão Copiar dedicado */}
+              {rotateLeadsSuccessUrl && (
+                <div className="p-3.5 rounded-lg border border-success/40 bg-success/10 text-xs text-foreground space-y-2">
+                  <div className="flex items-center gap-2 text-success font-medium">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>
+                      Código dos contatos trocado com sucesso! Envie o novo endereço para o portal:
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                    <Input
+                      readOnly
+                      value={rotateLeadsSuccessUrl}
+                      onFocus={(e) => e.target.select()}
+                      className="h-10 text-xs font-mono border-border bg-background truncate flex-1"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopyLeadsUrl(rotateLeadsSuccessUrl, true)}
+                      className="h-10 rounded-full px-4 text-xs font-normal border-border gap-1.5 shrink-0"
+                    >
+                      {copiedRotatedLeadsUrl ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-success" />
+                          <span>Copiado</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          <span>Copiar</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Linha de situação */}
+              <div className="pt-2 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="font-normal text-foreground">Situação:</span>
+                  {loadingSummary ? (
+                    <Skeleton className="h-4 w-48 rounded" />
+                  ) : summary?.last_lead_at ? (
+                    <span className="tabular text-foreground">
+                      Último contato recebido em {formatDateTimeBahia(summary.last_lead_at)} (
+                      {summary.leads_count ?? 0} no total)
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Nenhum contato recebido ainda</span>
+                  )}
+                </div>
+
+                <span className="text-[11px] text-muted-foreground">
+                  Trocar o código dos contatos não afeta o endereço do XML.
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* 2. PENDÊNCIAS */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          <section className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-[20px] font-normal text-foreground">Pendências</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Imóveis marcados para o portal mas que ainda não atendem a todos os requisitos
+                  obrigatórios
+                </p>
+              </div>
+              {pendingItems.length > 0 && (
+                <Badge variant="attention" className="self-start sm:self-auto text-xs font-normal">
+                  {pendingItems.length}{' '}
+                  {pendingItems.length === 1 ? 'imóvel pendente' : 'imóveis pendentes'}
+                </Badge>
+              )}
+            </div>
+
+            {pendingError && (
+              <div className="p-3.5 rounded-lg border border-destructive/20 bg-destructive/10 text-xs text-destructive flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>{pendingError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingError(null)}
+                  className="text-xs text-destructive hover:underline ml-3"
+                >
+                  Fechar
+                </button>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              {loadingPending ? (
+                <div className="p-4 space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : pendingItems.length === 0 ? (
+                <div className="p-8 text-center space-y-2">
+                  <CheckCircle2 className="h-8 w-8 text-success mx-auto" />
+                  <p className="text-sm font-normal text-foreground">Nenhuma pendência</p>
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                    Todos os imóveis marcados para o portal estão prontos e sendo incluídos no
+                    arquivo XML.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {pendingItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="space-y-1.5 min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono font-medium text-foreground">
-                            {p.code || 'Sem código'}
+                          <span className="font-mono text-xs font-normal text-foreground">
+                            {item.code || 'Sem código'}
                           </span>
-                          <span className="text-muted-foreground truncate">{p.title}</span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="text-xs text-foreground font-normal truncate max-w-sm sm:max-w-md">
+                            {item.title || 'Sem título'}
+                          </span>
                         </div>
-                        <div className="text-[11px] text-muted-foreground truncate">
-                          {p.neighborhood && p.city
-                            ? `${p.neighborhood}, ${p.city}`
-                            : p.neighborhood || p.city || 'Localização não informada'}
+
+                        {/* Motivos traduzidos como pílulas */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.reasons.map((r, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-normal border border-attention/40 bg-attention/10 text-foreground leading-tight"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-attention" />
+                              <span>{translatePortalReason(r)}</span>
+                            </span>
+                          ))}
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                      {p.isPublishedToPortal ? (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] font-normal px-2 py-0.5 border-border"
+                      {/* Link para a ficha do imóvel */}
+                      <div className="shrink-0 self-end sm:self-auto">
+                        <Link
+                          to={`/imoveis/${item.id}`}
+                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-normal border border-border bg-background hover:bg-muted text-foreground transition-colors"
                         >
-                          Ligado no portal
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] font-normal px-2 py-0.5 text-muted-foreground"
-                        >
-                          Desligado
-                        </Badge>
-                      )}
+                          <span>Abrir ficha</span>
+                          <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                        </Link>
+                      </div>
                     </div>
-                  </label>
-                )
-              })
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ═════════════════════════════════════════════════════════════════ */}
-      {/* DIÁLOGOS DE CONFIRMAÇÃO */}
-      {/* ═════════════════════════════════════════════════════════════════ */}
-
-      {/* Confirmação ao LIGAR na Chaves na Mão */}
-      <AlertDialog open={confirmEnableOpen} onOpenChange={setConfirmEnableOpen}>
-        <AlertDialogContent className="rounded-lg p-6 max-w-md">
-          <AlertDialogHeader>
-            <div className="flex items-center gap-2 text-attention mb-1">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              <AlertDialogTitle className="text-base font-normal text-foreground">
-                Confirmar ativação de imóveis
-              </AlertDialogTitle>
+                  ))}
+                </div>
+              )}
             </div>
-            <AlertDialogDescription className="text-xs sm:text-sm text-foreground/90 leading-relaxed space-y-2">
-              <span className="block font-medium text-foreground">
-                Só ligue na data combinada da troca com a Kenlo.
-              </span>
-              <span className="block text-muted-foreground">
-                Imóvel ligado aqui passa a sair no XML e, depois da ativação, no portal.
-              </span>
-              <span className="block text-xs text-muted-foreground pt-1">
-                Total a ativar:{' '}
-                <strong className="text-foreground tabular">{selectedIds.size}</strong>{' '}
-                {selectedIds.size === 1 ? 'imóvel' : 'imóveis'}.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
-            <AlertDialogCancel
-              disabled={batchActionRunning}
-              className="rounded-full font-normal min-h-[44px] h-11 text-xs"
-            >
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleExecuteBatch(true)
-              }}
-              disabled={batchActionRunning}
-              className="rounded-full font-normal min-h-[44px] h-11 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {batchActionRunning ? 'Ligando...' : 'Confirmar e ligar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </section>
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* 3. LIGAR OU DESLIGAR EM LOTE */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          <section className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-[20px] font-normal text-foreground">
+                  Ligar ou desligar em lote
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Busque imóveis disponíveis por código ou título, selecione até 200 e marque ou
+                  desmarque a publicação na Chaves na Mão
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="text-xs text-muted-foreground tabular">
+                  {selectedIds.size} de 200 selecionados
+                </span>
+              </div>
+            </div>
+
+            {/* Feedback da operação em lote */}
+            {batchResult && (
+              <div
+                className={`p-3.5 rounded-lg border text-xs flex items-center justify-between ${
+                  batchResult.type === 'success'
+                    ? 'border-success/30 bg-success/10 text-foreground'
+                    : 'border-destructive/20 bg-destructive/10 text-destructive'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {batchResult.type === 'success' ? (
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                  )}
+                  <span>{batchResult.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBatchResult(null)}
+                  className="text-xs opacity-75 hover:opacity-100 ml-3"
+                >
+                  Fechar
+                </button>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+              {/* Barra de busca e ações de seleção */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar por código ou título (apenas Disponíveis)..."
+                    className="pl-9 h-11 text-xs border-border"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAllVisible}
+                    disabled={availableProps.length === 0}
+                    className="h-11 rounded-full px-4 text-xs font-normal border-border min-h-[44px]"
+                  >
+                    {allVisibleSelected ? 'Desmarcar lista' : 'Selecionar da lista'}
+                  </Button>
+
+                  {selectedIds.size > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearSelection}
+                      className="h-11 rounded-full px-3 text-xs font-normal text-muted-foreground hover:text-foreground min-h-[44px]"
+                    >
+                      Limpar seleção
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Botões de Ação em Lote */}
+              <div className="p-3 rounded-lg bg-muted/40 border border-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="text-xs text-muted-foreground">
+                  {selectedIds.size === 0 ? (
+                    <span>Selecione ao menos um imóvel para ligar ou desligar.</span>
+                  ) : (
+                    <span className="text-foreground">
+                      <span className="font-medium tabular">{selectedIds.size}</span> imóveis
+                      prontos para alteração.
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleExecuteBatch(false)}
+                    disabled={selectedIds.size === 0 || batchActionRunning}
+                    className="h-10 rounded-full px-4 text-xs font-normal border-border text-foreground min-h-[44px] flex-1 sm:flex-initial"
+                  >
+                    {batchActionRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    <span>Desligar</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={() => setConfirmEnableOpen(true)}
+                    disabled={selectedIds.size === 0 || batchActionRunning}
+                    className="h-10 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground min-h-[44px] flex-1 sm:flex-initial"
+                  >
+                    {batchActionRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    <span>Ligar na Chaves na Mão</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Lista de Imóveis Disponíveis com Checkboxes */}
+              <div className="border border-border rounded-lg overflow-hidden divide-y divide-border max-h-96 overflow-y-auto">
+                {loadingProps ? (
+                  <div className="p-4 space-y-2">
+                    {[1, 2, 3, 4].map((i) => (
+                      <Skeleton key={i} className="h-12 w-full rounded" />
+                    ))}
+                  </div>
+                ) : availableProps.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-muted-foreground">
+                    {searchTerm
+                      ? 'Nenhum imóvel disponível encontrado com este termo.'
+                      : 'Nenhum imóvel disponível encontrado.'}
+                  </div>
+                ) : (
+                  availableProps.map((p) => {
+                    const isSelected = selectedIds.has(p.id)
+                    return (
+                      <label
+                        key={p.id}
+                        className={`flex items-center justify-between p-3 sm:px-4 cursor-pointer text-xs transition-colors select-none ${
+                          isSelected ? 'bg-muted/60' : 'hover:bg-muted/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectProperty(p.id)}
+                            className="w-4 h-4 rounded border-border text-primary focus:ring-primary shrink-0"
+                          />
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono font-medium text-foreground">
+                                {p.code || 'Sem código'}
+                              </span>
+                              <span className="text-muted-foreground truncate">{p.title}</span>
+                            </div>
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {p.neighborhood && p.city
+                                ? `${p.neighborhood}, ${p.city}`
+                                : p.neighborhood || p.city || 'Localização não informada'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          {p.isPublishedToPortal ? (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] font-normal px-2 py-0.5 border-border"
+                            >
+                              Ligado no portal
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-normal px-2 py-0.5 text-muted-foreground"
+                            >
+                              Desligado
+                            </Badge>
+                          )}
+                        </div>
+                      </label>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* ═════════════════════════════════════════════════════════════════ */}
+          {/* DIÁLOGOS DE CONFIRMAÇÃO */}
+          {/* ═════════════════════════════════════════════════════════════════ */}
+
+          {/* Confirmação ao LIGAR na Chaves na Mão */}
+          <AlertDialog open={confirmEnableOpen} onOpenChange={setConfirmEnableOpen}>
+            <AlertDialogContent className="rounded-lg p-6 max-w-md">
+              <AlertDialogHeader>
+                <div className="flex items-center gap-2 text-attention mb-1">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <AlertDialogTitle className="text-base font-normal text-foreground">
+                    Confirmar ativação de imóveis
+                  </AlertDialogTitle>
+                </div>
+                <AlertDialogDescription className="text-xs sm:text-sm text-foreground/90 leading-relaxed space-y-2">
+                  <span className="block font-medium text-foreground">
+                    Só ligue na data combinada da troca com a Kenlo.
+                  </span>
+                  <span className="block text-muted-foreground">
+                    Imóvel ligado aqui passa a sair no XML e, depois da ativação, no portal.
+                  </span>
+                  <span className="block text-xs text-muted-foreground pt-1">
+                    Total a ativar:{' '}
+                    <strong className="text-foreground tabular">{selectedIds.size}</strong>{' '}
+                    {selectedIds.size === 1 ? 'imóvel' : 'imóveis'}.
+                  </span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
+                <AlertDialogCancel
+                  disabled={batchActionRunning}
+                  className="rounded-full font-normal min-h-[44px] h-11 text-xs"
+                >
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleExecuteBatch(true)
+                  }}
+                  disabled={batchActionRunning}
+                  className="rounded-full font-normal min-h-[44px] h-11 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {batchActionRunning ? 'Ligando...' : 'Confirmar e ligar'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
 
       {/* Confirmação de Troca de Código do Endereço do XML */}
       <AlertDialog open={confirmRotateOpen} onOpenChange={setConfirmRotateOpen}>

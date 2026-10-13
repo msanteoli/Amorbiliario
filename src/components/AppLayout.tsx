@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback, useId } from 'react'
-import { useLocation, Link, Outlet } from 'react-router-dom'
+import { useState, useEffect, useRef, useId, useCallback } from 'react'
+import { useLocation, Link, Outlet, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
@@ -20,133 +18,143 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { useAuth } from '@/contexts/AuthContext'
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { getRoleLabel } from '@/lib/roles'
 import { getOrganization } from '@/services/admin'
+import { listLeads } from '@/services/leads'
+import { listVisits } from '@/services/visits'
+import { QuickSearchModal } from '@/components/QuickSearchModal'
 import {
-  getGoogleStatus,
-  getGoogleConnectUrl,
-  disconnectGoogle,
-  GoogleConnectionStatus,
-  GoogleIntegrationConfigError,
-} from '@/services/googleCalendar'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import {
-  Calendar,
+  Search,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   LogOut,
   Menu as MenuIcon,
   User,
+  Building,
+  Settings,
 } from 'lucide-react'
 import {
-  HOJE_NAV_ITEM,
+  PAINEL_NAV_ITEM,
+  CONFIGURACOES_NAV_ITEM,
   NAV_GROUPS,
   isItemVisibleForRole,
   isNavItemActive,
+  getBreadcrumbForPath,
   type NavItemConfig,
   type NavGroupConfig,
 } from '@/config/navegacao'
 
-const CONFIG_COLLAPSED_STORAGE_KEY = 'imobdigital_nav_config_open'
-const SIDEBAR_COLLAPSED_STORAGE_KEY = 'imobdigital_sidebar_collapsed'
+const SIDEBAR_COLLAPSED_KEY = 'imobdigital_nav_collapsed'
+const GROUP_COLLAPSED_KEY_PREFIX = 'imobdigital_group_open_'
 
-// Mapa de títulos de telas para exibição no cabeçalho do celular
-function getScreenTitle(pathname: string): string {
-  if (pathname === '/hoje' || pathname.startsWith('/hoje/')) return 'Hoje'
-  if (pathname === '/agenda' || pathname.startsWith('/agenda/')) return 'Agenda'
-  if (pathname === '/leads' || pathname.startsWith('/leads/')) return 'Leads'
-  if (pathname === '/clientes' || pathname.startsWith('/clientes/')) return 'Clientes'
-  if (pathname === '/imoveis' || pathname.startsWith('/imoveis/')) return 'Imóveis'
-  if (pathname === '/condominios' || pathname.startsWith('/condominios/')) return 'Condomínios'
-  if (pathname === '/backup' || pathname.startsWith('/backup/')) return 'Backup'
-  if (pathname === '/portais' || pathname.startsWith('/portais/')) return 'Portais'
-  if (pathname === '/admin/importar-imoveis') return 'Importar imóveis'
-  if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'Administração'
-  return 'Imobdigital'
+function getFormattedRole(role?: string): string {
+  if (role === 'admin') return 'Administrador(a)'
+  if (role === 'sdr') return 'SDR'
+  if (role === 'corretor') return 'Corretor(a)'
+  return 'Colaborador(a)'
+}
+
+function getUserInitials(name?: string, email?: string): string {
+  if (name && name.trim()) {
+    const parts = name.trim().split(/\s+/)
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    }
+    return parts[0].slice(0, 2).toUpperCase()
+  }
+  if (email && email.trim()) {
+    const beforeAt = email.split('@')[0]
+    return beforeAt.slice(0, 2).toUpperCase()
+  }
+  return 'ID'
+}
+
+function getUserDisplayName(name?: string, email?: string): string {
+  if (name && name.trim()) return name.trim()
+  if (email && email.trim()) return email.split('@')[0]
+  return 'Usuário'
 }
 
 export function AppLayout() {
   const { user, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const role = user?.role
-  const [orgName, setOrgName] = useState<string>('')
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [orgName, setOrgName] = useState<string>('')
+  const [quickSearchOpen, setQuickSearchOpen] = useState(false)
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
 
-  // Barra lateral desktop recolhida (só ícones)
+  // Contadores para os badges numéricos do menu lateral
+  const [leadsBadgeCount, setLeadsBadgeCount] = useState<number | null>(null)
+  const [agendaBadgeCount, setAgendaBadgeCount] = useState<number | null>(null)
+
+  // Estado recolhido da barra lateral desktop (salvo em localStorage)
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true'
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
     } catch {
       return false
     }
   })
 
+  // Estado dos grupos recolhíveis (Atendimento, Imóveis) - começam abertos por padrão
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {
+      atendimento: true,
+      imoveis: true,
+    }
+    try {
+      NAV_GROUPS.forEach((g) => {
+        const saved = localStorage.getItem(`${GROUP_COLLAPSED_KEY_PREFIX}${g.id}`)
+        if (saved !== null) {
+          initial[g.id] = saved === 'true'
+        }
+      })
+    } catch {
+      // Ignora erro de storage
+    }
+    return initial
+  })
+
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups((prev) => {
+      const nextState = !prev[groupId]
+      try {
+        localStorage.setItem(`${GROUP_COLLAPSED_KEY_PREFIX}${groupId}`, String(nextState))
+      } catch {
+        // Ignora erro de storage
+      }
+      return { ...prev, [groupId]: nextState }
+    })
+  }
+
+  // Toggle do menu recolhido
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
       const next = !prev
       try {
-        localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(next))
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next))
       } catch {
-        // Silencioso se sem acesso ao storage
+        // Ignora erro de storage
       }
       return next
     })
   }
 
-  // Grupo "Configurações" recolhido / expandido
-  // Começa FECHADO por padrão, lembra a escolha no navegador, mas se a rota atual for de Configurações, abre sozinho.
-  const [configOpen, setConfigOpen] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(CONFIG_COLLAPSED_STORAGE_KEY)
-      return saved === 'true'
-    } catch {
-      return false
+  // Atalho global Ctrl+K ou ⌘K
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setQuickSearchOpen((prev) => !prev)
+      }
     }
-  })
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
 
-  // IDs acessíveis para aria-labelledby
-  const groupLabelIdAtendimento = useId()
-  const groupLabelIdImoveis = useId()
-  const groupLabelIdConfig = useId()
-
-  // Google Calendar integration status
-  const isBrokerOrAdmin = role === 'admin' || role === 'corretor'
-  const [googleStatus, setGoogleStatus] = useState<GoogleConnectionStatus | null>(null)
-  const [googleEmail, setGoogleEmail] = useState<string>('')
-  const [disconnectModalOpen, setDisconnectModalOpen] = useState(false)
-  const [disconnecting, setDisconnecting] = useState(false)
-  const [connectingGoogle, setConnectingGoogle] = useState(false)
-  const [googleConfigError, setGoogleConfigError] = useState<string | null>(null)
-
-  const loadGoogleStatus = useCallback(async () => {
-    if (!isBrokerOrAdmin) {
-      setGoogleStatus(null)
-      setGoogleEmail('')
-      return
-    }
-    try {
-      const res = await getGoogleStatus()
-      setGoogleStatus(res.status)
-      setGoogleEmail(res.google_email || '')
-    } catch {
-      setGoogleStatus(null)
-      setGoogleEmail('')
-    }
-  }, [isBrokerOrAdmin])
-
+  // Carrega nome da organização
   useEffect(() => {
     let mounted = true
     getOrganization()
@@ -161,123 +169,131 @@ export function AppLayout() {
     }
   }, [])
 
-  useEffect(() => {
-    loadGoogleStatus()
-  }, [loadGoogleStatus])
-
-  // Trata conexão / reconexão Google Agenda
-  const handleConnectGoogle = async () => {
-    setGoogleConfigError(null)
-    setConnectingGoogle(true)
+  // Carrega contagens de Leads e Agenda para badges
+  const loadBadgeCounts = useCallback(async () => {
+    if (!role) return
     try {
-      const url = await getGoogleConnectUrl()
-      if (url) {
-        window.location.href = url
+      // 1. Leads:
+      // admin / SDR: leads novos sem dono (newUnassignedOnly)
+      // corretor: leads seus com prazo vencido (expiredOnly + assigned_to = user.id)
+      if (role === 'admin' || role === 'sdr') {
+        const res = await listLeads({ perPage: 1, newUnassignedOnly: true })
+        setLeadsBadgeCount(res.totalItems > 0 ? res.totalItems : null)
+      } else if (role === 'corretor' && user?.id) {
+        const res = await listLeads({ perPage: 1, assigned_to: user.id, expiredOnly: true })
+        setLeadsBadgeCount(res.totalItems > 0 ? res.totalItems : null)
       }
-    } catch (err) {
-      if (err instanceof GoogleIntegrationConfigError) {
-        setGoogleConfigError('Integração com o Google ainda não configurada')
-      } else {
-        setGoogleConfigError('Integração com o Google ainda não configurada')
-      }
-      setConnectingGoogle(false)
-    }
-  }
 
-  // Trata desconexão Google Agenda
-  const handleConfirmDisconnect = async () => {
-    setDisconnecting(true)
-    try {
-      await disconnectGoogle()
-      setGoogleStatus('nao_conectado')
-      setGoogleEmail('')
-      setDisconnectModalOpen(false)
+      // 2. Agenda: visitas de hoje
+      const now = new Date()
+      const startOfDayIso = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+      const endOfDayIso = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+        999,
+      ).toISOString()
+      const brokerParam = role === 'corretor' ? user?.id : undefined
+      const visitRes = await listVisits({
+        brokerId: brokerParam,
+        startDateIso: startOfDayIso,
+        endDateIso: endOfDayIso,
+        perPage: 1,
+      })
+      setAgendaBadgeCount(visitRes.totalItems > 0 ? visitRes.totalItems : null)
     } catch {
-      setDisconnectModalOpen(false)
-    } finally {
-      setDisconnecting(false)
+      // Silencioso se der erro de rede
     }
-  }
-
-  // Abre automaticamente o grupo Configurações se a rota atual for de uma configuração
-  const configGroup = NAV_GROUPS.find((g) => g.id === 'configuracoes')
-  const isCurrentRouteInConfig = Boolean(
-    configGroup?.items.some(
-      (item) =>
-        isItemVisibleForRole(item, role) &&
-        isNavItemActive(item.href, location.pathname, location.search),
-    ),
-  )
+  }, [role, user?.id])
 
   useEffect(() => {
-    if (isCurrentRouteInConfig) {
-      setConfigOpen(true)
-    }
-  }, [isCurrentRouteInConfig])
+    loadBadgeCounts()
+  }, [loadBadgeCounts, location.pathname])
 
-  const handleToggleConfig = () => {
-    setConfigOpen((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem(CONFIG_COLLAPSED_STORAGE_KEY, String(next))
-      } catch {
-        // Silencioso se sem storage
+  // Se a rota atual estiver em um grupo recolhido, ele se abre sozinho
+  useEffect(() => {
+    NAV_GROUPS.forEach((g) => {
+      const hasActive = g.items.some(
+        (item) =>
+          isItemVisibleForRole(item, role) &&
+          isNavItemActive(item.href, location.pathname, location.search),
+      )
+      if (hasActive && !openGroups[g.id]) {
+        setOpenGroups((prev) => ({ ...prev, [g.id]: true }))
+        try {
+          localStorage.setItem(`${GROUP_COLLAPSED_KEY_PREFIX}${g.id}`, 'true')
+        } catch {
+          /* intentionally ignored */
+        }
       }
-      return next
     })
-  }
+  }, [location.pathname, location.search, role, openGroups])
 
-  // Grupos filtrados pelo papel atual
+  // Indicador deslizante ativo no menu desktop
+  const navRef = useRef<HTMLElement>(null)
+  const [activeIndicatorStyle, setActiveIndicatorStyle] = useState<{
+    top: number
+    height: number
+    visible: boolean
+  }>({
+    top: 0,
+    height: 40,
+    visible: false,
+  })
+
+  const updateActiveIndicator = useCallback(() => {
+    if (!navRef.current) return
+    const activeEl = navRef.current.querySelector<HTMLElement>('[aria-current="page"]')
+    if (activeEl) {
+      const navRect = navRef.current.getBoundingClientRect()
+      const activeRect = activeEl.getBoundingClientRect()
+      setActiveIndicatorStyle({
+        top: activeRect.top - navRect.top + navRef.current.scrollTop,
+        height: activeRect.height,
+        visible: true,
+      })
+    } else {
+      setActiveIndicatorStyle((prev) => ({ ...prev, visible: false }))
+    }
+  }, [])
+
+  useEffect(() => {
+    updateActiveIndicator()
+    const timer = setTimeout(updateActiveIndicator, 50)
+    const timer2 = setTimeout(updateActiveIndicator, 260)
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(timer2)
+    }
+  }, [updateActiveIndicator, location.pathname, location.search, openGroups, sidebarCollapsed])
+
+  // Identificador de grupo
+  const atendimentoGroupId = useId()
+  const imoveisGroupId = useId()
+
+  // Usuário display
+  const userInitials = getUserInitials(user?.name, user?.email)
+  const userDisplayName = getUserDisplayName(user?.name, user?.email)
+  const userRoleFormatted = getFormattedRole(user?.role)
+  const breadcrumb = getBreadcrumbForPath(location.pathname)
+
+  // Itens visíveis para o papel
   const visibleGroups: NavGroupConfig[] = NAV_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter((item) => isItemVisibleForRole(item, role)),
   })).filter((g) => g.items.length > 0)
 
-  const atendimentoGroup = visibleGroups.find((g) => g.id === 'atendimento')
-  const imoveisGroup = visibleGroups.find((g) => g.id === 'imoveis')
-  const configuracoesGroup = visibleGroups.find((g) => g.id === 'configuracoes')
-
-  const showHoje = isItemVisibleForRole(HOJE_NAV_ITEM, role)
-  const isHojeActive = isNavItemActive(HOJE_NAV_ITEM.href, location.pathname, location.search)
-
-  // ═════════════════════════════════════════════════════════════════════
-  // CELULAR (abaixo de 768px):
-  // 5 posições na barra inferior: Hoje, Leads, Agenda, Imóveis e Mais.
-  // "Mais" abre uma folha (Sheet) com os demais itens que o papel vê,
-  // organizados nos mesmos grupos e títulos do desktop:
-  // - Atendimento: Clientes
-  // - Imóveis: Condomínios
-  // - Configurações: os itens do papel
-  // ═════════════════════════════════════════════════════════════════════
-  const mobileFixedIds = ['hoje', 'leads', 'agenda', 'imoveis']
-
-  // Itens fixos na barra inferior: Hoje, Leads, Agenda, Imóveis
-  const mobileFixedNavItems: NavItemConfig[] = [
-    HOJE_NAV_ITEM,
-    ...(atendimentoGroup?.items.filter((i) => i.id === 'leads') || []),
-    ...(atendimentoGroup?.items.filter((i) => i.id === 'agenda') || []),
-    ...(imoveisGroup?.items.filter((i) => i.id === 'imoveis') || []),
-  ].filter((item) => isItemVisibleForRole(item, role))
-
-  // Grupos para a folha "Mais" (exclui os 4 fixos do celular)
-  const mobileMoreGroups: NavGroupConfig[] = visibleGroups
-    .map((g) => ({
-      ...g,
-      items: g.items.filter((item) => !mobileFixedIds.includes(item.id)),
-    }))
-    .filter((g) => g.items.length > 0)
-
-  // O botão "Mais" fica ativo se a rota atual for qualquer um dos itens presentes na folha Mais
-  const isMoreActive = mobileMoreGroups.some((group) =>
-    group.items.some((item) => isNavItemActive(item.href, location.pathname, location.search)),
-  )
-
-  const currentScreenTitle = getScreenTitle(location.pathname)
-
-  // Renderizador de link de item de menu (Desktop)
+  // Render do link de item desktop
   const renderDesktopNavLink = (item: NavItemConfig) => {
     const Icon = item.icon
     const isActive = isNavItemActive(item.href, location.pathname, location.search)
+
+    let badgeCount: number | null = null
+    if (item.id === 'leads') badgeCount = leadsBadgeCount
+    if (item.id === 'agenda') badgeCount = agendaBadgeCount
 
     if (sidebarCollapsed) {
       return (
@@ -287,30 +303,31 @@ export function AppLayout() {
               to={item.href}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'relative flex items-center justify-center w-10 h-10 mx-auto rounded-[4px] transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                'group relative flex items-center justify-center w-10 h-10 mx-auto rounded-[4px] transition-colors z-10',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)]',
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-primary'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-foreground',
+                  ? 'text-[var(--nav-ink)]'
+                  : 'text-[var(--nav-fg)] hover:text-[var(--nav-ink)] hover:bg-[var(--nav-hover)]',
               )}
             >
-              {/* Filete de 2px em primary à esquerda */}
-              {isActive && (
-                <span
-                  className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-sidebar-primary rounded-r"
-                  aria-hidden="true"
-                />
-              )}
               <Icon
                 className={cn(
-                  'h-4 w-4 shrink-0',
-                  isActive ? 'text-sidebar-primary' : 'text-muted-foreground',
+                  'h-[18px] w-[18px] shrink-0 transition-transform active:scale-90',
+                  isActive ? 'text-[var(--nav-accent)]' : 'text-[var(--nav-fg)]',
                 )}
+                strokeWidth={1.75}
               />
               <span className="sr-only">{item.label}</span>
+              {badgeCount !== null && (
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--nav-accent)]" />
+              )}
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={12}>
+          <TooltipContent
+            side="right"
+            sideOffset={12}
+            className="bg-[var(--nav-bg)] text-[var(--nav-ink)] border-[var(--nav-line)]"
+          >
             {item.label}
           </TooltipContent>
         </Tooltip>
@@ -323,57 +340,123 @@ export function AppLayout() {
         to={item.href}
         aria-current={isActive ? 'page' : undefined}
         className={cn(
-          'relative flex items-center gap-3 px-3 py-2 text-sm rounded-[4px] transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+          'group relative flex items-center justify-between h-10 px-3 rounded-[4px] font-sans text-sm transition-colors z-10 select-none',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)]',
           isActive
-            ? 'bg-sidebar-accent text-sidebar-primary font-medium'
-            : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-foreground',
+            ? 'text-[var(--nav-ink)] font-medium'
+            : 'text-[var(--nav-fg)] hover:text-[var(--nav-ink)] hover:bg-[var(--nav-hover)]',
         )}
       >
-        {/* Filete de 2px em primary à esquerda */}
-        {isActive && (
-          <span
-            className="absolute left-0 top-1 bottom-1 w-[2px] bg-sidebar-primary rounded-r"
-            aria-hidden="true"
+        <div className="flex items-center gap-3 min-w-0">
+          <Icon
+            className={cn(
+              'h-[18px] w-[18px] shrink-0 transition-transform active:scale-90',
+              isActive ? 'text-[var(--nav-accent)]' : 'text-[var(--nav-fg)]',
+            )}
+            strokeWidth={1.75}
           />
+          <span className="truncate">{item.label}</span>
+        </div>
+
+        {badgeCount !== null && (
+          <span className="font-mono text-[11px] text-[var(--nav-mute)] pl-2 tabular">
+            {badgeCount}
+          </span>
         )}
-        <Icon
-          className={cn(
-            'h-4 w-4 shrink-0',
-            isActive ? 'text-sidebar-primary' : 'text-muted-foreground',
-          )}
-        />
-        <span className="truncate">{item.label}</span>
       </Link>
     )
   }
 
+  // ═════════════════════════════════════════════════════════════════════
+  // CELULAR (abaixo de 768px):
+  // 5 posições na barra inferior: Painel, Leads, Agenda, Imóveis e Mais.
+  // "Mais" abre folha escura de baixo para cima com os demais itens do papel:
+  // - Atendimento: Clientes
+  // - Imóveis: Condomínios
+  // - Configurações: Configurações
+  // ═════════════════════════════════════════════════════════════════════
+  const mobileFixedItems: NavItemConfig[] = [
+    PAINEL_NAV_ITEM,
+    {
+      id: 'leads',
+      label: 'Leads',
+      href: '/leads',
+      icon: NAV_GROUPS[0].items[0].icon,
+      roles: ['admin', 'sdr', 'corretor'],
+    },
+    {
+      id: 'agenda',
+      label: 'Agenda',
+      href: '/agenda',
+      icon: NAV_GROUPS[0].items[2].icon,
+      roles: ['admin', 'sdr', 'corretor'],
+    },
+    {
+      id: 'imoveis',
+      label: 'Imóveis',
+      href: '/imoveis',
+      icon: NAV_GROUPS[1].items[0].icon,
+      roles: ['admin', 'sdr', 'corretor'],
+    },
+  ]
+
+  // Indicador do celular (5 posições: 0, 1, 2, 3, 4)
+  const getMobileActiveIndex = (): number => {
+    if (isNavItemActive(PAINEL_NAV_ITEM.href, location.pathname, location.search)) return 0
+    if (isNavItemActive('/leads', location.pathname, location.search)) return 1
+    if (isNavItemActive('/agenda', location.pathname, location.search)) return 2
+    if (isNavItemActive('/imoveis', location.pathname, location.search)) return 3
+
+    // Itens que pertencem ao Mais: /clientes, /condominios, /configuracoes, /admin, /portais, /backup
+    if (
+      isNavItemActive('/clientes', location.pathname, location.search) ||
+      isNavItemActive('/condominios', location.pathname, location.search) ||
+      isNavItemActive('/configuracoes', location.pathname, location.search) ||
+      isNavItemActive('/admin', location.pathname, location.search) ||
+      isNavItemActive('/portais', location.pathname, location.search) ||
+      isNavItemActive('/backup', location.pathname, location.search)
+    ) {
+      return 4
+    }
+    return -1
+  }
+
+  const mobileActiveIndex = getMobileActiveIndex()
+  const isMoreActive = mobileActiveIndex === 4
+
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
-      {/* Barra lateral Desktop (a partir de 768 px) */}
+      {/* Busca rápida com Ctrl+K */}
+      <QuickSearchModal open={quickSearchOpen} onClose={() => setQuickSearchOpen(false)} />
+
+      {/* ═════════════════════════════════════════════════════════════ */}
+      {/* MENU LATERAL DESKTOP (>= 768px): 248 px de largura, fundo escuro */}
+      {/* ═════════════════════════════════════════════════════════════ */}
       <aside
+        aria-label="Barra de navegação"
         className={cn(
-          'hidden md:flex flex-col shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200',
-          sidebarCollapsed ? 'w-16' : 'w-56 lg:w-60',
+          'hidden md:flex flex-col shrink-0 border-r border-[var(--nav-line)] bg-[var(--nav-bg)] text-[var(--nav-fg)] transition-[width] duration-200 select-none relative z-30',
+          sidebarCollapsed ? 'w-[68px]' : 'w-[248px]',
         )}
       >
-        {/* Topo da barra lateral: assinatura da marca Planta */}
+        {/* Topo de 64 px */}
         <div
           className={cn(
-            'h-16 flex items-center border-b border-sidebar-border',
-            sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-5',
+            'group/top h-16 flex items-center border-b border-[var(--nav-line)] px-4 relative',
+            sidebarCollapsed ? 'justify-center' : 'justify-between',
           )}
         >
           <Link
             to="/hoje"
-            className="flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring rounded-[4px]"
+            className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)] rounded-[4px]"
             title="Ir para o início"
             aria-label="Ir para o início"
           >
+            {/* SVG do cômodo com porta aberta (26 px, traço em --nav-accent) */}
             <svg
               viewBox="0 0 48 48"
               fill="none"
-              className="w-7 h-7 text-sidebar-primary shrink-0"
+              className="w-[26px] h-[26px] text-[var(--nav-accent)] shrink-0"
               aria-hidden="true"
             >
               <path
@@ -385,576 +468,249 @@ export function AppLayout() {
               <path d="M38 42V26" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
               <path d="M22 42a16 16 0 0 1 16-16" stroke="currentColor" strokeWidth="2" />
             </svg>
+
             {!sidebarCollapsed && (
-              <span className="font-sans font-semibold text-[22px] leading-none tracking-[-0.02em] text-foreground lowercase">
+              <span className="font-sans font-semibold text-[19px] leading-none tracking-[-0.02em] text-[var(--nav-ink)] lowercase truncate">
                 imobdigital
               </span>
             )}
           </Link>
 
-          {/* Botão de recolher/expandir barra lateral */}
-          {!sidebarCollapsed && (
+          {/* Botão de 32 px com seta ‹ que recolhe o menu */}
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            aria-expanded={!sidebarCollapsed}
+            aria-label={sidebarCollapsed ? 'Abrir menu' : 'Recolher menu'}
+            className={cn(
+              'w-8 h-8 rounded-[4px] flex items-center justify-center text-[var(--nav-mute)] hover:text-[var(--nav-ink)] hover:bg-[var(--nav-hover)] transition-all',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)]',
+              sidebarCollapsed
+                ? 'absolute inset-0 m-auto opacity-0 group-hover/top:opacity-100 focus:opacity-100'
+                : 'opacity-100',
+            )}
+          >
+            <ChevronLeft
+              className={cn(
+                'h-4 w-4 transition-transform duration-200',
+                sidebarCollapsed ? 'rotate-180' : '',
+              )}
+            />
+          </button>
+        </div>
+
+        {/* Busca rápida no menu lateral */}
+        <div className="p-3">
+          {sidebarCollapsed ? (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setQuickSearchOpen(true)}
+                  aria-label="Buscar"
+                  className={cn(
+                    'w-10 h-10 mx-auto rounded-[4px] border border-[var(--nav-line)] bg-white/[0.03] flex items-center justify-center text-[var(--nav-mute)] hover:text-[var(--nav-ink)] hover:bg-[var(--nav-hover)] transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)]',
+                  )}
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="right"
+                sideOffset={12}
+                className="bg-[var(--nav-bg)] text-[var(--nav-ink)] border-[var(--nav-line)]"
+              >
+                Buscar (Ctrl K)
+              </TooltipContent>
+            </Tooltip>
+          ) : (
             <button
               type="button"
-              onClick={toggleSidebarCollapsed}
-              className="h-8 w-8 rounded-[4px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring transition-colors"
-              title="Recolher barra lateral"
-              aria-label="Recolher barra lateral"
+              onClick={() => setQuickSearchOpen(true)}
+              className={cn(
+                'w-full h-[38px] px-3 rounded-[4px] border border-[var(--nav-line)] bg-white/[0.03] flex items-center justify-between text-[var(--nav-mute)] hover:text-[var(--nav-ink)] hover:bg-[var(--nav-hover)] transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)] select-none',
+              )}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <div className="flex items-center gap-2.5">
+                <Search className="h-4 w-4 text-[var(--nav-mute)]" />
+                <span className="text-sm font-sans text-[var(--nav-fg)]">Buscar</span>
+              </div>
+              <kbd className="font-mono text-[11px] px-1.5 py-0.5 rounded border border-[var(--nav-line)] bg-white/[0.04] text-[var(--nav-mute)]">
+                Ctrl K
+              </kbd>
             </button>
           )}
         </div>
 
-        {/* Botão expandir quando recolhida (topo abaixo do logo) */}
-        {sidebarCollapsed && (
-          <div className="pt-2 flex justify-center">
-            <button
-              type="button"
-              onClick={toggleSidebarCollapsed}
-              className="h-8 w-8 rounded-[4px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring transition-colors"
-              title="Expandir barra lateral"
-              aria-label="Expandir barra lateral"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
-        {/* Menu principal acessível com navegação por teclado */}
+        {/* Navegação Principal */}
         <nav
+          ref={navRef}
           aria-label="Menu principal"
-          className="flex-1 flex flex-col justify-between py-3 overflow-y-auto overflow-x-hidden"
+          className="flex-1 flex flex-col justify-between px-3 py-1 overflow-y-auto overflow-x-hidden relative"
         >
-          {/* Parte superior: Hoje (sozinho) + Atendimento + Imóveis */}
-          <div className="space-y-4 px-2">
-            {/* "Hoje" sozinho fora de grupo */}
-            {showHoje && <div>{renderDesktopNavLink(HOJE_NAV_ITEM)}</div>}
+          {/* Indicador que desliza por trás dos itens */}
+          {activeIndicatorStyle.visible && (
+            <div
+              className="absolute left-3 right-3 rounded-[4px] bg-[var(--nav-active)] transition-all duration-[260ms] pointer-events-none z-0"
+              style={{
+                top: `${activeIndicatorStyle.top}px`,
+                height: `${activeIndicatorStyle.height}px`,
+                transitionTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+              }}
+              aria-hidden="true"
+            >
+              {/* Filete de 3px à esquerda com brilho */}
+              <span
+                className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l bg-[var(--nav-accent)]"
+                style={{
+                  boxShadow: '0 0 10px 1px rgba(142, 166, 255, 0.55)',
+                }}
+              />
+            </div>
+          )}
 
-            {/* Grupo Atendimento (SEMPRE aberto) */}
-            {atendimentoGroup && (
-              <div role="group" aria-labelledby={groupLabelIdAtendimento} className="space-y-1">
-                {sidebarCollapsed ? (
-                  <div className="my-2 border-t border-border mx-1" aria-hidden="true" />
-                ) : (
-                  <h2
-                    id={groupLabelIdAtendimento}
-                    className="px-3 pt-2 pb-1 font-sans font-medium text-[12px] leading-4 text-muted-foreground select-none"
-                  >
-                    Atendimento
-                  </h2>
-                )}
-                <ul className="space-y-1 list-none p-0 m-0">
-                  {atendimentoGroup.items.map((item) => (
-                    <li key={item.id}>{renderDesktopNavLink(item)}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+          <div className="space-y-3">
+            {/* Painel (sozinho no topo) */}
+            <div>{renderDesktopNavLink(PAINEL_NAV_ITEM)}</div>
 
-            {/* Grupo Imóveis (SEMPRE aberto) */}
-            {imoveisGroup && (
-              <div role="group" aria-labelledby={groupLabelIdImoveis} className="space-y-1">
-                {sidebarCollapsed ? (
-                  <div className="my-2 border-t border-border mx-1" aria-hidden="true" />
-                ) : (
-                  <h2
-                    id={groupLabelIdImoveis}
-                    className="px-3 pt-2 pb-1 font-sans font-medium text-[12px] leading-4 text-muted-foreground select-none"
-                  >
-                    Imóveis
-                  </h2>
-                )}
-                <ul className="space-y-1 list-none p-0 m-0">
-                  {imoveisGroup.items.map((item) => (
-                    <li key={item.id}>{renderDesktopNavLink(item)}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+            {/* Grupos de navegação */}
+            {visibleGroups.map((group) => {
+              const isOpen = openGroups[group.id] !== false
+              const groupId = group.id === 'atendimento' ? atendimentoGroupId : imoveisGroupId
+              const listId = `group-list-${group.id}`
 
-          {/* Parte inferior: Grupo Configurações encostado no rodapé acima do usuário */}
-          {configuracoesGroup && (
-            <div className="px-2 pt-4 mt-auto">
-              <div role="group" aria-labelledby={groupLabelIdConfig} className="space-y-1">
-                {sidebarCollapsed ? (
-                  <>
-                    <div className="my-2 border-t border-border mx-1" aria-hidden="true" />
-                    {/* Barra recolhida: mostra os itens de configurações com tooltip */}
-                    <ul className="space-y-1 list-none p-0 m-0">
-                      {configuracoesGroup.items.map((item) => (
-                        <li key={item.id}>{renderDesktopNavLink(item)}</li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <>
-                    {/* Botão que recolhe / expande o grupo Configurações */}
+              return (
+                <div key={group.id} role="group" aria-labelledby={groupId} className="space-y-1">
+                  {sidebarCollapsed ? (
+                    <div
+                      className="my-2 border-t border-[var(--nav-line)] mx-1"
+                      aria-hidden="true"
+                    />
+                  ) : (
                     <button
                       type="button"
-                      id={groupLabelIdConfig}
-                      onClick={handleToggleConfig}
-                      aria-expanded={configOpen}
-                      aria-controls="configuracoes-items-list"
-                      className="w-full flex items-center justify-between px-3 py-1.5 font-sans font-medium text-[12px] leading-4 text-muted-foreground hover:text-foreground rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring transition-colors select-none text-left"
+                      id={groupId}
+                      onClick={() => toggleGroup(group.id)}
+                      aria-expanded={isOpen}
+                      aria-controls={listId}
+                      className={cn(
+                        'w-full flex items-center justify-between px-3 py-1.5 font-sans font-medium text-[12px] text-[var(--nav-mute)] hover:text-[var(--nav-ink)] rounded-[4px] transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)]',
+                      )}
                     >
-                      <span>Configurações</span>
+                      <span>{group.title}</span>
                       <ChevronDown
                         className={cn(
                           'h-3.5 w-3.5 transition-transform duration-200',
-                          configOpen ? 'rotate-180' : '',
+                          isOpen ? '' : '-rotate-90',
                         )}
                         aria-hidden="true"
                       />
                     </button>
+                  )}
 
-                    {configOpen && (
-                      <ul
-                        id="configuracoes-items-list"
-                        className="space-y-1 list-none p-0 m-0 pt-0.5 animate-accordion-down"
-                      >
-                        {configuracoesGroup.items.map((item) => (
+                  {/* Conteúdo recolhível com animação grid-template-rows */}
+                  <div
+                    id={listId}
+                    className={cn(
+                      'grid transition-all duration-[240ms] ease-out',
+                      sidebarCollapsed || isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <ul className="space-y-0.5 list-none p-0 m-0">
+                        {group.items.map((item) => (
                           <li key={item.id}>{renderDesktopNavLink(item)}</li>
                         ))}
                       </ul>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Rodapé do menu: divisor --nav-line e Configurações */}
+          <div className="pt-3 pb-2 mt-auto">
+            <div className="border-t border-[var(--nav-line)] mb-2" />
+            <div>{renderDesktopNavLink(CONFIGURACOES_NAV_ITEM)}</div>
+          </div>
         </nav>
-
-        {/* Rodapé da barra lateral: Menu do usuário (avatar, nome, organização, tema, Google Agenda, Sair) */}
-        <div className="p-3 border-t border-sidebar-border space-y-3">
-          {sidebarCollapsed ? (
-            /* Versão recolhida: avatar como gatilho do dropdown */
-            <div className="flex flex-col items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Minha conta"
-                    className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-foreground font-medium text-xs hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring transition-colors"
-                  >
-                    {(user?.name || user?.email || 'U').charAt(0).toUpperCase()}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="right" sideOffset={12} className="w-64 p-2">
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="text-sm font-semibold text-foreground truncate">
-                      {user?.name || user?.email || 'Usuário'}
-                    </div>
-                    {orgName && (
-                      <div className="text-xs text-muted-foreground truncate -mt-0.5">
-                        {orgName}
-                      </div>
-                    )}
-                    <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
-                    <div className="mt-1">
-                      <Badge variant="outline" className="text-[10px] font-medium lowercase">
-                        {getRoleLabel(user?.role)}
-                      </Badge>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <div className="px-2 py-1.5 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Tema</span>
-                    <ThemeToggle size="sm" />
-                  </div>
-                  {isBrokerOrAdmin && googleStatus && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <div className="px-2 py-2 space-y-2">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Calendar className="h-3.5 w-3.5 shrink-0" />
-                          <span className="font-medium text-foreground">Google Agenda</span>
-                        </div>
-                        {googleStatus === 'conectado' && (
-                          <div className="space-y-1.5">
-                            <p
-                              className="text-[11px] text-muted-foreground truncate"
-                              title={googleEmail || ''}
-                            >
-                              conectada como {googleEmail || 'sua conta'}
-                            </p>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setDisconnectModalOpen(true)}
-                              className="w-full h-8 text-xs font-normal rounded-full"
-                            >
-                              Desconectar
-                            </Button>
-                          </div>
-                        )}
-                        {googleStatus === 'reconectar' && (
-                          <div className="space-y-1.5">
-                            <p className="text-xs text-attention font-medium">Precisa reconectar</p>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={handleConnectGoogle}
-                              disabled={connectingGoogle}
-                              className="w-full h-8 text-xs font-normal rounded-full"
-                            >
-                              {connectingGoogle ? 'Conectando...' : 'Conectar'}
-                            </Button>
-                          </div>
-                        )}
-                        {googleStatus === 'nao_conectado' && (
-                          <div className="space-y-1.5">
-                            <p className="text-xs text-muted-foreground">Não conectada</p>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={handleConnectGoogle}
-                              disabled={connectingGoogle}
-                              className="w-full h-8 text-xs font-normal rounded-full"
-                            >
-                              {connectingGoogle ? 'Conectando...' : 'Conectar Google Agenda'}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={logout}
-                    className="text-destructive focus:text-destructive cursor-pointer"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    <span>Sair</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ) : (
-            /* Versão expandida: avatar + nome + organização + dropdown de ações */
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-foreground font-medium text-xs shrink-0">
-                    {(user?.name || user?.email || 'U').charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span
-                      className="text-xs font-medium text-foreground block truncate"
-                      title={user?.name || user?.email || ''}
-                    >
-                      {user?.name || user?.email || 'Usuário'}
-                    </span>
-                    {orgName && (
-                      <span
-                        className="text-[11px] text-muted-foreground block truncate -mt-0.5"
-                        title={orgName}
-                      >
-                        {orgName}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Mais opções da conta"
-                      className="h-7 w-7 rounded-[4px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring transition-colors shrink-0"
-                    >
-                      <User className="h-3.5 w-3.5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" sideOffset={8} className="w-60 p-2">
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
-                      <div className="mt-1">
-                        <Badge variant="outline" className="text-[10px] font-medium lowercase">
-                          {getRoleLabel(user?.role)}
-                        </Badge>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={logout}
-                      className="text-destructive focus:text-destructive cursor-pointer"
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      <span>Sair</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Tema na barra lateral expandida */}
-              <div className="flex items-center justify-between gap-2 pt-1 border-t border-sidebar-border/60">
-                <span className="text-[11px] eyebrow text-muted-foreground">Tema</span>
-                <ThemeToggle size="sm" />
-              </div>
-
-              {/* Google Agenda na barra lateral desktop (só corretor e admin) */}
-              {isBrokerOrAdmin && googleStatus && (
-                <div className="pt-2 border-t border-sidebar-border/60 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5 shrink-0" />
-                    <span className="font-medium text-foreground text-[11px]">Google Agenda</span>
-                  </div>
-
-                  {googleStatus === 'conectado' && (
-                    <div className="space-y-1">
-                      <p
-                        className="text-[11px] text-muted-foreground truncate"
-                        title={googleEmail || ''}
-                      >
-                        conectada como {googleEmail || 'sua conta'}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDisconnectModalOpen(true)}
-                        className="w-full h-7 text-[11px] font-normal rounded-full"
-                      >
-                        Desconectar
-                      </Button>
-                    </div>
-                  )}
-
-                  {googleStatus === 'reconectar' && (
-                    <div className="space-y-1">
-                      <p className="text-[11px] text-attention font-medium">Precisa reconectar</p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleConnectGoogle}
-                        disabled={connectingGoogle}
-                        className="w-full h-7 text-[11px] font-normal rounded-full"
-                      >
-                        {connectingGoogle ? 'Conectando...' : 'Conectar'}
-                      </Button>
-                      {googleConfigError && (
-                        <p className="text-[10px] text-destructive leading-tight">
-                          {googleConfigError}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {googleStatus === 'nao_conectado' && (
-                    <div className="space-y-1">
-                      <p className="text-[11px] text-muted-foreground">Não conectada</p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleConnectGoogle}
-                        disabled={connectingGoogle}
-                        className="w-full h-7 text-[11px] font-normal rounded-full"
-                      >
-                        {connectingGoogle ? 'Conectando...' : 'Conectar Google Agenda'}
-                      </Button>
-                      {googleConfigError && (
-                        <p className="text-[10px] text-destructive leading-tight">
-                          {googleConfigError}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </aside>
 
-      {/* Área principal */}
+      {/* ═════════════════════════════════════════════════════════════ */}
+      {/* ÁREA PRINCIPAL */}
+      {/* ═════════════════════════════════════════════════════════════ */}
       <div className="flex flex-1 flex-col min-w-0">
-        {/* Cabeçalho Desktop */}
-        <header className="hidden md:flex h-16 shrink-0 items-center justify-end gap-4 border-b border-border px-6 bg-background">
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <span className="text-sm font-medium text-foreground block">
-                {user?.name || user?.email || 'Usuário'}
-              </span>
-              {orgName && (
-                <span className="text-xs text-muted-foreground block -mt-0.5">{orgName}</span>
-              )}
-            </div>
-            <Badge variant="outline" className="text-[11px] font-medium lowercase">
-              {getRoleLabel(user?.role)}
-            </Badge>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={logout}
-            className="gap-2 font-medium"
-            title="Sair do sistema"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>Sair</span>
-          </Button>
-        </header>
-
-        {/* Cabeçalho Celular: assinatura reduzida (símbolo) + título da tela atual e botão de menu do usuário à direita */}
-        <header className="md:hidden sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <Link to="/hoje" className="shrink-0" aria-label="Ir para o início">
-              <svg
-                viewBox="0 0 48 48"
-                fill="none"
-                className="w-7 h-7 text-primary shrink-0"
-                aria-hidden="true"
-              >
-                <path
-                  d="M22 42H6V6h36v36h-4"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  strokeLinecap="square"
-                />
-                <path d="M38 42V26" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
-                <path d="M22 42a16 16 0 0 1 16-16" stroke="currentColor" strokeWidth="2" />
-              </svg>
-            </Link>
-            <h1 className="text-base font-medium tracking-tight text-foreground truncate">
-              {currentScreenTitle}
-            </h1>
+        {/* BARRA SUPERIOR DESKTOP (64 px, fixa no topo da área de conteúdo, fundo canvas 88% com blur 8px) */}
+        <header className="hidden md:flex h-16 shrink-0 items-center justify-between border-b border-border px-6 sticky top-0 z-20 bg-background/88 backdrop-blur-[8px]">
+          {/* Breadcrumb à esquerda: Atendimento / Leads */}
+          <div className="flex items-center gap-2 text-sm font-sans">
+            {breadcrumb.group && (
+              <>
+                <span className="text-muted-foreground">{breadcrumb.group}</span>
+                <span className="text-muted-foreground/60">/</span>
+              </>
+            )}
+            <span className="font-semibold text-foreground">{breadcrumb.screen}</span>
           </div>
 
-          <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          {/* Usuário logado à direita (Dropdown) */}
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-[4px]"
+              <button
+                type="button"
                 aria-label="Menu do usuário"
+                className={cn(
+                  'flex items-center gap-3 p-1.5 rounded-lg hover:bg-muted/50 transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none text-left',
+                )}
               >
-                <User className="h-4 w-4" />
-              </Button>
+                {/* Círculo de 34 px em primary com iniciais em primary-foreground (Plex Sans 600, 13 px) */}
+                <div className="w-[34px] h-[34px] rounded-full bg-primary text-primary-foreground font-sans font-semibold text-[13px] flex items-center justify-center shrink-0 shadow-sm">
+                  {userInitials}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="font-sans font-semibold text-[14px] leading-tight text-foreground truncate">
+                    {userDisplayName}
+                  </div>
+                  <div className="font-sans text-[12px] leading-tight text-muted-foreground truncate">
+                    {userRoleFormatted} {orgName ? `· ${orgName}` : ''}
+                  </div>
+                </div>
+
+                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-1" />
+              </button>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent
               align="end"
-              className="w-64 rounded-[4px] p-2 shadow-modal dark:shadow-none"
+              sideOffset={8}
+              className="w-[230px] rounded-[8px] p-2 border border-border bg-popover shadow-md font-sans"
             >
-              <DropdownMenuLabel className="font-normal">
+              <DropdownMenuLabel className="font-normal px-2 py-1.5">
                 <div className="text-sm font-semibold text-foreground truncate">
-                  {user?.name || user?.email || 'Usuário'}
+                  {userDisplayName}
                 </div>
-                {orgName && (
-                  <div className="text-xs text-muted-foreground truncate -mt-0.5">{orgName}</div>
-                )}
-                <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
-                <div className="mt-1">
-                  <Badge variant="outline" className="text-[10px] font-medium">
-                    {getRoleLabel(user?.role)}
-                  </Badge>
+                <div className="text-xs text-muted-foreground truncate font-mono">
+                  {user?.email}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <div className="px-2 py-1.5 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Tema</span>
-                <ThemeToggle size="sm" />
-              </div>
-
-              {/* Seção Google Agenda no Menu do usuário do celular (só corretor e admin) */}
-              {isBrokerOrAdmin && googleStatus && (
-                <>
-                  <DropdownMenuSeparator />
-                  <div className="px-2 py-2 space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Calendar className="h-3.5 w-3.5 shrink-0" />
-                      <span className="font-medium text-foreground">Google Agenda</span>
-                    </div>
-
-                    {googleStatus === 'conectado' && (
-                      <div className="space-y-2">
-                        <p
-                          className="text-xs text-muted-foreground truncate"
-                          title={googleEmail || ''}
-                        >
-                          conectada como {googleEmail || 'sua conta'}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setMobileMenuOpen(false)
-                            setDisconnectModalOpen(true)
-                          }}
-                          className="w-full min-h-[44px] h-10 text-xs font-normal rounded-full"
-                        >
-                          Desconectar
-                        </Button>
-                      </div>
-                    )}
-
-                    {googleStatus === 'reconectar' && (
-                      <div className="space-y-2">
-                        <p className="text-xs text-attention font-medium">Precisa reconectar</p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleConnectGoogle}
-                          disabled={connectingGoogle}
-                          className="w-full min-h-[44px] h-10 text-xs font-normal rounded-full"
-                        >
-                          {connectingGoogle ? 'Conectando...' : 'Conectar'}
-                        </Button>
-                        {googleConfigError && (
-                          <p className="text-[11px] text-destructive leading-tight">
-                            {googleConfigError}
-                          </p>
-                        )}
-                        <p className="text-[10px] text-muted-foreground leading-tight">
-                          O Imobdigital só cria, atualiza e apaga eventos de visita na sua agenda.
-                          Não lê seus outros eventos. Você pode desconectar quando quiser.
-                        </p>
-                      </div>
-                    )}
-
-                    {googleStatus === 'nao_conectado' && (
-                      <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">Não conectada</p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleConnectGoogle}
-                          disabled={connectingGoogle}
-                          className="w-full min-h-[44px] h-10 text-xs font-normal rounded-full"
-                        >
-                          {connectingGoogle ? 'Conectando...' : 'Conectar Google Agenda'}
-                        </Button>
-                        {googleConfigError && (
-                          <p className="text-[11px] text-destructive leading-tight">
-                            {googleConfigError}
-                          </p>
-                        )}
-                        <p className="text-[10px] text-muted-foreground leading-tight">
-                          O Imobdigital só cria, atualiza e apaga eventos de visita na sua agenda.
-                          Não lê seus outros eventos. Você pode desconectar quando quiser.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-
+              <DropdownMenuItem
+                onClick={() => navigate('/configuracoes')}
+                className="cursor-pointer font-sans text-xs py-2 px-2"
+              >
+                <Settings className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>Minha conta e preferências</span>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  logout()
-                }}
-                className="text-destructive focus:text-destructive cursor-pointer min-h-[44px]"
+                onClick={logout}
+                className="cursor-pointer text-destructive focus:text-destructive font-sans text-xs py-2 px-2"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 <span>Sair</span>
@@ -963,20 +719,117 @@ export function AppLayout() {
           </DropdownMenu>
         </header>
 
-        {/* Conteúdo principal - com pb-24 no mobile para não ser coberto pela barra inferior */}
-        <main className="flex-1 p-4 sm:p-6 md:p-8 pb-24 md:pb-8">
+        {/* BARRA SUPERIOR CELULAR (< 768px): 56 px */}
+        <header className="md:hidden sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur">
+          {/* Símbolo e palavra à esquerda */}
+          <Link to="/hoje" className="flex items-center gap-2" aria-label="Ir para o início">
+            <svg
+              viewBox="0 0 48 48"
+              fill="none"
+              className="w-6 h-6 text-primary shrink-0"
+              aria-hidden="true"
+            >
+              <path
+                d="M22 42H6V6h36v36h-4"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="square"
+              />
+              <path d="M38 42V26" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
+              <path d="M22 42a16 16 0 0 1 16-16" stroke="currentColor" strokeWidth="2" />
+            </svg>
+            <span className="font-sans font-semibold text-base tracking-tight text-foreground lowercase">
+              imobdigital
+            </span>
+          </Link>
+
+          {/* Lupa e círculo com iniciais à direita */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setQuickSearchOpen(true)}
+              aria-label="Buscar"
+              className="w-11 h-11 flex items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Minha conta"
+                  className="w-11 h-11 flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground font-sans font-semibold text-[13px] flex items-center justify-center">
+                    {userInitials}
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 p-2 font-sans">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="text-sm font-semibold text-foreground truncate">
+                    {userDisplayName}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate font-mono">
+                    {user?.email}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {userRoleFormatted} {orgName ? `· ${orgName}` : ''}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => navigate('/configuracoes')}
+                  className="cursor-pointer text-xs"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  <span>Minha conta e preferências</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={logout}
+                  className="cursor-pointer text-destructive focus:text-destructive text-xs"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span>Sair</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* CONTEÚDO PRINCIPAL (com animação screen-fade-in) */}
+        <main
+          key={location.pathname}
+          className="flex-1 p-4 sm:p-6 md:p-8 pb-24 md:pb-8 screen-fade-in"
+        >
           <Outlet />
         </main>
 
-        {/* Barra inferior de navegação no celular (abaixo de 768px): exatamente 5 posições */}
-        {/* Hoje, Leads, Agenda, Imóveis e Mais — alvos de toque de 44px mínimo (h-12 / min-h-[44px]), sem sobreposição em 360px */}
+        {/* ═════════════════════════════════════════════════════════════ */}
+        {/* BARRA INFERIOR CELULAR: fundo escuro (--nav-bg), 5 posições */}
+        {/* Painel, Leads, Agenda, Imóveis e Mais */}
+        {/* ═════════════════════════════════════════════════════════════ */}
         <nav
           aria-label="Menu principal móvel"
-          className="md:hidden fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 items-center border-t border-border bg-card/95 backdrop-blur px-1 py-1 supports-[backdrop-filter]:bg-card/90"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 items-center border-t border-[var(--nav-line)] bg-[var(--nav-bg)] px-1 py-1"
         >
-          {mobileFixedNavItems.map((item) => {
+          {/* Traço superior de 2px que desliza até o item ativo (260ms) */}
+          {mobileActiveIndex >= 0 && (
+            <div
+              className="absolute top-0 h-[2px] bg-[var(--nav-accent)] transition-all duration-[260ms] ease-out pointer-events-none"
+              style={{
+                width: '20%',
+                left: `${mobileActiveIndex * 20}%`,
+              }}
+              aria-hidden="true"
+            />
+          )}
+
+          {mobileFixedItems.map((item, index) => {
             const Icon = item.icon
-            const isActive = isNavItemActive(item.href, location.pathname, location.search)
+            const isActive = mobileActiveIndex === index
 
             return (
               <Link
@@ -985,33 +838,25 @@ export function AppLayout() {
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'relative flex flex-col items-center justify-center min-h-[44px] h-12 w-full px-0.5 rounded-[4px] transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-                  isActive
-                    ? 'text-primary font-medium'
-                    : 'text-muted-foreground hover:text-foreground',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)]',
+                  isActive ? 'text-[var(--nav-ink)] font-medium' : 'text-[var(--nav-mute)]',
                 )}
               >
-                {/* Traço indicador superior de 2px quando ativo */}
-                {isActive && (
-                  <span
-                    className="absolute top-0 left-2 right-2 h-[2px] bg-primary rounded-full"
-                    aria-hidden="true"
-                  />
-                )}
-                <Icon className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary' : '')} />
-                <span
+                <Icon
                   className={cn(
-                    'text-[10px] leading-tight truncate max-w-full text-center mt-0.5',
-                    isActive ? 'text-primary' : '',
+                    'h-5 w-5 shrink-0 transition-transform active:scale-90',
+                    isActive ? 'text-[var(--nav-accent)]' : 'text-[var(--nav-mute)]',
                   )}
-                >
+                  strokeWidth={1.75}
+                />
+                <span className="text-[10px] font-sans leading-tight truncate max-w-full text-center mt-0.5">
                   {item.label}
                 </span>
               </Link>
             )
           })}
 
-          {/* Quinto item da barra móvel: Mais (abre a folha inferior) */}
+          {/* 5º item: Mais (abre a folha inferior) */}
           <button
             type="button"
             onClick={() => setMobileMoreOpen(true)}
@@ -1020,126 +865,103 @@ export function AppLayout() {
             aria-expanded={mobileMoreOpen}
             className={cn(
               'relative flex flex-col items-center justify-center min-h-[44px] h-12 w-full px-0.5 rounded-[4px] transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-              isMoreActive
-                ? 'text-primary font-medium'
-                : 'text-muted-foreground hover:text-foreground',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)]',
+              isMoreActive ? 'text-[var(--nav-ink)] font-medium' : 'text-[var(--nav-mute)]',
             )}
           >
-            {isMoreActive && (
-              <span
-                className="absolute top-0 left-2 right-2 h-[2px] bg-primary rounded-full"
-                aria-hidden="true"
-              />
-            )}
-            <MenuIcon className={cn('h-5 w-5 shrink-0', isMoreActive ? 'text-primary' : '')} />
-            <span
+            <MenuIcon
               className={cn(
-                'text-[10px] leading-tight truncate max-w-full text-center mt-0.5',
-                isMoreActive ? 'text-primary' : '',
+                'h-5 w-5 shrink-0 transition-transform active:scale-90',
+                isMoreActive ? 'text-[var(--nav-accent)]' : 'text-[var(--nav-mute)]',
               )}
-            >
+              strokeWidth={1.75}
+            />
+            <span className="text-[10px] font-sans leading-tight truncate max-w-full text-center mt-0.5">
               Mais
             </span>
           </button>
         </nav>
 
-        {/* Modal de confirmação de desconexão da Google Agenda */}
-        <AlertDialog open={disconnectModalOpen} onOpenChange={setDisconnectModalOpen}>
-          <AlertDialogContent className="rounded-lg p-6 max-w-md">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-base font-normal text-foreground">
-                Desconectar Google Agenda
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-sm text-muted-foreground">
-                Os eventos futuros criados pelo Imobdigital serão removidos da sua agenda.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
-              <AlertDialogCancel
-                disabled={disconnecting}
-                className="rounded-full font-normal min-h-[44px] h-11"
-              >
-                Cancelar
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={(e) => {
-                  e.preventDefault()
-                  handleConfirmDisconnect()
-                }}
-                disabled={disconnecting}
-                className="rounded-full font-normal min-h-[44px] h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {disconnecting ? 'Desconectando...' : 'Desconectar'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Folha (Sheet) "Mais" opções de navegação no Celular */}
+        {/* Folha escura "Mais" (Sheet de baixo para cima, 260ms) */}
         <Sheet open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
-          <SheetContent side="bottom" className="p-4 rounded-t-2xl max-h-[85vh] overflow-y-auto">
-            <SheetHeader className="text-left pb-2 border-b border-border">
-              <SheetTitle className="text-base font-normal text-foreground">Mais opções</SheetTitle>
-              <SheetDescription className="text-xs text-muted-foreground">
-                Acesse as demais áreas do sistema Imobdigital
+          <SheetContent
+            side="bottom"
+            className="p-4 rounded-t-2xl max-h-[85vh] overflow-y-auto bg-[var(--nav-bg)] text-[var(--nav-fg)] border-t border-[var(--nav-line)]"
+          >
+            <SheetHeader className="text-left pb-2 border-b border-[var(--nav-line)]">
+              <SheetTitle className="text-base font-normal text-[var(--nav-ink)] font-sans">
+                Mais opções
+              </SheetTitle>
+              <SheetDescription className="text-xs text-[var(--nav-mute)] font-sans">
+                Acesse as demais áreas do sistema
               </SheetDescription>
             </SheetHeader>
 
-            <div className="py-3 space-y-4">
-              {mobileMoreGroups.map((group) => (
-                <div key={group.id} className="space-y-1">
-                  <h3 className="px-2 font-sans font-medium text-[12px] leading-4 text-muted-foreground select-none">
-                    {group.title}
-                  </h3>
-                  <div className="space-y-1">
-                    {group.items.map((item) => {
-                      const Icon = item.icon
-                      const isActive = isNavItemActive(
-                        item.href,
-                        location.pathname,
-                        location.search,
-                      )
-
-                      return (
-                        <Link
-                          key={item.id}
-                          to={item.href}
-                          onClick={() => setMobileMoreOpen(false)}
-                          aria-current={isActive ? 'page' : undefined}
-                          className={cn(
-                            'flex items-center justify-between p-3 min-h-[48px] rounded-lg transition-colors text-sm',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-                            isActive
-                              ? 'bg-sidebar-accent text-sidebar-primary font-medium'
-                              : 'text-foreground hover:bg-muted/50',
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={cn(
-                                'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
-                                isActive
-                                  ? 'bg-sidebar-primary/10 text-sidebar-primary'
-                                  : 'bg-muted text-foreground',
-                              )}
-                            >
-                              <Icon className="h-4 w-4" />
-                            </div>
-                            <span>{item.label}</span>
-                          </div>
-                          <ChevronRight
-                            className={cn(
-                              'h-4 w-4',
-                              isActive ? 'text-sidebar-primary' : 'text-muted-foreground',
-                            )}
-                          />
-                        </Link>
-                      )
-                    })}
+            <div className="py-3 space-y-4 font-sans">
+              {/* Atendimento: Clientes */}
+              <div className="space-y-1">
+                <h3 className="px-2 font-medium text-[12px] text-[var(--nav-mute)]">Atendimento</h3>
+                <Link
+                  to="/clientes"
+                  onClick={() => setMobileMoreOpen(false)}
+                  className={cn(
+                    'flex items-center justify-between p-3 min-h-[44px] rounded-lg transition-colors text-sm',
+                    isNavItemActive('/clientes', location.pathname, location.search)
+                      ? 'bg-[var(--nav-active)] text-[var(--nav-ink)] font-medium'
+                      : 'text-[var(--nav-fg)] hover:bg-[var(--nav-hover)]',
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-[var(--nav-accent)]" />
+                    <span>Clientes</span>
                   </div>
-                </div>
-              ))}
+                  <ChevronRight className="h-4 w-4 text-[var(--nav-mute)]" />
+                </Link>
+              </div>
+
+              {/* Imóveis: Condomínios */}
+              <div className="space-y-1">
+                <h3 className="px-2 font-medium text-[12px] text-[var(--nav-mute)]">Imóveis</h3>
+                <Link
+                  to="/condominios"
+                  onClick={() => setMobileMoreOpen(false)}
+                  className={cn(
+                    'flex items-center justify-between p-3 min-h-[44px] rounded-lg transition-colors text-sm',
+                    isNavItemActive('/condominios', location.pathname, location.search)
+                      ? 'bg-[var(--nav-active)] text-[var(--nav-ink)] font-medium'
+                      : 'text-[var(--nav-fg)] hover:bg-[var(--nav-hover)]',
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Building className="h-4 w-4 text-[var(--nav-accent)]" />
+                    <span>Condomínios</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-[var(--nav-mute)]" />
+                </Link>
+              </div>
+
+              {/* Configurações: Configurações */}
+              <div className="space-y-1">
+                <h3 className="px-2 font-medium text-[12px] text-[var(--nav-mute)]">
+                  Configurações
+                </h3>
+                <Link
+                  to="/configuracoes"
+                  onClick={() => setMobileMoreOpen(false)}
+                  className={cn(
+                    'flex items-center justify-between p-3 min-h-[44px] rounded-lg transition-colors text-sm',
+                    isNavItemActive('/configuracoes', location.pathname, location.search)
+                      ? 'bg-[var(--nav-active)] text-[var(--nav-ink)] font-medium'
+                      : 'text-[var(--nav-fg)] hover:bg-[var(--nav-hover)]',
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Settings className="h-4 w-4 text-[var(--nav-accent)]" />
+                    <span>Configurações</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-[var(--nav-mute)]" />
+                </Link>
+              </div>
             </div>
           </SheetContent>
         </Sheet>

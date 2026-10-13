@@ -298,6 +298,33 @@ export async function listClients(params: ListClientsParams = {}) {
 /**
  * Obtém os detalhes de um cliente por ID
  */
+/**
+ * Busca rápida de clientes por nome ou telefone (até o limite indicado)
+ */
+export async function searchClientsForQuickFind(
+  term: string,
+  limit = 5,
+): Promise<Array<{ id: string; name: string; phone: string }>> {
+  const cleanTerm = term.trim().replace(/['"\\]/g, '')
+  if (!cleanTerm) return []
+  const digits = term.replace(/\D/g, '').replace(/^0+/, '')
+  const conditions = [`name ~ "${cleanTerm}"`]
+  if (digits) {
+    conditions.push(`phone ~ "${digits}"`)
+  }
+  const res = await pb.collection('clients').getList<ClientRecord>(1, limit, {
+    filter: `(${conditions.join(' || ')})`,
+    sort: '-created',
+    fields: 'id,name,phone',
+    requestKey: null,
+  })
+  return res.items.map((c) => ({
+    id: c.id,
+    name: c.name,
+    phone: c.phone || '',
+  }))
+}
+
 export async function getClientById(id: string): Promise<ClientRecord> {
   return await pb.collection('clients').getOne<ClientRecord>(id, {
     expand: 'responsible_id',

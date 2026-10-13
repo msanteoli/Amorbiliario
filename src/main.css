@@ -41,6 +41,16 @@
     --sidebar-border: 214 23% 88%;
     --sidebar-ring: 229 75% 51%;
 
+    /* Variáveis do menu lateral escuro (tema claro) */
+    --nav-bg: #0b1220;
+    --nav-line: #1c2638;
+    --nav-fg: #c3ccda;
+    --nav-mute: #8592a8;
+    --nav-hover: rgba(255, 255, 255, 0.06);
+    --nav-active: rgba(125, 152, 255, 0.16);
+    --nav-accent: #8ea6ff;
+    --nav-ink: #ffffff;
+
     /* Novas ou redefinidas */
     --body: 216 21% 27%;
     --line: 216 12% 54%;
@@ -89,6 +99,16 @@
     --sidebar-accent-foreground: 216 42% 95%;
     --sidebar-border: 218 28% 19%;
     --sidebar-ring: 228 100% 75%;
+
+    /* Variáveis do menu lateral escuro (tema escuro) */
+    --nav-bg: #070b12;
+    --nav-line: #182133;
+    --nav-fg: #c3ccda;
+    --nav-mute: #8592a8;
+    --nav-hover: rgba(255, 255, 255, 0.06);
+    --nav-active: rgba(125, 152, 255, 0.16);
+    --nav-accent: #8ea6ff;
+    --nav-ink: #ffffff;
 
     /* Novas */
     --body: 216 22% 78%;
@@ -453,6 +473,28 @@
   .pub-enter,
   .pub-enter-sm,
   .pub-enter-header {
+    animation: none !important;
+  }
+}
+
+/* Transição de entrada suave entre telas */
+@keyframes screen-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.screen-fade-in {
+  animation: screen-enter 220ms ease-out backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-fade-in {
     animation: none !important;
   }
 }
