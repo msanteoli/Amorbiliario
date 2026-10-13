@@ -33,7 +33,8 @@ const TabsTrigger = React.forwardRef<
     )}
     {...props}
   />
-))TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
+))
+TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
