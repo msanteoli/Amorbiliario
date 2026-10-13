@@ -71,23 +71,25 @@ import {
 
 export default function Admin() {
   const { user: currentUser } = useAuth()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  // Abas
-  const [activeTab, setActiveTab] = useState<
-    'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel'
-  >(() => {
-    const tabParam = searchParams.get('tab')
-    if (
-      tabParam === 'usuarios' ||
-      tabParam === 'organizacao' ||
-      tabParam === 'auditoria' ||
-      tabParam === 'sem-imovel'
-    ) {
-      return tabParam
+  // Abas (lê ?aba= ou retrocompatibilidade com ?tab=, com suporte a 'proprietarios' e 'sem-imovel')
+  const parseTabFromParams = (
+    params: URLSearchParams,
+  ): 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel' => {
+    const raw = params.get('aba') || params.get('tab')
+    if (raw === 'proprietarios' || raw === 'sem-imovel') {
+      return 'sem-imovel'
+    }
+    if (raw === 'usuarios' || raw === 'organizacao' || raw === 'auditoria') {
+      return raw
     }
     return 'usuarios'
-  })
+  }
+
+  const [activeTab, setActiveTab] = useState<
+    'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel'
+  >(() => parseTabFromParams(searchParams))
 
   // Feedback global da página
   const [globalSuccess, setGlobalSuccess] = useState<string | null>(null)
@@ -402,15 +404,8 @@ export default function Admin() {
   }, [])
 
   useEffect(() => {
-    const tabParam = searchParams.get('tab')
-    if (
-      tabParam === 'usuarios' ||
-      tabParam === 'organizacao' ||
-      tabParam === 'auditoria' ||
-      tabParam === 'sem-imovel'
-    ) {
-      setActiveTab(tabParam)
-    }
+    const resolved = parseTabFromParams(searchParams)
+    setActiveTab((prev) => (prev !== resolved ? resolved : prev))
   }, [searchParams])
 
   useEffect(() => {
@@ -579,7 +574,14 @@ export default function Admin() {
         onValueChange={(val) => {
           setGlobalSuccess(null)
           setGlobalError(null)
-          setActiveTab(val as 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel')
+          const nextTab = val as 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel'
+          setActiveTab(nextTab)
+          // Atualiza o parâmetro na URL mantendo qualquer outro parâmetro existente
+          const nextParams = new URLSearchParams(searchParams)
+          nextParams.delete('tab') // remove chave legada se houver
+          const paramValue = nextTab === 'sem-imovel' ? 'proprietarios' : nextTab
+          nextParams.set('aba', paramValue)
+          setSearchParams(nextParams, { replace: true })
         }}
         className="w-full space-y-6"
       >
