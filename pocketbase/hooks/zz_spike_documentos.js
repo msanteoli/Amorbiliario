@@ -1,4 +1,4 @@
-// SPIKE DESCARTÁVEL (M14, T0, cópia de arquivo). Será removido logo após o teste.
+// SPIKE DESCARTÁVEL (M14, T0, cópia de arquivo, rodada 2). Será removido logo após o teste.
 routerAdd('GET', '/backend/v1/zz-spike-copia/{pid}', (e) => {
   const actor = e.auth
   if (actor.get('active') !== true || String(actor.get('role')) !== 'admin') {
@@ -6,64 +6,38 @@ routerAdd('GET', '/backend/v1/zz-spike-copia/{pid}', (e) => {
   }
   const pid = e.request.pathValue('pid')
   const out = {}
-  let src = null
-  try {
-    const rows = $app.findRecordsByFilter('property_photos', 'property_id = {:p}', '', 1, 0, {
-      p: pid,
-    })
-    src = rows.length ? rows[0] : null
-  } catch (err) {
-    out.busca_erro = String((err && err.message) || err)
-  }
-  if (!src) return e.json(200, Object.assign(out, { origem: 'sem foto de origem' }))
+  const rows = $app.findRecordsByFilter('property_photos', 'property_id = {:p}', '', 1, 0, {
+    p: pid,
+  })
+  if (!rows.length) return e.json(200, { origem: 'sem foto' })
+  const src = rows[0]
   const nomes = src.getStringSlice('file')
-  out.origem_nome = nomes.length
   const caminho = src.baseFilesPath() + '/' + nomes[0]
-  out.caminho_ok = caminho.length > 0
-  // 1) ler os bytes do arquivo de origem
-  let bytes = null
+  out.caminho = caminho
   const fs = $app.newFilesystem()
+  const f = fs.getFile(caminho)
+  out.getFile_tipo = typeof f
+  out.getFile_chaves = Object.keys(f || {}).join(',')
+  const r = fs.getReader(caminho)
+  out.getReader_tipo = typeof r
+  out.getReader_chaves = Object.keys(r || {}).join(',')
+  out.getReader_metodos = ['read', 'readAll', 'bytes', 'close', 'seek']
+    .filter((m) => typeof r[m] === 'function')
+    .join(',')
+  // laço de leitura manual
   try {
-    const f = fs.getFile(caminho)
-    out.ler_getFile = 'ok'
-    bytes = f && (f.bytes || f.content || null)
-  } catch (err) {
-    out.ler_getFile_erro = String((err && err.message) || err)
-  }
-  if (!bytes) {
-    try {
-      const r = fs.getReader(caminho)
-      out.ler_getReader = 'ok'
-      bytes = r.readAll ? r.readAll() : null
-      out.ler_readAll = bytes ? 'ok' : 'sem readAll'
-    } catch (err) {
-      out.ler_getReader_erro = String((err && err.message) || err)
+    const chunks = []
+    let total = 0
+    for (let i = 0; i < 2000; i++) {
+      const buf = new Uint8Array(8192)
+      const n = r.read(buf)
+      if (!n || n <= 0) break
+      chunks.push(buf.slice(0, n))
+      total += n
     }
-  }
-  out.bytes_obtidos = bytes ? 'sim' : 'não'
-  // 2) criar um arquivo a partir dos bytes e gravar um registro novo com ele, na mesma transação
-  let copia = null
-  try {
-    $app.runInTransaction((tx) => {
-      const novo = new Record(tx.findCollectionByNameOrId('property_photos'))
-      novo.set('organization_id', src.getString('organization_id'))
-      novo.set('property_id', pid)
-      novo.set('file', $filesystem.fileFromBytes(bytes, 'copia-spike.jpg'))
-      tx.save(novo)
-      copia = novo.id
-    })
-    out.copia_gravada = copia ? 'sim' : 'não'
+    out.laço_bytes = total
   } catch (err) {
-    out.copia_erro = String((err && err.message) || err)
-  }
-  // 3) limpa a cópia de teste
-  if (copia) {
-    try {
-      $app.delete($app.findRecordById('property_photos', copia))
-      out.copia_removida = 'sim'
-    } catch (err) {
-      out.limpeza_erro = String((err && err.message) || err)
-    }
+    out.laço_erro = String((err && err.message) || err)
   }
   return e.json(200, out)
 })
