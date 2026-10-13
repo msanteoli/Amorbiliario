@@ -84,7 +84,17 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
     res = $app.runInTransaction((tx) => {
       const S = (label, r) => {
         fase = 'save:' + label
-        tx.save(r)
+        try {
+          tx.save(r)
+        } catch (x) {
+          let m = ''
+          try {
+            m = String((x && x.message) || x) + ' keys=' + Object.keys(x || {}).join(',')
+            if (x && typeof x.error === 'function') m += ' err=' + String(x.error())
+            if (x && x.data) m += ' data=' + JSON.stringify(x.data)
+          } catch (_) {}
+          throw new Error('SAVE_FALHOU ' + label + ' ' + m)
+        }
       }
       fase = 'owner-busca'
       let owner = null
