@@ -92,20 +92,41 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background grade-planta p-4">
       <div className="absolute top-4 right-4">
         <ThemeToggle size="sm" />
       </div>
 
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="display-sm text-foreground">Imobdigital</h1>
-          <p className="text-xs eyebrow text-muted-foreground mt-2">Sistema de gestão</p>
+        {/* Assinatura completa acima do formulário */}
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="flex items-center gap-3">
+            <svg
+              viewBox="0 0 48 48"
+              fill="none"
+              className="w-9 h-9 text-primary shrink-0"
+              aria-hidden="true"
+            >
+              <path
+                d="M22 42H6V6h36v36h-4"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="square"
+              />
+              <path d="M38 42V26" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
+              <path d="M22 42a16 16 0 0 1 16-16" stroke="currentColor" strokeWidth="2" />
+            </svg>
+            <span className="font-sans font-semibold text-[26px] leading-none tracking-[-0.02em] text-foreground lowercase">
+              imobdigital
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">Sistema de gestão</p>
         </div>
 
-        <div className="rounded-lg border border-border bg-card p-6">
+        {/* Cartão card com 8px de raio, título 'Entrar', botão 'Entrar' preenchido */}
+        <div className="rounded-[8px] border border-border bg-card p-6 shadow-none">
           <div className="space-y-1 mb-6">
-            <h2 className="text-lg font-normal text-foreground">Acessar conta</h2>
+            <h1 className="text-xl font-semibold text-foreground tracking-tight">Entrar</h1>
             <p className="text-xs text-muted-foreground">
               Informe seu e-mail e senha para entrar no sistema.
             </p>
@@ -168,7 +189,7 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full min-h-[48px] h-12 rounded-full font-normal"
+              className="w-full min-h-[44px] h-11 rounded-[4px] font-medium"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

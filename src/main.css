@@ -1,8 +1,8 @@
 /* Global styles - Theme, font, utilities, animations and global components */
 /* Imobdigital - Site público com entrada em cascata e zoom de fotos */
 
-/* Fontes do Google Fonts: Inter (400, 500, 600) e Geist Mono (400) */
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400&family=Inter:wght@400;500;600&display=swap');
+/* Identidade visual Planta: IBM Plex Sans (400, 500, 600) e IBM Plex Mono (400, 500) */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -10,107 +10,99 @@
 
 @layer base {
   :root {
-    /* Tema claro (:root) */
-    --background: 240 5% 96%;
-    --foreground: 0 0% 4%;
-
+    /* Tema claro (:root) - Identidade Planta */
+    --background: 216 26% 96%;
+    --foreground: 219 47% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 4%;
-
+    --card-foreground: 219 47% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 4%;
-
-    --primary: 0 0% 4%;
+    --popover-foreground: 219 47% 10%;
+    --primary: 229 75% 51%;
     --primary-foreground: 0 0% 100%;
-
-    --secondary: 240 5% 93%;
-    --secondary-foreground: 225 6% 26%;
-
-    --muted: 240 5% 93%;
-    --muted-foreground: 213 4% 41%;
-
-    --accent: 240 5% 93%;
-    --accent-foreground: 0 0% 4%;
-
-    --destructive: 3 71% 41%;
+    --secondary: 213 26% 93%;
+    --secondary-foreground: 219 47% 10%;
+    --muted: 213 26% 93%;
+    --muted-foreground: 215 13% 43%;
+    --accent: 226 100% 95%;
+    --accent-foreground: 219 47% 10%;
+    --destructive: 4 76% 40%;
     --destructive-foreground: 0 0% 100%;
+    --border: 214 23% 88%;
+    --input: 216 12% 54%;
+    --ring: 229 75% 51%;
 
-    --border: 225 7% 89%;
-    --input: 0 0% 4% / 0.28;
-    --ring: 0 0% 4%;
-
-    --sidebar-background: 240 5% 96%;
-    --sidebar-foreground: 225 6% 26%;
-    --sidebar-primary: 0 0% 4%;
+    /* Barra lateral */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 216 21% 27%;
+    --sidebar-primary: 229 75% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 93%;
-    --sidebar-accent-foreground: 0 0% 4%;
-    --sidebar-border: 225 7% 89%;
-    --sidebar-ring: 0 0% 4%;
+    --sidebar-accent: 226 100% 95%;
+    --sidebar-accent-foreground: 219 47% 10%;
+    --sidebar-border: 214 23% 88%;
+    --sidebar-ring: 229 75% 51%;
 
-    --success: 149 65% 30%;
-    --attention: 22 92% 37%;
-    --info: 212 71% 39%;
-    --line: 0 0% 4% / 0.28;
+    /* Novas ou redefinidas */
+    --body: 216 21% 27%;
+    --line: 216 12% 54%;
+    --primary-strong: 229 75% 41%;
+    --success: 154 66% 27%;
+    --attention: 25 93% 34%;
+    --info: 192 85% 28%;
 
     --radius: 0.5rem;
 
-    --chart-1: 34 100% 44%;
-    --chart-2: 189 100% 38%;
-    --chart-3: 209 100% 32%;
-    --chart-4: 42 100% 50%;
-    --chart-5: 33 100% 50%;
+    --chart-1: 229 75% 51%;
+    --chart-2: 192 85% 28%;
+    --chart-3: 154 66% 27%;
+    --chart-4: 25 93% 34%;
+    --chart-5: 226 100% 95%;
   }
 
   .dark {
-    /* Tema escuro (.dark) */
-    --background: 0 0% 4%;
-    --foreground: 0 0% 100%;
+    /* Tema escuro (.dark) - Identidade Planta */
+    --background: 217 39% 6%;
+    --foreground: 216 42% 95%;
+    --card: 220 38% 11%;
+    --card-foreground: 216 42% 95%;
+    --popover: 220 38% 11%;
+    --popover-foreground: 216 42% 95%;
+    --primary: 228 100% 75%;
+    --primary-foreground: 217 39% 6%;
+    --secondary: 218 34% 14%;
+    --secondary-foreground: 216 42% 95%;
+    --muted: 218 34% 14%;
+    --muted-foreground: 218 15% 58%;
+    --accent: 226 51% 19%;
+    --accent-foreground: 216 42% 95%;
+    --destructive: 5 100% 75%;
+    --destructive-foreground: 217 39% 6%;
+    --border: 218 28% 19%;
+    --input: 219 17% 44%;
+    --ring: 228 100% 75%;
 
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 100%;
+    /* Barra lateral */
+    --sidebar-background: 220 38% 11%;
+    --sidebar-foreground: 216 22% 78%;
+    --sidebar-primary: 228 100% 75%;
+    --sidebar-primary-foreground: 217 39% 6%;
+    --sidebar-accent: 226 51% 19%;
+    --sidebar-accent-foreground: 216 42% 95%;
+    --sidebar-border: 218 28% 19%;
+    --sidebar-ring: 228 100% 75%;
 
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 100%;
+    /* Novas */
+    --body: 216 22% 78%;
+    --line: 219 17% 44%;
+    --primary-strong: 228 100% 82%;
+    --success: 151 57% 59%;
+    --attention: 27 100% 68%;
+    --info: 191 68% 62%;
 
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 4%;
-
-    --secondary: 220 10% 11%;
-    --secondary-foreground: 228 7% 86%;
-
-    --muted: 220 10% 11%;
-    --muted-foreground: 216 4% 51%;
-
-    --accent: 220 10% 11%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 91% 71%;
-    --destructive-foreground: 0 0% 4%;
-
-    --border: 220 8% 14%;
-    --input: 0 0% 100% / 0.25;
-    --ring: 0 0% 100%;
-
-    --sidebar-background: 0 0% 4%;
-    --sidebar-foreground: 228 7% 86%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 0 0% 4%;
-    --sidebar-accent: 220 10% 11%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 8% 14%;
-    --sidebar-ring: 0 0% 100%;
-
-    --success: 149 72% 67%;
-    --attention: 26 100% 55%;
-    --info: 212 67% 78%;
-    --line: 0 0% 100% / 0.25;
-
-    --chart-1: 270 100% 44%;
-    --chart-2: 164 100% 38%;
-    --chart-3: 43 100% 32%;
-    --chart-4: 340 100% 50%;
-    --chart-5: 10 100% 50%;
+    --chart-1: 228 100% 75%;
+    --chart-2: 191 68% 62%;
+    --chart-3: 151 57% 59%;
+    --chart-4: 27 100% 68%;
+    --chart-5: 226 51% 19%;
   }
 
   * {
@@ -119,6 +111,7 @@
 
   body {
     @apply bg-background text-foreground font-sans font-normal;
+    color: hsl(var(--body));
     font-weight: 400;
   }
 
@@ -130,49 +123,70 @@
 }
 
 @layer utilities {
-  /* Classes tipográficas utilitárias */
-  .display-xl {
-    font-size: 3rem;
-    line-height: 1;
-    letter-spacing: -0.025em;
-    font-weight: 400;
-  }
-  @media (min-width: 768px) {
-    .display-xl {
-      font-size: 6rem;
-    }
-  }
-
+  /* Classes tipográficas utilitárias - Identidade Planta */
+  /* .display-xl e .display-md → título da página: 28 px, entrelinha 34 px, peso 600, letter-spacing: -0.02em */
+  .display-xl,
   .display-md {
-    font-size: 3rem;
-    line-height: 1.1;
-    letter-spacing: -0.025em;
-    font-weight: 400;
-  }
-
-  .display-sm {
-    font-size: 2rem;
-    line-height: 1.15;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 28px;
+    line-height: 34px;
+    font-weight: 600;
     letter-spacing: -0.02em;
-    font-weight: 400;
-  }
-  @media (min-width: 768px) {
-    .display-sm {
-      font-size: 2.25rem;
-    }
+    color: hsl(var(--foreground));
   }
 
+  /* .display-sm → título de seção: 20 px / 28 px, peso 600, -0.01em */
+  .display-sm {
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: hsl(var(--foreground));
+  }
+
+  /* .eyebrow → rótulo: IBM Plex Sans 500, 12 px / 16 px, letter-spacing: 0.01em, SEM caixa-alta (text-transform: none), cor muted-foreground */
   .eyebrow {
-    font-family: var(--font-mono, 'Geist Mono', ui-monospace, monospace);
-    font-size: 0.75rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-weight: 400;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
   }
 
   .tabular {
     font-feature-settings: 'tnum';
     font-variant-numeric: tabular-nums;
+  }
+
+  /* NOVA .dado: IBM Plex Mono 400, 14 px / 20 px, tabular-nums */
+  .dado {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* NOVA .numero: IBM Plex Mono 500, 32 px / 36 px, -0.02em, tabular-nums, para destaques do Hoje */
+  .numero {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 32px;
+    line-height: 36px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Grade de planta: Fundo de pontos de 1,5 px a cada 48 px na cor border (radial-gradient) */
+  .grade-planta {
+    background-image: radial-gradient(hsl(var(--border)) 1.5px, transparent 1.5px);
+    background-size: 48px 48px;
+    background-position: 0 0;
   }
 
   /* Faixa para texto sobre foto */

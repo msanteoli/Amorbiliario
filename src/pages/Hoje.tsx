@@ -20,6 +20,7 @@ import {
 } from '@/services/visits'
 import { LEAD_STAGE_LABELS, LeadStage } from '@/services/leads'
 import { listOwnersWithoutProperty, OwnerWithoutPropertyItem } from '@/services/properties'
+import { Cota } from '@/components/Cota'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -188,17 +189,18 @@ export default function Hoje() {
   ) => {
     if (!section) return null
 
+    const countDisplay = section.more ? '500+' : section.count
+
     return (
       <section className="space-y-2">
-        <div className="flex items-baseline justify-between border-b border-border pb-2">
-          <div className="flex items-baseline">
-            <h2 className="text-xl font-normal text-foreground">{title}</h2>
-            {renderCountEyebrow(section)}
-          </div>
+        <div className="border-b border-border pb-2">
+          <Cota
+            title={title}
+            count={countDisplay}
+            isAttention={Boolean(options?.isNextStepOverdueHighlight || options?.isDedupe)}
+          />
           {options?.helpText && (
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              {options.helpText}
-            </span>
+            <p className="text-xs text-muted-foreground mt-1">{options.helpText}</p>
           )}
         </div>
 
@@ -277,13 +279,12 @@ export default function Hoje() {
   ) => {
     if (!section) return null
 
+    const countDisplay = section.more ? '500+' : section.count
+
     return (
       <section className="space-y-2">
-        <div className="flex items-baseline justify-between border-b border-border pb-2">
-          <div className="flex items-baseline">
-            <h2 className="text-xl font-normal text-foreground">{title}</h2>
-            {renderCountEyebrow(section)}
-          </div>
+        <div className="border-b border-border pb-2">
+          <Cota title={title} count={countDisplay} />
         </div>
 
         {section.items.length === 0 ? (
@@ -361,13 +362,16 @@ export default function Hoje() {
   ) => {
     if (!section) return null
 
+    const countDisplay = section.more ? '500+' : section.count
+
     return (
       <section className="space-y-2">
-        <div className="flex items-baseline justify-between border-b border-border pb-2">
-          <div className="flex items-baseline">
-            <h2 className="text-xl font-normal text-foreground">{title}</h2>
-            {renderCountEyebrow(section)}
-          </div>
+        <div className="border-b border-border pb-2">
+          <Cota
+            title={title}
+            count={countDisplay}
+            isAttention={title.toLowerCase().includes('atrasad')}
+          />
         </div>
 
         {section.items.length === 0 ? (
@@ -428,13 +432,12 @@ export default function Hoje() {
   const renderLeadsByStageSection = (section: TodaySection<TodayStageCountItem> | undefined) => {
     if (!section) return null
 
+    const countDisplay = section.more ? '500+' : section.count
+
     return (
       <section className="space-y-2">
-        <div className="flex items-baseline justify-between border-b border-border pb-2">
-          <div className="flex items-baseline">
-            <h2 className="text-xl font-normal text-foreground">Leads por etapa</h2>
-            {renderCountEyebrow(section)}
-          </div>
+        <div className="border-b border-border pb-2">
+          <Cota title="Leads por etapa" count={countDisplay} />
         </div>
 
         {section.items.length === 0 ? (
@@ -475,13 +478,12 @@ export default function Hoje() {
   const renderPropertiesPendingSection = (section: TodaySection<TodayPropertyItem> | undefined) => {
     if (!section) return null
 
+    const countDisplay = section.more ? '500+' : section.count
+
     return (
       <section className="space-y-2">
-        <div className="flex items-baseline justify-between border-b border-border pb-2">
-          <div className="flex items-baseline">
-            <h2 className="text-xl font-normal text-foreground">Imóveis pendentes de revisão</h2>
-            {renderCountEyebrow(section)}
-          </div>
+        <div className="border-b border-border pb-2">
+          <Cota title="Imóveis pendentes de revisão" count={countDisplay} isAttention={true} />
         </div>
 
         {section.items.length === 0 ? (

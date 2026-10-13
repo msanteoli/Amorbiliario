@@ -240,29 +240,31 @@ export default function Clientes() {
           ))}
         </div>
       ) : clients.length === 0 ? (
-        <div className="p-12 text-center rounded-lg border border-border bg-card">
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
-            {hasActiveFilters
-              ? 'Nenhum resultado corresponde aos filtros aplicados.'
-              : 'Nenhum cliente por aqui. Cadastre o primeiro.'}
-          </p>
-          {hasActiveFilters ? (
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              className="text-xs text-primary underline"
-            >
-              Limpar filtros
-            </button>
-          ) : (
-            <Button
-              onClick={() => navigate('/clientes/novo')}
-              className="rounded-full px-5 h-10 gap-2 font-medium"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Novo cliente</span>
-            </Button>
-          )}
+        <div className="p-12 text-center rounded-[8px] border border-border bg-card grade-planta">
+          <div className="max-w-sm mx-auto bg-card/90 backdrop-blur-sm p-6 rounded-[8px] border border-border shadow-none">
+            <p className="text-sm text-muted-foreground mb-4">
+              {hasActiveFilters
+                ? 'Nenhum resultado corresponde aos filtros aplicados.'
+                : 'Nenhum cliente por aqui. Cadastre o primeiro.'}
+            </p>
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-xs text-primary underline"
+              >
+                Limpar filtros
+              </button>
+            ) : (
+              <Button
+                onClick={() => navigate('/clientes/novo')}
+                className="rounded-[4px] px-5 h-10 gap-2 font-medium"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Novo cliente</span>
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <>

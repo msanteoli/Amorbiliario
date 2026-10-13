@@ -22,7 +22,8 @@ function getStoredTheme(): ThemePreference {
   } catch {
     // localStorage bloqueado ou indisponível
   }
-  return 'auto'
+  // Quando não houver preferência guardada, o padrão passa a ser 'light'
+  return 'light'
 }
 
 function getSystemTheme(): ResolvedTheme {
@@ -40,7 +41,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [theme, setThemeState] = useState<ThemePreference>(() => getStoredTheme())
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
     const pref = getStoredTheme()
-    return pref === 'auto' ? getSystemTheme() : pref
+    return pref === 'auto' ? getSystemTheme() : (pref as ResolvedTheme)
   })
 
   // Sincroniza e aplica a classe no elemento <html>

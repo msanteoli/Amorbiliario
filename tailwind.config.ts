@@ -27,9 +27,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['Geist Mono', 'ui-monospace', 'monospace'],
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        display: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -37,6 +37,7 @@ export default {
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        body: 'hsl(var(--body))',
         line: 'hsl(var(--line))',
         success: {
           DEFAULT: 'hsl(var(--success))',
@@ -54,6 +55,7 @@ export default {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
         },
+        'primary-strong': 'hsl(var(--primary-strong))',
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',
@@ -97,9 +99,9 @@ export default {
         },
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        lg: '8px',
+        md: '6px',
+        sm: '4px',
       },
       transitionProperty: {
         width: 'width',
@@ -108,6 +110,7 @@ export default {
       boxShadow: {
         subtle: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
         elevation: '0 4px 20px rgba(0, 0, 0, 0.05)',
+        modal: '0 8px 24px rgba(13, 21, 36, 0.12)',
       },
       transitionTimingFunction: {
         apple: 'cubic-bezier(0.42, 0, 0.58, 1)',

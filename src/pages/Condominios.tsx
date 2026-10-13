@@ -173,23 +173,25 @@ export default function Condominios() {
           <span className="text-xs">Carregando condomínios...</span>
         </div>
       ) : condos.length === 0 ? (
-        <div className="border border-border rounded-lg p-12 text-center bg-card space-y-3">
-          <Building2 className="h-10 w-10 mx-auto text-muted-foreground opacity-40" />
-          <h3 className="text-sm font-medium text-foreground">Nenhum condomínio encontrado</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            {searchInput || showInactive
-              ? 'Nenhum condomínio corresponde aos filtros selecionados. Tente ajustar a busca.'
-              : 'Cadastre o primeiro condomínio da sua organização para associar aos imóveis.'}
-          </p>
-          {canCreate && !searchInput && !showInactive && (
-            <Button
-              onClick={() => setCreateModalOpen(true)}
-              className="rounded-full px-5 h-9 text-xs font-normal bg-primary text-primary-foreground gap-1.5 mt-2"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Cadastrar primeiro condomínio</span>
-            </Button>
-          )}
+        <div className="border border-border rounded-[8px] p-12 text-center bg-card grade-planta">
+          <div className="max-w-sm mx-auto bg-card/90 backdrop-blur-sm p-6 rounded-[8px] border border-border space-y-3">
+            <Building2 className="h-10 w-10 mx-auto text-muted-foreground opacity-40" />
+            <h3 className="text-sm font-semibold text-foreground">Nenhum condomínio encontrado</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              {searchInput || showInactive
+                ? 'Nenhum condomínio corresponde aos filtros selecionados. Tente ajustar a busca.'
+                : 'Cadastre o primeiro condomínio da sua organização para associar aos imóveis.'}
+            </p>
+            {canCreate && !searchInput && !showInactive && (
+              <Button
+                onClick={() => setCreateModalOpen(true)}
+                className="rounded-[4px] px-5 h-9 text-xs font-medium bg-primary text-primary-foreground gap-1.5 mt-2"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Cadastrar primeiro condomínio</span>
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

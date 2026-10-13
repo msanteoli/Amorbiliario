@@ -21,6 +21,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { getRoleLabel } from '@/lib/roles'
+import { getOrganization } from '@/services/admin'
 import {
   getGoogleStatus,
   getGoogleConnectUrl,
@@ -81,6 +82,7 @@ export function AppLayout() {
   const { user, logout } = useAuth()
   const location = useLocation()
   const role = user?.role
+  const [orgName, setOrgName] = useState<string>('')
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
@@ -110,6 +112,22 @@ export function AppLayout() {
       setGoogleEmail('')
     }
   }, [isBrokerOrAdmin])
+
+  useEffect(() => {
+    let mounted = true
+    getOrganization()
+      .then((org) => {
+        if (mounted && org?.name) {
+          setOrgName(org.name)
+        }
+      })
+      .catch(() => {
+        // Silencioso se não carregar
+      })
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   useEffect(() => {
     loadGoogleStatus()
@@ -202,18 +220,36 @@ export function AppLayout() {
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
       {/* Barra lateral estreita no Desktop */}
-      <aside className="hidden md:flex md:w-56 lg:w-60 flex-col shrink-0 border-r border-border bg-background">
-        {/* Topo da barra lateral: apenas o nome Imobdigital em texto */}
-        <div className="h-16 flex items-center px-6 border-b border-border">
+      <aside className="hidden md:flex md:w-56 lg:w-60 flex-col shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+        {/* Topo da barra lateral: assinatura da marca Planta */}
+        <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <Link
             to="/hoje"
-            className="text-base font-normal tracking-tight text-foreground hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring rounded-[4px]"
+            title="Ir para o início"
           >
-            Imobdigital
+            <svg
+              viewBox="0 0 48 48"
+              fill="none"
+              className="w-7 h-7 text-sidebar-primary shrink-0"
+              aria-hidden="true"
+            >
+              <path
+                d="M22 42H6V6h36v36h-4"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="square"
+              />
+              <path d="M38 42V26" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
+              <path d="M22 42a16 16 0 0 1 16-16" stroke="currentColor" strokeWidth="2" />
+            </svg>
+            <span className="font-sans font-semibold text-[22px] leading-none tracking-[-0.02em] text-foreground lowercase">
+              imobdigital
+            </span>
           </Link>
         </div>
 
-        {/* Itens de navegação: traço de 2px à esquerda e texto em foreground quando ativo */}
+        {/* Itens de navegação: fundo accent, texto primary e filete de 2px em primary à esquerda */}
         <nav className="flex-1 py-4 space-y-1">
           {desktopItems.map((item) => {
             const Icon = item.icon
@@ -221,26 +257,32 @@ export function AppLayout() {
               location.pathname === item.url || location.pathname.startsWith(`${item.url}/`)
 
             return (
-              <Link
-                key={item.url}
-                to={item.url}
-                className={cn(
-                  'relative flex items-center gap-3 px-6 py-2.5 text-sm transition-colors',
-                  isActive
-                    ? 'text-foreground font-normal'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {/* Traço de 2px à esquerda para item ativo */}
-                {isActive && (
-                  <span
-                    className="absolute left-0 top-0 bottom-0 w-[2px] bg-foreground"
-                    aria-hidden="true"
+              <div key={item.url} className="px-2">
+                <Link
+                  to={item.url}
+                  className={cn(
+                    'relative flex items-center gap-3 px-4 py-2.5 text-sm rounded-[4px] transition-colors',
+                    isActive
+                      ? 'bg-sidebar-accent text-sidebar-primary font-medium'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-foreground',
+                  )}
+                >
+                  {/* Filete de 2px em primary à esquerda */}
+                  {isActive && (
+                    <span
+                      className="absolute left-0 top-1 bottom-1 w-[2px] bg-sidebar-primary rounded-r"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <Icon
+                    className={cn(
+                      'h-4 w-4 shrink-0',
+                      isActive ? 'text-sidebar-primary' : 'text-muted-foreground',
+                    )}
                   />
-                )}
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{item.title}</span>
-              </Link>
+                  <span className="truncate">{item.title}</span>
+                </Link>
+              </div>
             )
           })}
         </nav>
@@ -339,10 +381,15 @@ export function AppLayout() {
         {/* Cabeçalho Desktop */}
         <header className="hidden md:flex h-16 shrink-0 items-center justify-end gap-4 border-b border-border px-6 bg-background">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-foreground">
-              {user?.name || user?.email || 'Usuário'}
-            </span>
-            <Badge variant="outline" className="text-[11px] font-normal lowercase">
+            <div className="text-right">
+              <span className="text-sm font-medium text-foreground block">
+                {user?.name || user?.email || 'Usuário'}
+              </span>
+              {orgName && (
+                <span className="text-xs text-muted-foreground block -mt-0.5">{orgName}</span>
+              )}
+            </div>
+            <Badge variant="outline" className="text-[11px] font-medium lowercase">
               {getRoleLabel(user?.role)}
             </Badge>
           </div>
@@ -350,7 +397,7 @@ export function AppLayout() {
             variant="outline"
             size="sm"
             onClick={logout}
-            className="gap-2 rounded-full font-normal"
+            className="gap-2 font-medium"
             title="Sair do sistema"
           >
             <LogOut className="h-4 w-4" />
@@ -358,31 +405,56 @@ export function AppLayout() {
           </Button>
         </header>
 
-        {/* Cabeçalho Celular: título da tela atual e botão de menu do usuário à direita */}
+        {/* Cabeçalho Celular: assinatura reduzida (símbolo) + título da tela atual e botão de menu do usuário à direita */}
         <header className="md:hidden sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur">
-          <h1 className="text-base font-normal tracking-tight text-foreground truncate">
-            {currentScreenTitle}
-          </h1>
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <Link to="/hoje" className="shrink-0" aria-label="Ir para o início">
+              <svg
+                viewBox="0 0 48 48"
+                fill="none"
+                className="w-7 h-7 text-primary shrink-0"
+                aria-hidden="true"
+              >
+                <path
+                  d="M22 42H6V6h36v36h-4"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  strokeLinecap="square"
+                />
+                <path d="M38 42V26" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
+                <path d="M22 42a16 16 0 0 1 16-16" stroke="currentColor" strokeWidth="2" />
+              </svg>
+            </Link>
+            <h1 className="text-base font-medium tracking-tight text-foreground truncate">
+              {currentScreenTitle}
+            </h1>
+          </div>
 
           <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-full"
+                className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-[4px]"
                 aria-label="Menu do usuário"
               >
                 <User className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 rounded-lg p-2">
+            <DropdownMenuContent
+              align="end"
+              className="w-64 rounded-[4px] p-2 shadow-modal dark:shadow-none"
+            >
               <DropdownMenuLabel className="font-normal">
-                <div className="text-sm font-medium text-foreground truncate">
+                <div className="text-sm font-semibold text-foreground truncate">
                   {user?.name || user?.email || 'Usuário'}
                 </div>
+                {orgName && (
+                  <div className="text-xs text-muted-foreground truncate -mt-0.5">{orgName}</div>
+                )}
                 <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
                 <div className="mt-1">
-                  <Badge variant="outline" className="text-[10px] font-normal">
+                  <Badge variant="outline" className="text-[10px] font-medium">
                     {getRoleLabel(user?.role)}
                   </Badge>
                 </div>
@@ -502,7 +574,7 @@ export function AppLayout() {
         {/* Barra inferior de navegação no celular: 4 itens fixos + 1 item Mais, alvos de 48px, sem sobreposição */}
         <nav
           aria-label="Navegação móvel"
-          className="md:hidden fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 items-center border-t border-border bg-background/95 backdrop-blur px-1 py-1 supports-[backdrop-filter]:bg-background/90"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-30 grid grid-cols-5 items-center border-t border-border bg-card/95 backdrop-blur px-1 py-1 supports-[backdrop-filter]:bg-card/90"
         >
           {mobileFixedItems.map((item) => {
             const Icon = item.icon
@@ -514,22 +586,26 @@ export function AppLayout() {
                 key={item.url}
                 to={item.url}
                 className={cn(
-                  'relative flex flex-col items-center justify-center min-h-[48px] h-12 w-full px-0.5 rounded transition-colors',
+                  'relative flex flex-col items-center justify-center min-h-[48px] h-12 w-full px-0.5 rounded-[4px] transition-colors',
                   isActive
-                    ? 'text-foreground font-medium'
+                    ? 'text-primary font-medium'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {/* Ponto de 4px acima do ícone quando ativo */}
+                {/* Traço indicador superior de 2px quando ativo */}
+                {isActive && (
+                  <span
+                    className="absolute top-0 left-3 right-3 h-[2px] bg-primary rounded-full"
+                    aria-hidden="true"
+                  />
+                )}
+                <Icon className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary' : '')} />
                 <span
                   className={cn(
-                    'w-1 h-1 rounded-full mb-0.5 transition-opacity',
-                    isActive ? 'bg-foreground opacity-100' : 'opacity-0',
+                    'text-[11px] leading-tight truncate max-w-full text-center mt-0.5',
+                    isActive ? 'text-primary' : '',
                   )}
-                  aria-hidden="true"
-                />
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className="text-[11px] leading-tight truncate max-w-full text-center mt-0.5">
+                >
                   {item.title}
                 </span>
               </Link>
@@ -548,22 +624,28 @@ export function AppLayout() {
                 type="button"
                 onClick={() => setMobileMoreOpen(true)}
                 className={cn(
-                  'relative flex flex-col items-center justify-center min-h-[48px] h-12 w-full px-0.5 rounded transition-colors',
+                  'relative flex flex-col items-center justify-center min-h-[48px] h-12 w-full px-0.5 rounded-[4px] transition-colors',
                   isMoreActive
-                    ? 'text-foreground font-medium'
+                    ? 'text-primary font-medium'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
                 aria-label="Abrir mais opções de navegação"
               >
+                {isMoreActive && (
+                  <span
+                    className="absolute top-0 left-3 right-3 h-[2px] bg-primary rounded-full"
+                    aria-hidden="true"
+                  />
+                )}
+                <MoreHorizontal
+                  className={cn('h-5 w-5 shrink-0', isMoreActive ? 'text-primary' : '')}
+                />
                 <span
                   className={cn(
-                    'w-1 h-1 rounded-full mb-0.5 transition-opacity',
-                    isMoreActive ? 'bg-foreground opacity-100' : 'opacity-0',
+                    'text-[11px] leading-tight truncate max-w-full text-center mt-0.5',
+                    isMoreActive ? 'text-primary' : '',
                   )}
-                  aria-hidden="true"
-                />
-                <MoreHorizontal className="h-5 w-5 shrink-0" />
-                <span className="text-[11px] leading-tight truncate max-w-full text-center mt-0.5">
+                >
                   Mais
                 </span>
               </button>

@@ -9,6 +9,7 @@ import {
   formatTimeBahia,
   extractErrorMessage,
 } from '@/services/visits'
+import { Cota } from '@/components/Cota'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Button } from '@/components/ui/button'
@@ -157,13 +158,14 @@ export function PendingVisitsConfirmationBlock({
       <section
         role="region"
         aria-label="Visitas para confirmar"
-        className={`rounded-lg border border-border bg-card p-4 sm:p-5 shadow-none space-y-4 ${className || ''}`}
+        className={`rounded-[8px] border border-border bg-card p-4 sm:p-5 shadow-none space-y-4 ${className || ''}`}
       >
-        <div className="flex items-baseline justify-between border-b border-border pb-2">
-          <div className="flex items-baseline gap-2">
-            <h2 className="text-xl font-normal text-foreground">Visitas para confirmar</h2>
-            <span className="eyebrow tabular text-muted-foreground text-xs">({items.length})</span>
-          </div>
+        <div className="border-b border-border pb-2">
+          <Cota
+            title="Visitas para confirmar"
+            count={items.length}
+            isAttention={items.some((it) => it.overdue)}
+          />
         </div>
 
         {feedbackError && (
@@ -357,13 +359,14 @@ export function PendingVisitsConfirmationBlock({
       <section
         role="region"
         aria-label="Aguardando confirmação"
-        className={`rounded-lg border border-border bg-card p-4 sm:p-5 shadow-none space-y-4 ${className || ''}`}
+        className={`rounded-[8px] border border-border bg-card p-4 sm:p-5 shadow-none space-y-4 ${className || ''}`}
       >
-        <div className="flex items-baseline justify-between border-b border-border pb-2">
-          <div className="flex items-baseline gap-2">
-            <h2 className="text-xl font-normal text-foreground">Aguardando confirmação</h2>
-            <span className="eyebrow tabular text-muted-foreground text-xs">({items.length})</span>
-          </div>
+        <div className="border-b border-border pb-2">
+          <Cota
+            title="Aguardando confirmação"
+            count={items.length}
+            isAttention={items.some((it) => it.overdue || it.declined)}
+          />
         </div>
 
         <div className="divide-y divide-border">

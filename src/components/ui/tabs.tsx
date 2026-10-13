@@ -13,7 +13,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center rounded-full border border-line bg-secondary/80 p-1 text-muted-foreground gap-1',
+      'inline-flex items-center gap-6 border-b border-border bg-transparent p-0 text-muted-foreground rounded-none',
       className,
     )}
     {...props}
@@ -28,13 +28,12 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex min-h-[36px] items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-normal ring-offset-background transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none',
+      'inline-flex items-center justify-center whitespace-nowrap pb-2 pt-1 text-sm font-medium transition-colors duration-150 ease-out border-b-2 border-transparent text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none shadow-none bg-transparent',
       className,
     )}
     {...props}
   />
-))
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
+))TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,

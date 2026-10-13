@@ -31,6 +31,7 @@ import { CreateTaskModal } from '@/components/agenda/CreateTaskModal'
 import { GoogleSyncBadge } from '@/components/agenda/GoogleSyncBadge'
 import { getGoogleStatus } from '@/services/googleCalendar'
 
+import { Cota } from '@/components/Cota'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -851,15 +852,12 @@ export default function Agenda() {
                   {/* Seção no topo: Pendentes de agenda */}
                   {pendingVisits.length > 0 && (
                     <div className="space-y-2">
-                      <div className="flex items-baseline justify-between border-b border-border pb-2">
-                        <div className="flex items-baseline">
-                          <h2 className="text-xl font-normal text-foreground">
-                            Pendentes de agenda
-                          </h2>
-                          <span className="eyebrow tabular text-muted-foreground ml-2 text-xs">
-                            ({pendingVisits.length})
-                          </span>
-                        </div>
+                      <div className="border-b border-border pb-2">
+                        <Cota
+                          title="Pendentes de agenda"
+                          count={pendingVisits.length}
+                          isAttention={true}
+                        />
                       </div>
 
                       <div className="divide-y divide-border">
@@ -906,7 +904,10 @@ export default function Agenda() {
                   {/* Lista com paginação */}
                   <div className="space-y-2">
                     <div className="border-b border-border pb-2">
-                      <h2 className="text-xl font-normal text-foreground">Visitas</h2>
+                      <Cota
+                        title="Visitas"
+                        count={visitsTotalItems > 0 ? visitsTotalItems : visitsList.length}
+                      />
                     </div>
 
                     {visitsList.length === 0 ? (
