@@ -135,28 +135,17 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
   const code = findPattern([
     /(?:Referência|Referencia|Ref\.?|Código|Codigo)[\s:]+([A-Za-z0-9_-]+)/i,
     /Código do imóvel[\s:]+([A-Za-z0-9_-]+)/i,
+    /Ficha de Imóvel\s+([A-Za-z0-9_-]+)/i,
   ])
 
-  // Finalidade
-  let purpose: 'venda' | 'locacao' | 'ambos' = 'venda'
-  const rawFinalidade = findPattern([
-    /(?:Finalidade|Negócio|Negocio|Operação|Operacao)[\s:]+([^\n\r,]+)/i,
-  ]).toLowerCase()
-  if (
-    rawFinalidade.includes('ambos') ||
-    (rawFinalidade.includes('venda') && rawFinalidade.includes('loca'))
-  ) {
-    purpose = 'ambos'
-  } else if (rawFinalidade.includes('loca')) {
-    purpose = 'locacao'
-  } else {
-    purpose = 'venda'
-  }
-
   // Tipo de construção
-  const rawTipo = findPattern([
-    /(?:Tipo de imóvel|Tipo do imóvel|Tipo de construção|Tipo)[\s:]+([^\n\r,]+)/i,
-  ]).toLowerCase()
+  const headerTypeMatch = /Ficha de Imóvel\s+[A-Za-z0-9_-]+\s*\(([^)]+)\)/i.exec(text)
+  const rawHeaderType = headerTypeMatch ? headerTypeMatch[1] : ''
+  const rawTipo = (
+    rawHeaderType ||
+    findPattern([/(?:Tipo de imóvel|Tipo do imóvel|Tipo de construção|Tipo)[\s:]+([^\n\r,]+)/i])
+  ).toLowerCase()
+
   let property_type = 'apartamento'
   if (rawTipo.includes('casa')) property_type = 'casa'
   else if (rawTipo.includes('apart')) property_type = 'apartamento'
@@ -167,66 +156,213 @@ export function parseFichaPdfText(rawText: string): ParseFichaResult {
   else if (rawTipo.includes('chac') || rawTipo.includes('sitio')) property_type = 'chacara'
   else if (rawTipo) property_type = 'outro'
 
-  // Uso
-  const rawUso = findPattern([/(?:Uso do imóvel|Uso|Destinação)[\s:]+([^\n\r,]+)/i]).toLowerCase()
+  // Uso (Uso do imóvel, Destinação ou Finalidade quando contiver Residencial/Comercial)
+  const rawUso = findPattern([
+    /(?:Uso do imóvel|Uso|Destinação)[\s:]+([^\n\r,]+)/i,
+    /(?:Finalidade)[\s:]+([^\n\r,]+)/i,
+  ]).toLowerCase()
   let use_type = 'residencial'
   if (rawUso.includes('comerc')) use_type = 'comercial'
   else if (rawUso.includes('indus')) use_type = 'industrial'
   else if (rawUso.includes('rural')) use_type = 'rural'
 
-  // Endereço do imóvel
-  const street = findPattern([
-    /(?:Endereço|Endereco|Logradouro|Rua|Av\.?|Avenida)[\s:]+([^\n\r,]+)/i,
-    /Logradouro[\s:]+([^\n\r]+)/i,
-  ])
-  const street_number = findPattern([/(?:Número|Numero|Nº|N°)[\s:]+([A-Za-z0-9_-]+)/i]) || 'S/N'
-  const complement = findPattern([/(?:Complemento|Compl\.?)[\s:]+([^\n\r]+)/i])
-  const neighborhood = findPattern([/(?:Bairro)[\s:]+([^\n\r,]+)/i])
-  const city = findPattern([/(?:Cidade|Município|Municipio)[\s:]+([^\n\r,]+)/i])
-  const state = (findPattern([/(?:Estado|UF)[\s:]+([A-Za-z]{2})/i]) || 'BA').toUpperCase()
-  const zip_code = findPattern([/(?:CEP)[\s:]+([\d.-]+)/i]).replace(/\D/g, '')
-
-  // Características
-  const bedrooms = parseIntClean(
-    findPattern([
-      /(?:Dormitórios|Dormitorios|Quartos|Qts)[\s:]+(\d+)/i,
-      /(\d+)\s*(?:dormitórios|quartos|dormitório|quarto)/i,
-    ]),
-  )
-  const bathrooms = parseIntClean(
-    findPattern([/(?:Banheiros|Banhos|WCs)[\s:]+(\d+)/i, /(\d+)\s*(?:banheiros|banheiro)/i]),
-  )
-  const parking = parseIntClean(
-    findPattern([/(?:Vagas|Garagem)[\s:]+(\d+)/i, /(\d+)\s*(?:vagas|vaga|garagens)/i]),
-  )
-  const area = parseNumber(
-    findPattern([
-      /(?:Área útil|Area util|Área total|Area total|Área privativa|Area privativa|Área|Area)[\s:]+([\d.,]+)/i,
-      /([\d.,]+)\s*(?:m²|m2)/i,
-    ]),
-  )
-
   // Valores
-  const sale_price = parseNumber(
+  const rawSale = parseNumber(
     findPattern([/(?:Valor de venda|Preço de venda|R\$ Venda|Venda)[\s:]+R?\$?\s*([\d.,]+)/i]),
   )
-  const rent_price = parseNumber(
+  const sale_price = rawSale && rawSale > 0 ? rawSale : undefined
+
+  const rawRent = parseNumber(
     findPattern([
       /(?:Valor de locação|Preço de locação|R\$ Locação|Locação|Aluguel)[\s:]+R?\$?\s*([\d.,]+)/i,
     ]),
   )
-  const condo_fee = parseNumber(
-    findPattern([/(?:Condomínio|Condominio|R\$ Cond\.?)[\s:]+R?\$?\s*([\d.,]+)/i]),
-  )
-  const iptu = parseNumber(findPattern([/(?:IPTU|R\$ IPTU)[\s:]+R?\$?\s*([\d.,]+)/i]))
+  const rent_price = rawRent && rawRent > 0 ? rawRent : undefined
 
-  // Condomínio
-  const condoName = findPattern([
-    /(?:Condomínio|Condominio|Edifício|Edificio|Edf\.?|Empreendimento)[\s:]+([^\n\r]+)/i,
-  ])
+  // Finalidade: pelos valores, não pelo texto.
+  // Se houver valor de venda e de locação maiores que zero: 'ambos'.
+  // Só venda: 'venda'. Só locação: 'locacao'. Se nenhum valor: mantenha 'venda'.
+  let purpose: 'venda' | 'locacao' | 'ambos' = 'venda'
+  if (sale_price !== undefined && rent_price !== undefined) {
+    purpose = 'ambos'
+  } else if (sale_price !== undefined) {
+    purpose = 'venda'
+  } else if (rent_price !== undefined) {
+    purpose = 'locacao'
+  } else {
+    purpose = 'venda'
+  }
+
+  // Taxa de condomínio e IPTU: zero continua undefined (pendência), nunca 0.
+  const rawCondoFee = parseNumber(
+    findPattern([/(?:R\$\s*cond\.?|Condomínio|Condominio|R\$ Cond\.?)[\s:]*R?\$?\s*([\d.,]+)/i]),
+  )
+  const condo_fee = rawCondoFee && rawCondoFee > 0 ? rawCondoFee : undefined
+
+  const rawIptu = parseNumber(findPattern([/(?:IPTU|R\$ IPTU)[\s:]+R?\$?\s*([\d.,]+)/i]))
+  const iptu = rawIptu && rawIptu > 0 ? rawIptu : undefined
+
+  // Condomínio ou Edifício
+  // O nome do condomínio para em "R$" ou no fim do rótulo:
+  // "Condomínio: Condomínio Teste Lumiere R$ cond. 0,00" -> condominium_name = "Teste Lumiere"
+  // "Edifício: Teste Residence R$ cond. 0,00" -> "Teste Residence"
+  let condoName = ''
+  // Pode ser "Empreendimento: Condomínio: Condomínio Teste Lumiere R$ cond. 0,00" ou "Empreendimento: Edifício: Teste Residence R$ cond. 0,00"
+  // ou sem o prefixo "Empreendimento:"
+  const condoRawMatch =
+    /(?:Empreendimento[\s:]+)?(?:Condomínio|Condominio|Edifício|Edificio)[\s:]+([^\n\r]+)/i.exec(
+      text,
+    )
+  if (condoRawMatch && condoRawMatch[1]) {
+    let rawCName = condoRawMatch[1].trim()
+    // Corta antes de "R$"
+    const rDollarIdx = rawCName.indexOf('R$')
+    if (rDollarIdx !== -1) {
+      rawCName = rawCName.substring(0, rDollarIdx).trim()
+    }
+    // Remove prefixos redundantes repetidos como "Condomínio:", "Edifício:", "Condomínio", "Edifício"
+    rawCName = rawCName.replace(/^(?:Condomínio|Condominio|Edifício|Edificio)[\s:]*/i, '').trim()
+    condoName = cleanVal(rawCName)
+  }
+
+  // in_condominium = true quando houver nome. Edifício é condomínio quando o imóvel for apartamento
   const in_condominium = Boolean(
     condoName && condoName.toLowerCase() !== 'não' && condoName.toLowerCase() !== 'nao',
   )
+
+  // Endereço do imóvel:
+  // Ex: "Rua Teste, nº 1 Cond. Teste Lumiere, Casa 1, Teste - Feira de Santana/BA CEP: 44000000"
+  // Ex: "Rua Teste, nº 2 Apto 101, Teste - Feira de Santana/BA CEP: 44000001"
+  let street: string | undefined
+  let street_number: string | undefined
+  let complement: string | undefined
+  let neighborhood: string | undefined
+  let city: string | undefined
+  let state: string = 'BA'
+  let zip_code: string | undefined
+
+  // Procura linha de endereço completa com CEP
+  // Formato: <Rua>, nº <Num> <Complemento/Bairro> - <Cidade>/<UF> CEP: <CEP>
+  const fullAddressRegex =
+    /([^\n\r]+?)(?:,\s*(?:nº|n°|número|numero)\s*([0-9A-Za-z]+|\bS\/N\b))\s*([^-\n\r]*?)\s*-\s*([^\n\r/-]+)\s*\/\s*([A-Za-z]{2})\s*CEP:?\s*([\d.-]+)/i
+  const addrMatch = fullAddressRegex.exec(text)
+
+  if (addrMatch) {
+    let rawStreet = addrMatch[1].trim()
+    // Remove prefixo "Endereço:" se houver
+    rawStreet = rawStreet.replace(/^(?:Endereço|Endereco|Logradouro)[\s:]+/i, '').trim()
+    // "Rua Teste" -> street = "Teste"
+    const cleanedStreet = rawStreet
+      .replace(/^(?:Rua|Avenida|Av\.?|Travessa|Alameda|Praça|Praca|Rodovia)\s+/i, '')
+      .trim()
+    street = cleanedStreet || rawStreet
+
+    street_number = addrMatch[2].trim()
+
+    let rawMiddle = addrMatch[3].trim()
+    // Ex Ficha A: "Cond. Teste Lumiere, Casa 1, Teste"
+    // Ex Ficha B: "Apto 101, Teste"
+    // Remove vírgula inicial se houver
+    rawMiddle = rawMiddle.replace(/^,\s*/, '').trim()
+
+    if (rawMiddle) {
+      const parts = rawMiddle
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
+      if (parts.length > 1) {
+        // O último segmento é o bairro (ex: "Teste")
+        neighborhood = parts[parts.length - 1]
+        // Os segmentos anteriores compõem o complemento (ex: "Cond. Teste Lumiere, Casa 1")
+        complement = parts.slice(0, parts.length - 1).join(', ')
+      } else if (parts.length === 1) {
+        // Se só tem um pedaço:
+        // Se for indicativo de complemento ("Apto...", "Casa...", etc.), vira complemento
+        if (
+          /^(?:Apto|Apartamento|Casa|Cond|Condomínio|Bloco|Bl|Sala|Lote|Quadra|Qd|Lt|Fundos|Frente|Andar|Cobertura)\b/i.test(
+            parts[0],
+          )
+        ) {
+          complement = parts[0]
+        } else {
+          neighborhood = parts[0]
+        }
+      }
+    }
+
+    city = cleanVal(addrMatch[4])
+    state = (addrMatch[5] || 'BA').toUpperCase()
+    zip_code = addrMatch[6].replace(/\D/g, '')
+  } else {
+    // Fallback para campos individuais se a linha completa não bater
+    const rawSt = findPattern([
+      /(?:Endereço|Endereco|Logradouro|Rua|Av\.?|Avenida)[\s:]+([^\n\r,]+)/i,
+      /Logradouro[\s:]+([^\n\r]+)/i,
+    ])
+    street =
+      rawSt.replace(/^(?:Rua|Avenida|Av\.?|Travessa|Alameda|Praça|Praca|Rodovia)\s+/i, '').trim() ||
+      rawSt ||
+      undefined
+    street_number = findPattern([/(?:Número|Numero|Nº|N°)[\s:]+([A-Za-z0-9_-]+)/i]) || 'S/N'
+    complement = findPattern([/(?:Complemento|Compl\.?)[\s:]+([^\n\r]+)/i]) || undefined
+    neighborhood = findPattern([/(?:Bairro)[\s:]+([^\n\r,]+)/i]) || undefined
+    city = findPattern([/(?:Cidade|Município|Municipio)[\s:]+([^\n\r,]+)/i]) || undefined
+    state = (findPattern([/(?:Estado|UF)[\s:]+([A-Za-z]{2})/i]) || 'BA').toUpperCase()
+    const rawZip = findPattern([/(?:CEP)[\s:]+([\d.-]+)/i]).replace(/\D/g, '')
+    zip_code = rawZip || undefined
+  }
+
+  // Características: quartos, banheiros e vagas
+  // Aceite (N)Rótulo e também Rótulo: N.
+  // Rótulos:
+  // - dormitórios/quartos (bedrooms)
+  // - "banheiros" (bathrooms) -> Nº de banheiros ou Banheiros
+  // - "vagas" (parking, quando houver número antes de "vagas cobertas" ou "vagas")
+  // Atenção: "Suítes" não é quartos; ignore. Tipo "Não informado" não traz número.
+  const extractFeatureCount = (regexes: RegExp[]): number | undefined => {
+    for (const rx of regexes) {
+      const m = rx.exec(text)
+      if (m && m[1]) {
+        const val = parseInt(m[1], 10)
+        if (!isNaN(val)) return val
+      }
+    }
+    return undefined
+  }
+
+  const bedrooms = extractFeatureCount([
+    /\((\d+)\)\s*(?:Dormitórios|Dormitorios|Quartos)/i,
+    /(?:Dormitórios|Dormitorios|Quartos|Qts)[\s:]+(\d+)/i,
+  ])
+
+  const bathrooms = extractFeatureCount([
+    /\((\d+)\)\s*(?:Nº de banheiros|N° de banheiros|Banheiros|Banhos|WCs)/i,
+    /(?:Nº de banheiros|N° de banheiros|Banheiros|Banhos|WCs)[\s:]+(\d+)/i,
+  ])
+
+  const parking = extractFeatureCount([
+    /\((\d+)\)\s*(?:Vagas cobertas|Vagas descobertas|Vagas|Garagem)/i,
+    /(?:Vagas cobertas|Vagas descobertas|Vagas|Garagem)[\s:]+(\d+)/i,
+  ])
+
+  // Área:
+  // Prefira "Área construída" quando tiver valor maior que zero.
+  // Se ela for zero ou não existir, use "Área útil" (maior que zero).
+  // Se nenhuma for maior que zero, area fica undefined.
+  // Não use "Área do terreno" nem "Área total" em nenhum caso.
+  const rawConstruida = parseNumber(
+    findPattern([/(?:Área construída|Area construida)[\s:]+([\d.,]+)/i]),
+  )
+  const rawUtil = parseNumber(
+    findPattern([/(?:Área útil|Area util|Área privativa|Area privativa)[\s:]+([\d.,]+)/i]),
+  )
+
+  let area: number | undefined = undefined
+  if (rawConstruida && rawConstruida > 0) {
+    area = rawConstruida
+  } else if (rawUtil && rawUtil > 0) {
+    area = rawUtil
+  }
 
   // Textos para compor a descrição
   const lazer = findPattern([/(?:Lazer|Área de lazer|Itens de lazer)[\s:]+([^\n\r]+)/i])
