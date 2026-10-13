@@ -6,7 +6,9 @@ import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/client
 import { parseCurrencyInput } from '@/lib/currencyUtils'
 import { PropertyForm, PropertyFormData } from '@/components/properties/PropertyForm'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, FileUp } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ImportFichaPdfModal } from '@/components/properties/ImportFichaPdfModal'
 
 export default function NovoImovel() {
   const navigate = useNavigate()
@@ -17,6 +19,7 @@ export default function NovoImovel() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [eligibleUsers, setEligibleUsers] = useState<ResponsibleUser[]>([])
   const [loadingUsers, setLoadingUsers] = useState(true)
+  const [importPdfOpen, setImportPdfOpen] = useState(false)
 
   const role = user?.role || ''
   const isAuthorized = role === 'admin' || role === 'corretor'
@@ -132,21 +135,36 @@ export default function NovoImovel() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-28 md:pb-12">
       {/* Cabeçalho */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => navigate('/imoveis')}
-          className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
-          aria-label="Voltar para lista de imóveis"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <div>
-          <h1 className="display-sm text-foreground">Novo imóvel</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Cadastre um novo imóvel no catálogo. Ele nascerá como Rascunho.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/imoveis')}
+            className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full border border-border flex items-center justify-center hover:bg-muted shrink-0 text-foreground"
+            aria-label="Voltar para lista de imóveis"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div>
+            <h1 className="display-sm text-foreground">Novo imóvel</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Cadastre um novo imóvel no catálogo. Ele nascerá como Rascunho.
+            </p>
+          </div>
         </div>
+
+        {/* Botão Importar ficha PDF: visível para admin e corretor (quem pode cadastrar); SDR não vê */}
+        {isAuthorized && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setImportPdfOpen(true)}
+            className="h-10 rounded-full px-4 text-xs font-normal border-border gap-2 text-foreground hover:bg-muted shrink-0 self-start sm:self-auto"
+          >
+            <FileUp className="h-4 w-4 text-primary" />
+            <span>Importar ficha PDF</span>
+          </Button>
+        )}
       </div>
 
       {/* Alerta de erro */}
@@ -171,6 +189,9 @@ export default function NovoImovel() {
           onCancel={() => navigate('/imoveis')}
         />
       )}
+
+      {/* Modal de importação da ficha PDF */}
+      <ImportFichaPdfModal open={importPdfOpen} onOpenChange={setImportPdfOpen} propertyId={null} />
     </div>
   )
 }
