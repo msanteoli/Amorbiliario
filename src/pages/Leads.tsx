@@ -75,32 +75,11 @@ const STAGE_ORDER: LeadStage[] = [
   'perdido',
 ]
 
-export type BadgeVariant =
-  | 'default'
-  | 'secondary'
-  | 'destructive'
-  | 'outline'
-  | 'success'
-  | 'attention'
-  | 'info'
+import { getLeadStageBadgeVariant, type BadgeVariant } from '@/lib/badgeVariants'
+export type { BadgeVariant }
 
 export function getStageBadgeVariant(stage: LeadStage): BadgeVariant {
-  switch (stage) {
-    case 'novo':
-      return 'info'
-    case 'em_atendimento':
-      return 'default'
-    case 'visita_marcada':
-      return 'info'
-    case 'proposta':
-      return 'default'
-    case 'ganho':
-      return 'success'
-    case 'perdido':
-      return 'destructive'
-    default:
-      return 'default'
-  }
+  return getLeadStageBadgeVariant(stage)
 }
 
 export function getStageBadgeColor(stage: LeadStage): string {

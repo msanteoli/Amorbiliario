@@ -41,10 +41,7 @@ export const Cota: React.FC<CotaProps> = ({
           </div>
 
           <span
-            className={cn(
-              'dado font-medium shrink-0',
-              isAttention ? 'text-attention' : 'text-foreground',
-            )}
+            className={cn('numero shrink-0', isAttention ? 'text-attention' : 'text-foreground')}
           >
             {count}
           </span>

@@ -472,7 +472,7 @@ export function LeadNegotiationTab({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div className="space-y-1">
                 <span className="eyebrow text-muted-foreground block">Valor combinado</span>
-                <span className="text-foreground tabular font-normal text-sm">
+                <span className="dado font-normal text-foreground">
                   {activeNegotiation.agreed_value && activeNegotiation.agreed_value > 0
                     ? new Intl.NumberFormat('pt-BR', {
                         style: 'currency',
@@ -839,7 +839,8 @@ export function LeadNegotiationTab({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-foreground">
-                      Imóvel [{item.property_code || item.property_id}]
+                      Imóvel [<span className="dado">{item.property_code || item.property_id}</span>
+                      ]
                     </span>
                     <Badge
                       variant={item.status === 'fechada' ? 'success' : 'destructive'}
@@ -853,7 +854,7 @@ export function LeadNegotiationTab({
                   </div>
                   <p className="text-muted-foreground">
                     Valor acordado:{' '}
-                    <span className="tabular font-normal text-foreground">
+                    <span className="dado font-normal text-foreground">
                       {item.agreed_value && item.agreed_value > 0
                         ? new Intl.NumberFormat('pt-BR', {
                             style: 'currency',
@@ -862,9 +863,12 @@ export function LeadNegotiationTab({
                         : 'Não informado'}
                     </span>
                     {item.closed_at && (
-                      <span className="tabular">
+                      <span>
                         {' '}
-                        · Encerrada em {new Date(item.closed_at).toLocaleDateString('pt-BR')}
+                        · Encerrada em{' '}
+                        <span className="dado text-xs">
+                          {new Date(item.closed_at).toLocaleDateString('pt-BR')}
+                        </span>
                       </span>
                     )}
                   </p>

@@ -35,28 +35,7 @@ import {
 import { Calendar } from 'lucide-react'
 import { PendingVisitsConfirmationBlock } from '@/components/agenda/PendingVisitsConfirmationBlock'
 import { VisitDetailModal } from '@/components/agenda/VisitDetailModal'
-
-// Mapeamento visual das situações de Lead conforme guia M9a
-function getLeadStageBadgeVariant(
-  stage: string,
-): 'info' | 'default' | 'success' | 'destructive' | 'attention' {
-  switch (stage) {
-    case 'novo':
-      return 'info'
-    case 'em_atendimento':
-      return 'default'
-    case 'visita_marcada':
-      return 'info'
-    case 'proposta':
-      return 'default'
-    case 'ganho':
-      return 'success'
-    case 'perdido':
-      return 'destructive'
-    default:
-      return 'default'
-  }
-}
+import { getLeadStageBadgeVariant, getVisitStatusBadgeVariant } from '@/lib/badgeVariants'
 
 export default function Hoje() {
   const navigate = useNavigate()
@@ -233,7 +212,7 @@ export default function Hoje() {
                         <span>
                           {lead.next_step ? `${lead.next_step} — ` : ''}
                           {lead.next_step_due && (
-                            <span className="text-attention font-normal tabular">
+                            <span className="text-attention font-normal dado text-xs">
                               Atrasado: {formatDateTimeBahia(lead.next_step_due)}
                             </span>
                           )}
@@ -306,10 +285,10 @@ export default function Hoje() {
                   }}
                   className="min-h-[56px] py-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  {/* No celular para visitas de hoje do corretor: hora em destaque à esquerda (20px, font-medium, tabular) */}
+                  {/* No celular para visitas de hoje do corretor: hora em destaque à esquerda */}
                   {options?.isCorretorVisitsToday && (
                     <div className="shrink-0 text-left pr-2">
-                      <span className="text-xl font-medium tabular text-foreground block">
+                      <span className="dado text-base font-normal text-foreground block">
                         {formatTimeBahia(v.start_at)}
                       </span>
                     </div>
@@ -321,25 +300,40 @@ export default function Hoje() {
                     </p>
                     <div className="text-xs text-muted-foreground truncate mt-0.5">
                       {options?.showDate && v.start_at && (
-                        <span className="tabular mr-2">
+                        <span className="dado mr-2 text-xs">
                           {formatDateBahia(v.start_at)} às {formatTimeBahia(v.start_at)}
                         </span>
                       )}
                       {!options?.isCorretorVisitsToday && !options?.showDate && v.start_at && (
-                        <span className="tabular mr-2">{formatTimeBahia(v.start_at)}</span>
+                        <span className="dado mr-2 text-xs">{formatTimeBahia(v.start_at)}</span>
                       )}
-                      {v.property_code && <span className="mr-2">Imóvel {v.property_code}</span>}
+                      {v.property_code && (
+                        <span className="mr-2">
+                          Imóvel{' '}
+                          <span className="dado text-muted-foreground">{v.property_code}</span>
+                        </span>
+                      )}
                       {v.broker_name && <span>• {v.broker_name}</span>}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     {options?.isVisitToConfirm ? (
-                      <Badge variant="default">Agendada</Badge>
+                      <Badge variant={getVisitStatusBadgeVariant('agendada')}>Agendada</Badge>
                     ) : !v.start_at ? (
-                      <Badge variant="attention">Pendente de agenda</Badge>
+                      <Badge variant={getVisitStatusBadgeVariant('pendente_agenda')}>
+                        Pendente de agenda
+                      </Badge>
                     ) : (
-                      <Badge variant="default">Agendada</Badge>
+                      <Badge variant={getVisitStatusBadgeVariant(v.status || 'agendada')}>
+                        {v.status === 'pendente_agenda'
+                          ? 'Pendente de agenda'
+                          : v.status === 'confirmada'
+                            ? 'Confirmada'
+                            : v.status === 'realizada'
+                              ? 'Realizada'
+                              : 'Agendada'}
+                      </Badge>
                     )}
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </div>
@@ -402,7 +396,9 @@ export default function Hoje() {
                       )}
                       {task.due_at && (
                         <span
-                          className={overdue ? 'text-attention font-normal tabular' : 'tabular'}
+                          className={
+                            overdue ? 'text-attention font-normal dado text-xs' : 'dado text-xs'
+                          }
                         >
                           {overdue ? 'Atrasado: ' : 'Prazo: '}
                           {formatDateTimeBahia(task.due_at)}
@@ -463,7 +459,7 @@ export default function Hoje() {
                 </span>
 
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-sm font-normal tabular text-foreground">{item.count}</span>
+                  <span className="dado text-sm font-normal text-foreground">{item.count}</span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                 </div>
               </div>
@@ -506,12 +502,20 @@ export default function Hoje() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-normal text-foreground truncate">
-                    [{prop.code}] {prop.title || 'Sem título'}
+                    <span className="dado text-muted-foreground mr-1">[{prop.code}]</span>
+                    <span>{prop.title || 'Sem título'}</span>{' '}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {prop.last_reviewed_at
-                      ? `Última revisão: ${formatDateBahia(prop.last_reviewed_at)}`
-                      : 'Nunca revisado'}
+                    {prop.last_reviewed_at ? (
+                      <span>
+                        Última revisão:{' '}
+                        <span className="dado text-xs">
+                          {formatDateBahia(prop.last_reviewed_at)}
+                        </span>
+                      </span>
+                    ) : (
+                      'Nunca revisado'
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

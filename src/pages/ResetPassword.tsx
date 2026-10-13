@@ -78,13 +78,12 @@ export default function ResetPassword() {
           <CardContent>
             {success ? (
               <div className="space-y-4">
-                <Alert className="bg-emerald-50 text-emerald-900 border-emerald-300 py-3">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <AlertDescription className="text-sm font-medium">
-                    Senha criada. Agora é só entrar.
+                <Alert className="bg-success/10 text-success border-success/30 py-3">
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                  <AlertDescription className="text-xs text-foreground">
+                    Sua senha foi redefinida com sucesso. Redirecionando para o login...
                   </AlertDescription>
                 </Alert>
-
                 <Button
                   onClick={() => navigate('/login', { replace: true })}
                   className="w-full gap-2"

@@ -363,9 +363,9 @@ export default function Agenda() {
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
       {/* Mensagem de sucesso global da página */}
       {alertSuccess && (
-        <Alert className="bg-emerald-50 text-emerald-900 border-emerald-300">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          <AlertDescription className="font-medium text-sm flex items-center justify-between">
+        <Alert className="bg-success/10 text-success border-success/30">
+          <CheckCircle2 className="h-4 w-4 text-success" />
+          <AlertDescription className="font-medium text-sm flex items-center justify-between text-foreground">
             <span>{alertSuccess}</span>
             <Button
               variant="ghost"
@@ -641,7 +641,7 @@ export default function Agenda() {
                                     }`}
                                   >
                                     <div className="flex items-center justify-between gap-1 mb-1">
-                                      <span className="tabular font-normal text-foreground">
+                                      <span className="dado font-normal text-foreground">
                                         {formatTimeBahia(v.start_at)}
                                       </span>
                                       {getVisitStatusBadge(v.status)}
@@ -730,7 +730,7 @@ export default function Agenda() {
                                     }`}
                                   >
                                     <div className="shrink-0">
-                                      <span className="tabular font-normal text-sm text-foreground">
+                                      <span className="dado font-normal text-foreground">
                                         {formatTimeBahia(v.start_at)}
                                       </span>
                                     </div>
@@ -805,11 +805,11 @@ export default function Agenda() {
                               }`}
                             >
                               <div className="shrink-0 text-left">
-                                <span className="tabular font-normal text-base text-foreground block">
+                                <span className="dado font-normal text-foreground block">
                                   {formatTimeBahia(v.start_at)}
                                 </span>
                                 {v.end_at && (
-                                  <span className="tabular text-[11px] text-muted-foreground">
+                                  <span className="dado text-[11px] text-muted-foreground">
                                     até {formatTimeBahia(v.end_at)}
                                   </span>
                                 )}
@@ -817,7 +817,8 @@ export default function Agenda() {
 
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-normal text-foreground truncate">
-                                  [{prop?.code || 'Imóvel'}] {prop?.title || ''}
+                                  [<span className="dado">{prop?.code || 'Imóvel'}</span>]{' '}
+                                  {prop?.title || ''}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate mt-0.5">
                                   Pessoa: {personName} • Corretor: {brokerName}
@@ -941,7 +942,7 @@ export default function Agenda() {
                               className="min-h-[56px] py-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-muted/40 transition-colors"
                             >
                               <div className="shrink-0 text-left">
-                                <span className="tabular font-normal text-sm text-foreground block">
+                                <span className="dado font-normal text-foreground block">
                                   {formatDateTimeBahia(v.start_at)}
                                 </span>
                               </div>
@@ -1156,9 +1157,7 @@ export default function Agenda() {
                         <div className="text-xs text-muted-foreground truncate mt-0.5">
                           {t.due_at && (
                             <span
-                              className={`tabular mr-2 ${
-                                overdue ? 'text-attention font-normal' : ''
-                              }`}
+                              className={`dado mr-2 ${overdue ? 'text-attention font-normal' : ''}`}
                             >
                               {overdue ? 'Atrasado: ' : 'Prazo: '}
                               {formatTaskDateTimeBahia(t.due_at)}

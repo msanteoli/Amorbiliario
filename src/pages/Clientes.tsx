@@ -293,7 +293,7 @@ export default function Clientes() {
                     <div className="col-span-4 font-normal text-sm text-foreground truncate">
                       {client.name}
                     </div>
-                    <div className="col-span-2 text-xs text-muted-foreground tabular whitespace-nowrap">
+                    <div className="col-span-2 dado text-muted-foreground whitespace-nowrap">
                       {formatPhoneNumber(client.phone)}
                     </div>
                     <div className="col-span-2 text-xs text-muted-foreground truncate">
@@ -346,7 +346,7 @@ export default function Clientes() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
-                    <span className="tabular">{formatPhoneNumber(client.phone)}</span>
+                    <span className="dado">{formatPhoneNumber(client.phone)}</span>
                     <span className="truncate">{respName}</span>
                   </div>
                 </div>

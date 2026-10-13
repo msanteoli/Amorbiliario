@@ -30,6 +30,7 @@ import { getCondoPhotoUrl } from '@/services/condominiums'
 import { formatPhoneNumber, formatDate } from '@/lib/clientUtils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { getPropertyStatusBadgeVariant } from '@/lib/badgeVariants'
 
 import {
   Dialog,
@@ -107,19 +108,7 @@ const HISTORY_FIELD_LABELS: Record<string, string> = {
   captured_by: 'Captador',
 }
 
-// Mapa de variante de pílula para a situação do imóvel:
-// Rascunho=default; Disponível=success; Reservado=attention; Vendido=default; Alugado=default; Inativo=destructive
-const STATUS_BADGE_VARIANT_MAP: Record<
-  PropertyStatus,
-  'default' | 'success' | 'attention' | 'destructive'
-> = {
-  rascunho: 'default',
-  disponivel: 'success',
-  reservado: 'attention',
-  vendido: 'default',
-  alugado: 'default',
-  inativo: 'destructive',
-}
+// Mapa de variante de pílula para a situação do imóvel centralizado em getPropertyStatusBadgeVariant
 
 const ACCEPTED_MIME_TYPES = ['image/jpeg', 'image/webp']
 const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024 // 3 MB
@@ -533,7 +522,7 @@ export default function ImovelDetalhe() {
   }
 
   const isOutdated = isPropertyPendingReview(property)
-  const statusVariant = STATUS_BADGE_VARIANT_MAP[property.status] || 'default'
+  const statusVariant = getPropertyStatusBadgeVariant(property.status)
   const statusLabel = PROPERTY_STATUS_LABELS[property.status] || property.status
 
   const captadorName =
@@ -665,7 +654,7 @@ export default function ImovelDetalhe() {
           </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="eyebrow text-muted-foreground">{property.code}</span>
+              <span className="dado text-muted-foreground">{property.code}</span>
               {isImported && (
                 <Badge
                   variant="outline"
@@ -1139,7 +1128,7 @@ export default function ImovelDetalhe() {
                   {showSalePrice && (
                     <div>
                       <span className="eyebrow text-muted-foreground block">Venda</span>
-                      <p className="font-normal text-foreground">
+                      <p className="dado font-normal text-foreground">
                         {property.sale_price && property.sale_price > 0
                           ? formatCurrencyBRL(property.sale_price)
                           : '—'}
@@ -1150,7 +1139,7 @@ export default function ImovelDetalhe() {
                   {showRentPrice && (
                     <div>
                       <span className="eyebrow text-muted-foreground block">Locação</span>
-                      <p className="font-normal text-foreground">
+                      <p className="dado font-normal text-foreground">
                         {property.rent_price && property.rent_price > 0
                           ? `${formatCurrencyBRL(property.rent_price)}/mês`
                           : '—'}
@@ -1160,7 +1149,7 @@ export default function ImovelDetalhe() {
 
                   <div>
                     <span className="eyebrow text-muted-foreground block">Condomínio</span>
-                    <p className="text-foreground">
+                    <p className="dado text-foreground">
                       {property.condo_fee && property.condo_fee > 0
                         ? formatCurrencyBRL(property.condo_fee)
                         : '—'}
@@ -1169,7 +1158,7 @@ export default function ImovelDetalhe() {
 
                   <div>
                     <span className="eyebrow text-muted-foreground block">IPTU</span>
-                    <p className="text-foreground">
+                    <p className="dado text-foreground">
                       {property.iptu && property.iptu > 0 ? formatCurrencyBRL(property.iptu) : '—'}
                     </p>
                   </div>
@@ -1393,7 +1382,7 @@ export default function ImovelDetalhe() {
         <Dialog open={true} onOpenChange={() => setViewingPhotoIndex(null)}>
           <DialogContent className="max-w-4xl p-2 sm:p-4 bg-background/95 backdrop-blur">
             <div className="relative flex flex-col items-center">
-              <div className="relative w-full max-h-[75vh] flex items-center justify-center bg-black/5 rounded-lg overflow-hidden">
+              <div className="relative w-full max-h-[75vh] flex items-center justify-center bg-muted/40 rounded-lg overflow-hidden">
                 <img
                   src={getPhotoFileUrl(photos[viewingPhotoIndex])}
                   alt={`Foto ${viewingPhotoIndex + 1}`}

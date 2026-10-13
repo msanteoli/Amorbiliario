@@ -157,9 +157,9 @@ export default function ClienteDetalhe() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Banner de sucesso */}
       {successBanner && (
-        <Alert className="border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300">
-          <Check className="h-4 w-4 text-emerald-600" />
-          <AlertDescription className="text-sm font-medium flex items-center justify-between">
+        <Alert className="border-success/30 bg-success/10 text-success">
+          <Check className="h-4 w-4 text-success" />
+          <AlertDescription className="text-sm font-medium flex items-center justify-between text-foreground">
             <span>{successBanner}</span>
             <Button
               variant="ghost"
@@ -276,7 +276,7 @@ export default function ClienteDetalhe() {
 
           <div className="space-y-1">
             <span className="eyebrow text-muted-foreground block">Telefone</span>
-            <p className="text-sm font-normal text-foreground tabular flex items-center gap-1.5">
+            <p className="dado text-foreground flex items-center gap-1.5">
               <Phone className="h-3.5 w-3.5 text-muted-foreground" />
               <span>{formatPhoneNumber(client.phone)}</span>
             </p>
@@ -318,7 +318,7 @@ export default function ClienteDetalhe() {
 
             <div className="space-y-1">
               <span className="eyebrow text-muted-foreground block">Data do consentimento</span>
-              <p className="text-foreground tabular">{formatDate(client.consent_at)}</p>
+              <p className="dado text-foreground">{formatDate(client.consent_at)}</p>
             </div>
 
             <div className="space-y-1">
@@ -340,9 +340,7 @@ export default function ClienteDetalhe() {
               {client.person_type === 'juridica' && clientPrivate.cnpj && (
                 <div className="space-y-1">
                   <span className="eyebrow text-muted-foreground block">CNPJ</span>
-                  <p className="font-mono tabular text-foreground">
-                    {maskCnpjInput(clientPrivate.cnpj)}
-                  </p>
+                  <p className="dado text-foreground">{maskCnpjInput(clientPrivate.cnpj)}</p>
                 </div>
               )}
 
@@ -350,7 +348,7 @@ export default function ClienteDetalhe() {
                 <span className="eyebrow text-muted-foreground block">
                   {client.person_type === 'juridica' ? 'CPF do responsável' : 'CPF'}
                 </span>
-                <p className="font-mono tabular text-foreground">
+                <p className="dado text-foreground">
                   {clientPrivate.cpf ? maskCpfInput(clientPrivate.cpf) : '—'}
                 </p>
               </div>
@@ -358,14 +356,14 @@ export default function ClienteDetalhe() {
               {clientPrivate.rg && (
                 <div className="space-y-1">
                   <span className="eyebrow text-muted-foreground block">RG</span>
-                  <p className="tabular text-foreground">{clientPrivate.rg}</p>
+                  <p className="dado text-foreground">{clientPrivate.rg}</p>
                 </div>
               )}
 
               {clientPrivate.birth_date && (
                 <div className="space-y-1">
                   <span className="eyebrow text-muted-foreground block">Data de nascimento</span>
-                  <p className="tabular text-foreground flex items-center gap-1.5">
+                  <p className="dado text-foreground flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>{formatDate(clientPrivate.birth_date)}</span>
                   </p>
@@ -432,13 +430,14 @@ export default function ClienteDetalhe() {
                 >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="tabular text-foreground">
+                      <span className="dado text-foreground">
                         {formatDateTimeBahia(v.start_at)}
                       </span>
                       {getVisitStatusBadge(v.status)}
                     </div>
                     <p className="text-muted-foreground">
-                      Imóvel: [{prop?.code || '-'}] {prop?.title || ''}
+                      Imóvel: [<span className="dado">{prop?.code || '-'}</span>]{' '}
+                      {prop?.title || ''}
                       {broker && <span> · Corretor: {broker.name || broker.email}</span>}
                     </p>
                   </div>
@@ -492,9 +491,9 @@ export default function ClienteDetalhe() {
                       <span className="text-foreground">{t.title}</span>
                       {getTaskStatusBadge(t)}
                     </div>
-                    <p className="text-muted-foreground tabular">
+                    <p className="text-muted-foreground">
                       Prazo:{' '}
-                      <span className={overdue ? 'text-attention font-medium' : ''}>
+                      <span className={overdue ? 'text-attention font-normal dado' : 'dado'}>
                         {overdue && 'Atrasado: '}
                         {formatTaskDateTimeBahia(t.due_at)}
                       </span>

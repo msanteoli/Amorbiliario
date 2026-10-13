@@ -44,6 +44,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { getLeadStageBadgeVariant } from '@/lib/badgeVariants'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -553,18 +554,7 @@ export default function LeadDetalhe() {
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="display-sm text-foreground">{lead.name}</h1>
-              <Badge
-                variant={
-                  lead.stage === 'ganho'
-                    ? 'success'
-                    : lead.stage === 'perdido'
-                      ? 'destructive'
-                      : lead.stage === 'visita_marcada' || lead.stage === 'novo'
-                        ? 'info'
-                        : 'default'
-                }
-                className="text-xs"
-              >
+              <Badge variant={getLeadStageBadgeVariant(lead.stage)} className="text-xs">
                 {LEAD_STAGE_LABELS[lead.stage] || lead.stage}
               </Badge>
               {lead.client_id && (
@@ -582,7 +572,7 @@ export default function LeadDetalhe() {
             {/* Telefone com ações Copiar e WhatsApp em pílulas */}
             {lead.phone && (
               <div className="flex items-center gap-2 pt-1 text-xs">
-                <span className="tabular text-foreground">{formatPhoneNumber(lead.phone)}</span>
+                <span className="dado text-foreground">{formatPhoneNumber(lead.phone)}</span>
                 <button
                   type="button"
                   onClick={handleCopyPhone}
@@ -702,8 +692,12 @@ export default function LeadDetalhe() {
 
           <div className="space-y-1">
             <span className="eyebrow text-muted-foreground block">Último contato</span>
-            <span className="text-muted-foreground tabular">
-              {lead.last_contact_at ? formatDateTimeBR(lead.last_contact_at) : 'Nenhum contato'}
+            <span className="text-muted-foreground">
+              {lead.last_contact_at ? (
+                <span className="dado text-xs">{formatDateTimeBR(lead.last_contact_at)}</span>
+              ) : (
+                'Nenhum contato'
+              )}
             </span>
           </div>
         </div>
@@ -718,7 +712,7 @@ export default function LeadDetalhe() {
               >
                 <Building className="h-3.5 w-3.5" />
                 <span>
-                  [{interestProperty.code}] {interestProperty.title}
+                  [<span className="dado">{interestProperty.code}</span>] {interestProperty.title}
                 </span>
                 <ExternalLink className="h-3 w-3" />
               </Link>
@@ -864,12 +858,12 @@ export default function LeadDetalhe() {
                 </div>
                 {lead.next_step_due && (
                   <div
-                    className={`text-xs tabular ${
-                      isOverdue ? 'text-attention font-medium' : 'text-muted-foreground'
+                    className={`text-xs ${
+                      isOverdue ? 'text-attention font-normal' : 'text-muted-foreground'
                     }`}
                   >
                     {isOverdue && 'Atrasado: '}
-                    {formatDateTimeBR(lead.next_step_due)}
+                    <span className="dado text-xs">{formatDateTimeBR(lead.next_step_due)}</span>
                   </div>
                 )}
               </div>
@@ -1007,13 +1001,14 @@ export default function LeadDetalhe() {
                     >
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="tabular text-foreground">
+                          <span className="dado text-foreground">
                             {formatDateTimeBahia(v.start_at)}
                           </span>
                           {getVisitStatusBadge(v.status)}
                         </div>
                         <p className="text-muted-foreground">
-                          Imóvel: [{prop?.code || '-'}] {prop?.title || ''}
+                          Imóvel: [<span className="dado">{prop?.code || '-'}</span>]{' '}
+                          {prop?.title || ''}
                           {broker && <span> · Corretor: {broker.name || broker.email}</span>}
                         </p>
                       </div>
@@ -1067,9 +1062,9 @@ export default function LeadDetalhe() {
                           <span className="text-foreground">{t.title}</span>
                           {getTaskStatusBadge(t)}
                         </div>
-                        <p className="text-muted-foreground tabular">
+                        <p className="text-muted-foreground">
                           Prazo:{' '}
-                          <span className={overdue ? 'text-attention font-medium' : ''}>
+                          <span className={overdue ? 'text-attention font-normal dado' : 'dado'}>
                             {overdue && 'Atrasado: '}
                             {formatTaskDateTimeBahia(t.due_at)}
                           </span>
@@ -1133,8 +1128,10 @@ export default function LeadDetalhe() {
                       <div className="absolute -left-[18px] top-1.5 h-2 w-2 rounded-full bg-foreground ring-4 ring-background" />
                       <div className="space-y-1 text-xs">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="eyebrow tabular text-muted-foreground">
-                            {formatDateTimeBR(ev.occurred_at || ev.created)}
+                          <span className="eyebrow text-muted-foreground">
+                            <span className="dado text-xs text-muted-foreground">
+                              {formatDateTimeBR(ev.occurred_at || ev.created)}
+                            </span>
                           </span>
                           <Badge variant="default" className="text-[10px] px-1.5 py-0">
                             {typeLabel}

@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { getPropertyStatusBadgeVariant } from '@/lib/badgeVariants'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -51,38 +52,7 @@ import {
   ImageIcon,
 } from 'lucide-react'
 
-// Estilos de badge para cada status
-const STATUS_BADGE_VARIANTS: Record<PropertyStatus, { label: string; className: string }> = {
-  rascunho: {
-    label: PROPERTY_STATUS_LABELS.rascunho,
-    className: 'bg-muted text-muted-foreground border-border',
-  },
-  disponivel: {
-    label: PROPERTY_STATUS_LABELS.disponivel,
-    className:
-      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
-  },
-  reservado: {
-    label: PROPERTY_STATUS_LABELS.reservado,
-    className:
-      'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
-  },
-  vendido: {
-    label: PROPERTY_STATUS_LABELS.vendido,
-    className:
-      'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
-  },
-  alugado: {
-    label: PROPERTY_STATUS_LABELS.alugado,
-    className:
-      'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800',
-  },
-  inativo: {
-    label: PROPERTY_STATUS_LABELS.inativo,
-    className:
-      'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700',
-  },
-}
+// Estilos de badge para cada status centralizados em getPropertyStatusBadgeVariant
 
 export default function Imoveis() {
   const navigate = useNavigate()
@@ -205,22 +175,8 @@ export default function Imoveis() {
     importBatchIdParam,
   )
 
-  const getPropertyBadgeVariant = (
-    status: PropertyStatus,
-  ): 'default' | 'success' | 'attention' | 'destructive' => {
-    switch (status) {
-      case 'disponivel':
-        return 'success'
-      case 'reservado':
-        return 'attention'
-      case 'inativo':
-        return 'destructive'
-      case 'rascunho':
-      case 'vendido':
-      case 'alugado':
-      default:
-        return 'default'
-    }
+  const getPropertyBadgeVariant = (status: PropertyStatus) => {
+    return getPropertyStatusBadgeVariant(status)
   }
 
   return (
@@ -513,7 +469,7 @@ export default function Imoveis() {
                       </div>
                     </div>
 
-                    <div className="col-span-1 eyebrow text-muted-foreground truncate">
+                    <div className="col-span-1 dado text-muted-foreground truncate">
                       {property.code}
                     </div>
 
@@ -570,7 +526,7 @@ export default function Imoveis() {
                       {locationText}
                     </div>
 
-                    <div className="col-span-2 text-xs tabular font-normal text-foreground whitespace-nowrap">
+                    <div className="col-span-2 dado text-foreground whitespace-nowrap">
                       {formatPropertyPrice(property)}
                     </div>
 
@@ -670,7 +626,7 @@ export default function Imoveis() {
                   {/* Informações centrais e preço em tabular */}
                   <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                     <div className="flex items-start justify-between gap-1.5">
-                      <span className="eyebrow text-muted-foreground text-[10px] shrink-0 pt-0.5">
+                      <span className="dado text-muted-foreground text-[11px] shrink-0 pt-0.5">
                         {property.code}
                       </span>
                       <div className="flex items-center gap-1 flex-wrap justify-end">
@@ -739,7 +695,7 @@ export default function Imoveis() {
 
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-1">
                       <span className="truncate max-w-[150px]">{locationText}</span>
-                      <span className="tabular text-foreground font-normal shrink-0">
+                      <span className="dado text-foreground font-normal shrink-0">
                         {formatPropertyPrice(property)}
                       </span>
                     </div>

@@ -52,22 +52,25 @@ import {
 import { GoogleSyncBadge } from '@/components/agenda/GoogleSyncBadge'
 import { getGoogleStatus } from '@/services/googleCalendar'
 
+import { getVisitStatusBadgeVariant } from '@/lib/badgeVariants'
+
 export function getVisitStatusBadge(status: VisitStatus) {
+  const variant = getVisitStatusBadgeVariant(status)
   switch (status) {
     case 'pendente_agenda':
-      return <Badge variant="attention">Pendente de agenda</Badge>
+      return <Badge variant={variant}>Pendente de agenda</Badge>
     case 'agendada':
-      return <Badge variant="default">Agendada</Badge>
+      return <Badge variant={variant}>Agendada</Badge>
     case 'confirmada':
-      return <Badge variant="success">Confirmada</Badge>
+      return <Badge variant={variant}>Confirmada</Badge>
     case 'realizada':
-      return <Badge variant="default">Realizada</Badge>
+      return <Badge variant={variant}>Realizada</Badge>
     case 'cancelada':
-      return <Badge variant="destructive">Cancelada</Badge>
+      return <Badge variant={variant}>Cancelada</Badge>
     case 'nao_compareceu':
-      return <Badge variant="destructive">Não compareceu</Badge>
+      return <Badge variant={variant}>Não compareceu</Badge>
     default:
-      return <Badge variant="default">{status}</Badge>
+      return <Badge variant={variant}>{status}</Badge>
   }
 }
 

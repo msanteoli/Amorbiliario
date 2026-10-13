@@ -217,9 +217,9 @@ export default function Login() {
 
           {forgotSuccessMessage ? (
             <div className="space-y-4 py-2">
-              <Alert className="bg-emerald-50 text-emerald-900 border-emerald-300">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <AlertDescription className="text-sm font-medium">
+              <Alert className="bg-success/10 text-success border-success/30">
+                <CheckCircle2 className="h-4 w-4 text-success" />
+                <AlertDescription className="text-sm font-medium text-foreground">
                   {forgotSuccessMessage}
                 </AlertDescription>
               </Alert>
