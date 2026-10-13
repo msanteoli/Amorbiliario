@@ -39,7 +39,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Loader2, Sparkles, User, X, Plus, Building2, UserPlus } from 'lucide-react'
+import { Loader2, User, X, Plus, Building2, UserPlus } from 'lucide-react'
+import { AiBadge } from '@/components/AiBadge'
 import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
 import { getPropertyById } from '@/services/properties'
 
@@ -667,9 +668,8 @@ export function PropertyForm({
               variant="outline"
               size="sm"
               onClick={handleSuggestTitle}
-              className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1.5 text-primary hover:text-primary"
+              className="h-8 rounded-full px-3 text-xs font-normal border-border text-foreground hover:bg-muted/40"
             >
-              <Sparkles className="h-3.5 w-3.5" />
               <span>Sugerir título</span>
             </Button>
           </div>
@@ -1604,59 +1604,96 @@ export function PropertyForm({
         }}
       />
 
-      {/* Modal de Sugestões de Título por IA */}
+      {/* Modal de Sugestões de Título por IA (Item 9 - Identidade Planta) */}
       <Dialog open={suggestModalOpen} onOpenChange={setSuggestModalOpen}>
-        <DialogContent className="max-w-lg p-5">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-normal text-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span>Sugestões de título com IA</span>
-            </DialogTitle>
+        <DialogContent className="max-w-xl p-6">
+          <DialogHeader className="space-y-1">
+            <div className="flex items-center gap-2">
+              <AiBadge />
+              <DialogTitle className="text-base font-semibold text-foreground">
+                Sugestões de título
+              </DialogTitle>
+            </div>
             <DialogDescription className="text-xs text-muted-foreground">
-              Sugestões geradas com base nas características do imóvel. Escolha uma para preencher o
-              título.
+              Opções formuladas com base nos dados do imóvel para compor o anúncio.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 py-2">
+          <div className="space-y-4 py-2">
+            {/* Enquanto a IA trabalha: frase + barra fina em primary */}
             {suggestingTitle && (
-              <div className="flex flex-col items-center justify-center p-8 text-muted-foreground gap-2">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <p className="text-xs">Gerando 3 opções de título...</p>
+              <div className="space-y-2 py-6">
+                <p className="text-xs text-foreground font-normal">Gerando título…</p>
+                <div className="h-0.5 w-full bg-border overflow-hidden">
+                  <div className="h-full w-full bg-primary" />
+                </div>
               </div>
             )}
 
             {suggestError && (
-              <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal">
+              <div className="p-3.5 rounded-[4px] bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal">
                 {suggestError}
               </div>
             )}
 
             {!suggestingTitle && titleSuggestions.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {titleSuggestions.map((sug, idx) => (
-                  <button
+                  <div
                     key={idx}
-                    type="button"
-                    onClick={() => handleSelectTitleSuggestion(sug)}
-                    className="w-full text-left p-3.5 rounded-lg border border-border bg-card hover:bg-muted/40 transition-colors text-xs text-foreground flex items-center justify-between gap-3 group"
+                    className="p-4 rounded-[4px] bg-accent border border-border/60 space-y-3"
                   >
-                    <span>{sug}</span>
-                    <span className="text-[11px] text-primary shrink-0 opacity-80 group-hover:opacity-100">
-                      Usar
-                    </span>
-                  </button>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-normal text-foreground leading-relaxed flex-1">
+                        {sug}
+                      </p>
+                      <AiBadge className="shrink-0" />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                      {/* Ações especificadas: "Usar este título" (preenchida), "Editar" (contorno), "Gerar outro" (texto) */}
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleSelectTitleSuggestion(sug)}
+                        className="h-8 rounded-[4px] px-3.5 text-xs font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        Usar este título
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setTitle(sug)
+                          setSuggestModalOpen(false)
+                        }}
+                        className="h-8 rounded-[4px] px-3 text-xs font-normal border-border hover:bg-card"
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSuggestTitle}
+                        className="h-8 rounded-[4px] px-2.5 text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-transparent"
+                      >
+                        Gerar outro
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-2 border-t border-border">
             <Button
               type="button"
               variant="outline"
               onClick={() => setSuggestModalOpen(false)}
-              className="h-9 rounded-full px-4 text-xs font-normal border-border"
+              className="h-9 rounded-[4px] px-4 text-xs font-normal border-border"
             >
               Fechar
             </Button>

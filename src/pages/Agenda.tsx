@@ -108,6 +108,7 @@ export default function Agenda() {
   const [loadingVisits, setLoadingVisits] = useState(false)
   const [visitsPage, setVisitsPage] = useState(1)
   const [visitsTotalPages, setVisitsTotalPages] = useState(1)
+  const [visitsTotalItems, setVisitsTotalItems] = useState(0)
   const [userNeedsGoogleReconnect, setUserNeedsGoogleReconnect] = useState(false)
 
   // Corretores para o filtro
@@ -181,6 +182,7 @@ export default function Agenda() {
         setPendingVisits(pVisits)
         setVisitsList(vList.items)
         setVisitsTotalPages(vList.totalPages || 1)
+        setVisitsTotalItems(vList.totalItems || 0)
       } else {
         // Modo Semana ou Dia
         // Calculamos o intervalo de datas para buscar visitas no período
@@ -196,6 +198,7 @@ export default function Agenda() {
         ])
         setPendingVisits(pVisits)
         setVisitsList(vList.items)
+        setVisitsTotalItems(vList.totalItems || vList.items.length)
       }
     } catch (err) {
       // ignore

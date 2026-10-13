@@ -9,6 +9,7 @@ import {
   FichaNaoImportado,
 } from '@/lib/fichaPdf'
 import { extractTextFromPdf } from '@/lib/fichaPdf/extractText'
+import { AiBadge } from '@/components/AiBadge'
 import { matchFicha, commitFicha, FichaMatchResult, FichaCommitResult } from '@/services/fichaPdf'
 import { suggestPropertyTitles } from '@/services/properties'
 import {
@@ -28,7 +29,6 @@ import {
   Loader2,
   AlertCircle,
   HelpCircle,
-  Sparkles,
   Home,
   User,
   Info,
@@ -733,7 +733,7 @@ export function ImportFichaPdfModal({
           <h3 className="text-sm font-medium text-foreground">Título e Descrição do Anúncio</h3>
 
           {/* TÍTULO com Sugerir Título */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <label htmlFor="import-custom-title" className="text-xs font-normal text-foreground">
                 Título do anúncio
@@ -744,13 +744,8 @@ export function ImportFichaPdfModal({
                 size="sm"
                 onClick={handleSuggestTitle}
                 disabled={suggestingTitle}
-                className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1.5 text-primary hover:text-primary"
+                className="h-8 rounded-full px-3 text-xs font-normal border-border text-foreground hover:bg-muted/40"
               >
-                {suggestingTitle ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
                 <span>Sugerir título</span>
               </Button>
             </div>
@@ -761,25 +756,68 @@ export function ImportFichaPdfModal({
               onChange={(e) => setCustomTitle(e.target.value)}
               className="h-10 text-xs border-border"
             />
-            {titleOptions.length > 0 && (
-              <div className="space-y-1 pt-1.5">
-                <span className="text-[11px] text-muted-foreground block">Opções sugeridas:</span>
-                <div className="flex flex-col gap-1">
-                  {titleOptions.map((opt, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setCustomTitle(opt)
-                        setTitleOptions([])
-                      }}
-                      className="text-left p-2 rounded bg-muted/40 hover:bg-muted text-xs text-foreground flex items-center justify-between"
-                    >
-                      <span className="truncate">{opt}</span>
-                      <span className="text-[11px] text-primary shrink-0 ml-2">Escolher</span>
-                    </button>
-                  ))}
+
+            {/* Enquanto a IA trabalha na sugestão de título */}
+            {suggestingTitle && (
+              <div className="space-y-2 py-3">
+                <p className="text-xs text-foreground font-normal">Gerando título…</p>
+                <div className="h-0.5 w-full bg-border overflow-hidden">
+                  <div className="h-full w-full bg-primary" />
                 </div>
+              </div>
+            )}
+
+            {titleOptions.length > 0 && !suggestingTitle && (
+              <div className="space-y-2 pt-1.5">
+                {titleOptions.map((opt, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-[4px] bg-accent border border-border/60 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-normal text-foreground leading-relaxed flex-1">
+                        {opt}
+                      </p>
+                      <AiBadge className="shrink-0" />
+                    </div>
+                    <div className="flex items-center gap-2 pt-1 border-t border-border/40">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          setCustomTitle(opt)
+                          setTitleOptions([])
+                        }}
+                        className="h-7 rounded-[4px] px-3 text-xs font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        Usar este título
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setCustomTitle(opt)
+                          setTitleOptions([])
+                          const inputEl = document.getElementById('import-custom-title')
+                          inputEl?.focus()
+                        }}
+                        className="h-7 rounded-[4px] px-2.5 text-xs font-normal border-border hover:bg-card"
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSuggestTitle}
+                        className="h-7 rounded-[4px] px-2 text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-transparent"
+                      >
+                        Gerar outro
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -958,10 +996,7 @@ export function ImportFichaPdfModal({
                   className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground gap-2"
                 >
                   {reading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Lendo PDF...</span>
-                    </>
+                    <span>Lendo a ficha…</span>
                   ) : (
                     <>
                       <FileUp className="h-4 w-4" />
@@ -1011,8 +1046,36 @@ export function ImportFichaPdfModal({
               </div>
             )}
 
-            {/* PRÉVIA DOS CAMPOS */}
-            {!reading && !matching && !showingPhoneQuestion && parsedData && renderComparisons()}
+            {/* Enquanto a IA/leitor trabalha lendo o PDF */}
+            {reading && (
+              <div className="p-6 rounded-[4px] bg-accent border border-border/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-foreground font-normal">Lendo a ficha…</p>
+                  <AiBadge />
+                </div>
+                <div className="h-0.5 w-full bg-border overflow-hidden">
+                  <div className="h-full w-full bg-primary" />
+                </div>
+              </div>
+            )}
+
+            {/* PRÉVIA DOS CAMPOS: Bloco com fundo accent e o selo "IA · sugestão" */}
+            {!reading && !matching && !showingPhoneQuestion && parsedData && (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-[4px] bg-accent border border-border/60 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <AiBadge />
+                    <span className="text-xs text-foreground font-medium">
+                      Dados extraídos automaticamente da ficha PDF
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                    Confira antes de confirmar a importação
+                  </span>
+                </div>
+                {renderComparisons()}
+              </div>
+            )}
 
             {/* BOTÃO CONFIRMAR IMPORTAÇÃO (EM 360px FICA FIXO NO RODAPÉ) */}
             {parsedData && !showingPhoneQuestion && (
