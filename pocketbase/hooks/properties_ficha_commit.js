@@ -80,176 +80,189 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
   if (!im.zip_code) pendencias.push('CEP')
   if (!im.state) pendencias.push('UF')
 
-  const res = $app.runInTransaction((tx) => {
-    // 1) proprietário: id informado (confirmado na prévia) > CPF > telefone com o mesmo nome > novo
-    let owner = null
-    if (body.owner_id) {
-      try {
-        owner = tx.findRecordById('clients', String(body.owner_id))
-      } catch (_) {}
-      if (!owner || owner.getString('organization_id') !== orgId)
-        throw new NotFoundError('Proprietário não encontrado.')
-    }
-    if (!owner && cpf) {
-      const rows = tx.findRecordsByFilter(
-        'client_private',
-        'organization_id = {:o} && cpf = {:c}',
-        '',
-        1,
-        0,
-        { o: orgId, c: cpf },
-      )
-      if (rows.length) {
+  let res = null
+  try {
+    res = $app.runInTransaction((tx) => {
+      // 1) proprietário: id informado (confirmado na prévia) > CPF > telefone com o mesmo nome > novo
+      let owner = null
+      if (body.owner_id) {
         try {
-          owner = tx.findRecordById('clients', rows[0].getString('client_id'))
+          owner = tx.findRecordById('clients', String(body.owner_id))
         } catch (_) {}
+        if (!owner || owner.getString('organization_id') !== orgId)
+          throw new NotFoundError('Proprietário não encontrado.')
       }
-    }
-    if (!owner && phone) {
-      const rows = tx.findRecordsByFilter(
-        'clients',
-        'organization_id = {:o} && phone = {:p}',
-        '',
-        5,
-        0,
-        { o: orgId, p: phone },
-      )
-      const same = rows.filter((c) => sameName(c.getString('name'), name))
-      if (same.length) owner = same[0]
-      else if (rows.length && body.vincular_proprietario_existente === true) owner = rows[0]
-    }
-    if (owner && role === 'corretor' && owner.getString('responsible_id') !== actor.id) {
-      throw new ForbiddenError('Este proprietário é atendido por outro corretor.')
-    }
-    const ownerNew = !owner
-    if (!owner) {
-      const cl = new Record(tx.findCollectionByNameOrId('clients'))
-      cl.set('organization_id', orgId)
-      cl.set('name', name)
-      if (phone) cl.set('phone', phone)
-      cl.set('kind', ['proprietario'])
-      cl.set('responsible_id', actor.id)
-      tx.save(cl)
-      owner = cl
-    } else if (!owner.getString('phone') && phone) {
-      owner.set('phone', phone)
-      tx.save(owner)
-    }
-    if (cpf) {
-      const cp = tx.findRecordsByFilter(
-        'client_private',
-        'organization_id = {:o} && client_id = {:c}',
-        '',
-        1,
-        0,
-        { o: orgId, c: owner.id },
-      )
-      if (cp.length) {
-        if (!cp[0].getString('cpf')) {
-          cp[0].set('cpf', cpf)
-          tx.save(cp[0])
+      if (!owner && cpf) {
+        const rows = tx.findRecordsByFilter(
+          'client_private',
+          'organization_id = {:o} && cpf = {:c}',
+          '',
+          1,
+          0,
+          { o: orgId, c: cpf },
+        )
+        if (rows.length) {
+          try {
+            owner = tx.findRecordById('clients', rows[0].getString('client_id'))
+          } catch (_) {}
         }
-      } else {
-        const rec = new Record(tx.findCollectionByNameOrId('client_private'))
-        rec.set('organization_id', orgId)
-        rec.set('client_id', owner.id)
-        rec.set('cpf', cpf)
-        tx.save(rec)
       }
-    }
+      if (!owner && phone) {
+        const rows = tx.findRecordsByFilter(
+          'clients',
+          'organization_id = {:o} && phone = {:p}',
+          '',
+          5,
+          0,
+          { o: orgId, p: phone },
+        )
+        const same = rows.filter((c) => sameName(c.getString('name'), name))
+        if (same.length) owner = same[0]
+        else if (rows.length && body.vincular_proprietario_existente === true) owner = rows[0]
+      }
+      if (owner && role === 'corretor' && owner.getString('responsible_id') !== actor.id) {
+        throw new ForbiddenError('Este proprietário é atendido por outro corretor.')
+      }
+      const ownerNew = !owner
+      if (!owner) {
+        const cl = new Record(tx.findCollectionByNameOrId('clients'))
+        cl.set('organization_id', orgId)
+        cl.set('name', name)
+        if (phone) cl.set('phone', phone)
+        cl.set('kind', ['proprietario'])
+        cl.set('responsible_id', actor.id)
+        tx.save(cl)
+        owner = cl
+      } else if (!owner.getString('phone') && phone) {
+        owner.set('phone', phone)
+        tx.save(owner)
+      }
+      if (cpf) {
+        const cp = tx.findRecordsByFilter(
+          'client_private',
+          'organization_id = {:o} && client_id = {:c}',
+          '',
+          1,
+          0,
+          { o: orgId, c: owner.id },
+        )
+        if (cp.length) {
+          if (!cp[0].getString('cpf')) {
+            cp[0].set('cpf', cpf)
+            tx.save(cp[0])
+          }
+        } else {
+          const rec = new Record(tx.findCollectionByNameOrId('client_private'))
+          rec.set('organization_id', orgId)
+          rec.set('client_id', owner.id)
+          rec.set('cpf', cpf)
+          tx.save(rec)
+        }
+      }
 
-    // 2) imóvel: o informado, ou o do mesmo endereço e proprietário, ou um novo
-    let prop = null
-    if (body.property_id) {
-      try {
-        prop = tx.findRecordById('properties', String(body.property_id))
-      } catch (_) {}
-      if (!prop || prop.getString('organization_id') !== orgId)
-        throw new NotFoundError('Imóvel não encontrado.')
-    }
-    if (!prop && !ownerNew && im.zip_code) {
-      const zip = digits(im.zip_code)
-      const rows = tx.findRecordsByFilter(
-        'properties',
-        'organization_id = {:o} && owner_id = {:w} && street_number = {:n} && zip_code != "" && (zip_code = {:z} || zip_code = {:zf})',
-        '',
-        1,
-        0,
-        {
-          o: orgId,
-          w: owner.id,
-          n: String(im.street_number || ''),
-          z: zip,
-          zf: zip.slice(0, 5) + '-' + zip.slice(5),
-        },
+      // 2) imóvel: o informado, ou o do mesmo endereço e proprietário, ou um novo
+      let prop = null
+      if (body.property_id) {
+        try {
+          prop = tx.findRecordById('properties', String(body.property_id))
+        } catch (_) {}
+        if (!prop || prop.getString('organization_id') !== orgId)
+          throw new NotFoundError('Imóvel não encontrado.')
+      }
+      if (!prop && !ownerNew && im.zip_code) {
+        const zip = digits(im.zip_code)
+        const rows = tx.findRecordsByFilter(
+          'properties',
+          'organization_id = {:o} && owner_id = {:w} && street_number = {:n} && zip_code != "" && (zip_code = {:z} || zip_code = {:zf})',
+          '',
+          1,
+          0,
+          {
+            o: orgId,
+            w: owner.id,
+            n: String(im.street_number || ''),
+            z: zip,
+            zf: zip.slice(0, 5) + '-' + zip.slice(5),
+          },
+        )
+        if (rows.length) prop = rows[0]
+      }
+
+      const fields = {
+        street: im.street,
+        street_number: String(im.street_number || 'S/N'),
+        complement: im.complement,
+        neighborhood: im.neighborhood,
+        city: im.city,
+        state: im.state,
+        zip_code: im.zip_code,
+        bedrooms: im.bedrooms,
+        bathrooms: im.bathrooms,
+        parking: im.parking,
+        area: im.area,
+        sale_price: im.sale_price,
+        rent_price: im.rent_price,
+        condo_fee: im.condo_fee,
+        iptu: im.iptu,
+        description: im.description,
+      }
+      const wanted = Array.isArray(body.selected_imovel_fields) ? body.selected_imovel_fields : null
+
+      if (prop) {
+        // imóvel existente: só campos vazios (ou os que o usuário marcou explicitamente)
+        Object.keys(fields).forEach((k) => {
+          const v = fields[k]
+          if (isEmpty(v)) return
+          const explicit = wanted && wanted.indexOf(k) >= 0
+          if (isEmpty(prop.get(k)) || explicit) prop.set(k, v)
+        })
+        prop.set('owner_id', prop.getString('owner_id') || owner.id)
+        tx.save(prop)
+        return { prop, owner, criado: false, ownerNew }
+      }
+
+      // imóvel novo: código automático
+      tx.db()
+        .newQuery(
+          'UPDATE organizations SET property_code_seq = COALESCE(property_code_seq, 0) + 1 WHERE id = {:id}',
+        )
+        .bind({ id: orgId })
+        .execute()
+      const seq = tx.findRecordById('organizations', orgId).getInt('property_code_seq')
+      const code = TYPE_CODE[type] + '-' + String(seq).padStart(4, '0')
+      const np = new Record(tx.findCollectionByNameOrId('properties'))
+      np.set('organization_id', orgId)
+      np.set('code', code)
+      np.set(
+        'title',
+        TYPE_LABEL[type] +
+          ' · ' +
+          (im.neighborhood || im.city || 'Feira de Santana') +
+          ' · ' +
+          code,
       )
-      if (rows.length) prop = rows[0]
-    }
-
-    const fields = {
-      street: im.street,
-      street_number: String(im.street_number || 'S/N'),
-      complement: im.complement,
-      neighborhood: im.neighborhood,
-      city: im.city,
-      state: im.state,
-      zip_code: im.zip_code,
-      bedrooms: im.bedrooms,
-      bathrooms: im.bathrooms,
-      parking: im.parking,
-      area: im.area,
-      sale_price: im.sale_price,
-      rent_price: im.rent_price,
-      condo_fee: im.condo_fee,
-      iptu: im.iptu,
-      description: im.description,
-    }
-    const wanted = Array.isArray(body.selected_imovel_fields) ? body.selected_imovel_fields : null
-
-    if (prop) {
-      // imóvel existente: só campos vazios (ou os que o usuário marcou explicitamente)
+      np.set('purpose', purpose)
+      np.set('property_type', type)
+      np.set('use_type', 'residencial')
+      np.set('status', 'rascunho')
+      np.set('source', 'ficha_pdf')
+      np.set('captured_by', actor.id)
+      np.set('owner_id', owner.id)
+      np.set('publish_to', ['site'])
+      np.set('last_reviewed_at', new Date().toISOString())
       Object.keys(fields).forEach((k) => {
-        const v = fields[k]
-        if (isEmpty(v)) return
-        const explicit = wanted && wanted.indexOf(k) >= 0
-        if (isEmpty(prop.get(k)) || explicit) prop.set(k, v)
+        if (!isEmpty(fields[k])) np.set(k, fields[k])
       })
-      prop.set('owner_id', prop.getString('owner_id') || owner.id)
-      tx.save(prop)
-      return { prop, owner, criado: false, ownerNew }
-    }
-
-    // imóvel novo: código automático
-    tx.db()
-      .newQuery(
-        'UPDATE organizations SET property_code_seq = COALESCE(property_code_seq, 0) + 1 WHERE id = {:id}',
-      )
-      .bind({ id: orgId })
-      .execute()
-    const seq = tx.findRecordById('organizations', orgId).getInt('property_code_seq')
-    const code = TYPE_CODE[type] + '-' + String(seq).padStart(4, '0')
-    const np = new Record(tx.findCollectionByNameOrId('properties'))
-    np.set('organization_id', orgId)
-    np.set('code', code)
-    np.set(
-      'title',
-      TYPE_LABEL[type] + ' · ' + (im.neighborhood || im.city || 'Feira de Santana') + ' · ' + code,
-    )
-    np.set('purpose', purpose)
-    np.set('property_type', type)
-    np.set('use_type', 'residencial')
-    np.set('status', 'rascunho')
-    np.set('source', 'ficha_pdf')
-    np.set('captured_by', actor.id)
-    np.set('owner_id', owner.id)
-    np.set('publish_to', ['site'])
-    np.set('last_reviewed_at', new Date().toISOString())
-    Object.keys(fields).forEach((k) => {
-      if (!isEmpty(fields[k])) np.set(k, fields[k])
+      tx.save(np)
+      return { prop: np, owner, criado: true, ownerNew }
     })
-    tx.save(np)
-    return { prop: np, owner, criado: true, ownerNew }
-  })
+  } catch (err) {
+    return e.json(500, {
+      debug: String((err && err.message) || err),
+      tipo: typeof err,
+      keys: Object.keys(err || {}).join(','),
+    })
+  }
 
   try {
     const audit = new Record($app.findCollectionByNameOrId('audit_log'))
