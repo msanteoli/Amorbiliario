@@ -81,7 +81,7 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
   let fase = 'inicio'
   let res = null
   try {
-    res = $app.runInTransaction((tx) => {
+    $app.runInTransaction((tx) => {
       const S = (label, r) => {
         fase = 'save:' + label
         try {
@@ -231,7 +231,8 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
         })
         prop.set('owner_id', prop.getString('owner_id') || owner.id)
         S('imovel-atualiza', prop)
-        return { prop, owner, criado: false, ownerNew }
+        res = { prop, owner, criado: false, ownerNew }
+        return
       }
 
       fase = 'codigo-org'
@@ -277,7 +278,8 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
         if (!isEmpty(fields[k])) np.set(k, fields[k])
       })
       S('imovel', np)
-      return { prop: np, owner, criado: true, ownerNew }
+      res = { prop: np, owner, criado: true, ownerNew }
+      return
     })
   } catch (err) {
     const vv = err && err.value
