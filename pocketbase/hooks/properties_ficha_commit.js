@@ -1,4 +1,7 @@
-// M13 — grava o imóvel e o proprietário da ficha PDF numa transação só (DIAGNÓSTICO: cada passo diz em qual falhou).
+// M13 — grava o imóvel e o proprietário da ficha PDF numa transação só. Preenche só campos vazios de um imóvel
+// existente e nunca sobrescreve valor já preenchido. Código automático: prefixo por tipo + sequência por organização.
+// Atenção (goja): o callback de runInTransaction NÃO pode devolver valor (o retorno é lido como erro);
+// o resultado vai para a variável de fora. tx.save não dispara os hooks de requisição, então as regras ficam aqui.
 routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
   const actor = e.auth
   const role = String(actor.get('role') || '')
@@ -61,12 +64,13 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
   if (name.length < 2) throw new BadRequestError('Informe o nome do proprietário.')
   if (!im.street || String(im.street).trim().length < 2)
     throw new BadRequestError('Informe a rua do imóvel.')
-  if (String(im.description || '').length > 5000)
-    throw new BadRequestError('Descrição longa demais (máximo 5000 caracteres).')
+  if (String(im.description || '').length > 3000)
+    throw new BadRequestError('Descrição longa demais (máximo 3000 caracteres).')
   const type = TYPE_CODE[im.property_type] ? im.property_type : 'outro'
   const purpose = ['venda', 'locacao', 'ambos'].indexOf(im.purpose) >= 0 ? im.purpose : 'venda'
   const phone = normPhone(pr.phone)
   const cpf = validCpf(pr.cpf) ? digits(pr.cpf) : ''
+  const zipDigits = digits(im.zip_code)
   const pendencias = []
   if (pr.cpf && !cpf) pendencias.push('cpf do proprietário inválido')
   if (!cpf) pendencias.push('cpf do proprietário')
@@ -75,261 +79,182 @@ routerAdd('POST', '/backend/v1/properties/ficha/commit', (e) => {
   if (!im.parking && im.parking !== 0) pendencias.push('vagas')
   if (!im.condo_fee) pendencias.push('condomínio')
   if (!im.iptu) pendencias.push('IPTU')
-  if (!im.zip_code) pendencias.push('CEP')
+  if (zipDigits.length !== 8) pendencias.push('CEP')
   if (!im.state) pendencias.push('UF')
 
-  let fase = 'inicio'
   let res = null
-  try {
-    $app.runInTransaction((tx) => {
-      const S = (label, r) => {
-        fase = 'save:' + label
-        try {
-          tx.save(r)
-        } catch (x) {
-          let m = ''
-          try {
-            m = String((x && x.message) || x) + ' keys=' + Object.keys(x || {}).join(',')
-            if (x && typeof x.error === 'function') m += ' err=' + String(x.error())
-            if (x && x.data) m += ' data=' + JSON.stringify(x.data)
-          } catch (_) {}
-          throw new Error('SAVE_FALHOU ' + label + ' ' + m)
-        }
-      }
-      fase = 'owner-busca'
-      let owner = null
-      if (body.owner_id) {
-        try {
-          owner = tx.findRecordById('clients', String(body.owner_id))
-        } catch (_) {}
-        if (!owner || owner.getString('organization_id') !== orgId)
-          throw new NotFoundError('Proprietário não encontrado.')
-      }
-      if (!owner && cpf) {
-        const rows = tx.findRecordsByFilter(
-          'client_private',
-          'organization_id = {:o} && cpf = {:c}',
-          '',
-          1,
-          0,
-          { o: orgId, c: cpf },
-        )
-        if (rows.length) {
-          try {
-            owner = tx.findRecordById('clients', rows[0].getString('client_id'))
-          } catch (_) {}
-        }
-      }
-      if (!owner && phone) {
-        const rows = tx.findRecordsByFilter(
-          'clients',
-          'organization_id = {:o} && phone = {:p}',
-          '',
-          5,
-          0,
-          { o: orgId, p: phone },
-        )
-        const same = rows.filter((c) => sameName(c.getString('name'), name))
-        if (same.length) owner = same[0]
-        else if (rows.length && body.vincular_proprietario_existente === true) owner = rows[0]
-      }
-      if (owner && role === 'corretor' && owner.getString('responsible_id') !== actor.id) {
-        throw new ForbiddenError('Este proprietário é atendido por outro corretor.')
-      }
-      const ownerNew = !owner
-      if (!owner) {
-        fase = 'owner-criar-collection'
-        const cl = new Record(tx.findCollectionByNameOrId('clients'))
-        cl.set('organization_id', orgId)
-        cl.set('name', name)
-        if (phone) cl.set('phone', phone)
-        cl.set('kind', ['proprietario'])
-        cl.set('responsible_id', actor.id)
-        S('cliente', cl)
-        owner = cl
-      } else if (!owner.getString('phone') && phone) {
-        owner.set('phone', phone)
-        S('cliente-telefone', owner)
-      }
-      if (cpf) {
-        fase = 'cpf-busca'
-        const cp = tx.findRecordsByFilter(
-          'client_private',
-          'organization_id = {:o} && client_id = {:c}',
-          '',
-          1,
-          0,
-          { o: orgId, c: owner.id },
-        )
-        if (cp.length) {
-          if (!cp[0].getString('cpf')) {
-            cp[0].set('cpf', cpf)
-            S('client_private-atualiza', cp[0])
-          }
-        } else {
-          fase = 'cpf-criar-collection'
-          const rec = new Record(tx.findCollectionByNameOrId('client_private'))
-          rec.set('organization_id', orgId)
-          rec.set('client_id', owner.id)
-          rec.set('cpf', cpf)
-          S('client_private', rec)
-        }
-      }
+  $app.runInTransaction((tx) => {
+    // toma o bloqueio de escrita já no início: transações simultâneas esperam em fila, sem disputar a sequência
+    tx.db()
+      .newQuery('UPDATE organizations SET id = id WHERE id = {:id}')
+      .bind({ id: orgId })
+      .execute()
 
-      fase = 'imovel-busca'
-      let prop = null
-      if (body.property_id) {
-        try {
-          prop = tx.findRecordById('properties', String(body.property_id))
-        } catch (_) {}
-        if (!prop || prop.getString('organization_id') !== orgId)
-          throw new NotFoundError('Imóvel não encontrado.')
-      }
-      if (!prop && !ownerNew && im.zip_code) {
-        const zip = digits(im.zip_code)
-        const rows = tx.findRecordsByFilter(
-          'properties',
-          'organization_id = {:o} && owner_id = {:w} && street_number = {:n} && zip_code != "" && (zip_code = {:z} || zip_code = {:zf})',
-          '',
-          1,
-          0,
-          {
-            o: orgId,
-            w: owner.id,
-            n: String(im.street_number || ''),
-            z: zip,
-            zf: zip.slice(0, 5) + '-' + zip.slice(5),
-          },
-        )
-        if (rows.length) prop = rows[0]
-      }
-      const fields = {
-        street: im.street,
-        street_number: String(im.street_number || 'S/N'),
-        complement: im.complement,
-        neighborhood: im.neighborhood,
-        city: im.city,
-        state: im.state,
-        zip_code: im.zip_code,
-        bedrooms: im.bedrooms,
-        bathrooms: im.bathrooms,
-        parking: im.parking,
-        area: im.area,
-        sale_price: im.sale_price,
-        rent_price: im.rent_price,
-        condo_fee: im.condo_fee,
-        iptu: im.iptu,
-        description: im.description,
-      }
-      const wanted = Array.isArray(body.selected_imovel_fields) ? body.selected_imovel_fields : null
-      if (prop) {
-        Object.keys(fields).forEach((k) => {
-          const v = fields[k]
-          if (isEmpty(v)) return
-          const explicit = wanted && wanted.indexOf(k) >= 0
-          if (isEmpty(prop.get(k)) || explicit) prop.set(k, v)
-        })
-        prop.set('owner_id', prop.getString('owner_id') || owner.id)
-        S('imovel-atualiza', prop)
-        res = { prop, owner, criado: false, ownerNew }
-        return
-      }
-
-      fase = 'codigo-org'
-      const orgRec = tx.findRecordById('organizations', orgId)
-      const seq = orgRec.getInt('property_code_seq') + 1
-      orgRec.set('property_code_seq', seq)
-      S('organizacao-sequencia', orgRec)
-      const code = TYPE_CODE[type] + '-' + String(seq).padStart(4, '0')
-
-      fase = 'imovel-criar-collection'
-      const np = new Record(tx.findCollectionByNameOrId('properties'))
-      np.set('organization_id', orgId)
-      np.set('code', code)
-      np.set(
-        'title',
-        TYPE_LABEL[type] +
-          ' · ' +
-          (im.neighborhood || im.city || 'Feira de Santana') +
-          ' · ' +
-          code,
-      )
-      np.set('purpose', purpose)
-      np.set('property_type', type)
-      np.set('use_type', 'residencial')
-      np.set('status', 'rascunho')
-      np.set('source', 'manual')
-      np.set('state', String(im.state || 'BA').toUpperCase())
-      np.set('city', im.city || 'Feira de Santana')
-      np.set('neighborhood', im.neighborhood || '')
-      np.set(
-        'zip_code',
-        String(im.zip_code || '').replace(/\D/g, '').length === 8
-          ? String(im.zip_code).replace(/\D/g, '').slice(0, 5) +
-              '-' +
-              String(im.zip_code).replace(/\D/g, '').slice(5)
-          : '',
-      )
-      np.set('captured_by', actor.id)
-      np.set('owner_id', owner.id)
-      np.set('publish_to', ['site'])
-      np.set('last_reviewed_at', new Date().toISOString())
-      Object.keys(fields).forEach((k) => {
-        if (!isEmpty(fields[k])) np.set(k, fields[k])
-      })
-      S('imovel', np)
-      res = { prop: np, owner, criado: true, ownerNew }
-      return
-    })
-  } catch (err) {
-    const vv = err && err.value
-    const ks = vv ? Object.keys(vv).join(',') : ''
-    const dd =
-      vv && vv.data
-        ? Object.keys(vv.data)
-            .map(
-              (k) =>
-                k + ':' + String((vv.data[k] && (vv.data[k].message || vv.data[k].code)) || ''),
-            )
-            .join(' | ')
-        : ''
-    const ee0 = vv && vv.error
-    if (typeof ee0 === 'function') {
-      let m = ''
+    // 1) proprietário: id informado (confirmado na prévia) > CPF > telefone com o mesmo nome > novo
+    let owner = null
+    if (body.owner_id) {
       try {
-        m = String(ee0.call(vv))
-      } catch (_) {
-        m = 'chamada falhou'
-      }
-      return e.json(400, { fase: fase, mensagem: m })
+        owner = tx.findRecordById('clients', String(body.owner_id))
+      } catch (_) {}
+      if (!owner || owner.getString('organization_id') !== orgId)
+        throw new NotFoundError('Proprietário não encontrado.')
     }
-    const ee = vv && vv.error
-    let eks = ''
-    let ed = ''
-    try {
-      eks = ee ? Object.keys(ee).join(',') : ''
-      ed = ee
-        ? Object.keys(ee)
-            .map((k) => k + '=' + String(ee[k] && (ee[k].message || ee[k].code || ee[k])))
-            .join(' | ')
-        : ''
-    } catch (_) {}
-    return e.json(400, {
-      fase: fase,
-      chaves: ks,
-      campos: dd,
-      texto: String(vv),
-      erro_chaves: eks,
-      erro_detalhe: ed,
-      erro_texto: String(ee),
+    if (!owner && cpf) {
+      const rows = tx.findRecordsByFilter(
+        'client_private',
+        'organization_id = {:o} && cpf = {:c}',
+        '',
+        1,
+        0,
+        { o: orgId, c: cpf },
+      )
+      if (rows.length) {
+        try {
+          owner = tx.findRecordById('clients', rows[0].getString('client_id'))
+        } catch (_) {}
+      }
+    }
+    if (!owner && phone) {
+      const rows = tx.findRecordsByFilter(
+        'clients',
+        'organization_id = {:o} && phone = {:p}',
+        '',
+        5,
+        0,
+        { o: orgId, p: phone },
+      )
+      const same = rows.filter((c) => sameName(c.getString('name'), name))
+      if (same.length) owner = same[0]
+      else if (rows.length && body.vincular_proprietario_existente === true) owner = rows[0]
+    }
+    if (owner && role === 'corretor' && owner.getString('responsible_id') !== actor.id) {
+      throw new ForbiddenError('Este proprietário é atendido por outro corretor.')
+    }
+    const ownerNew = !owner
+    if (!owner) {
+      const cl = new Record(tx.findCollectionByNameOrId('clients'))
+      cl.set('organization_id', orgId)
+      cl.set('name', name)
+      if (phone) cl.set('phone', phone)
+      cl.set('kind', ['proprietario'])
+      cl.set('responsible_id', actor.id)
+      tx.save(cl)
+      owner = cl
+    } else if (!owner.getString('phone') && phone) {
+      owner.set('phone', phone)
+      tx.save(owner)
+    }
+    if (cpf) {
+      const cp = tx.findRecordsByFilter(
+        'client_private',
+        'organization_id = {:o} && client_id = {:c}',
+        '',
+        1,
+        0,
+        { o: orgId, c: owner.id },
+      )
+      if (cp.length) {
+        if (!cp[0].getString('cpf')) {
+          cp[0].set('cpf', cpf)
+          tx.save(cp[0])
+        }
+      } else {
+        const rec = new Record(tx.findCollectionByNameOrId('client_private'))
+        rec.set('organization_id', orgId)
+        rec.set('client_id', owner.id)
+        rec.set('cpf', cpf)
+        tx.save(rec)
+      }
+    }
+
+    // 2) imóvel: o informado, ou o do mesmo endereço e proprietário, ou um novo
+    let prop = null
+    if (body.property_id) {
+      try {
+        prop = tx.findRecordById('properties', String(body.property_id))
+      } catch (_) {}
+      if (!prop || prop.getString('organization_id') !== orgId)
+        throw new NotFoundError('Imóvel não encontrado.')
+    }
+    if (!prop && !ownerNew && zipDigits.length === 8) {
+      const rows = tx.findRecordsByFilter(
+        'properties',
+        'organization_id = {:o} && owner_id = {:w} && street_number = {:n} && zip_code != "" && (zip_code = {:z} || zip_code = {:zf})',
+        '',
+        1,
+        0,
+        {
+          o: orgId,
+          w: owner.id,
+          n: String(im.street_number || ''),
+          z: zipDigits,
+          zf: zipDigits.slice(0, 5) + '-' + zipDigits.slice(5),
+        },
+      )
+      if (rows.length) prop = rows[0]
+    }
+    const fields = {
+      street: im.street,
+      street_number: String(im.street_number || 'S/N'),
+      complement: im.complement,
+      neighborhood: im.neighborhood,
+      city: im.city,
+      state: im.state,
+      zip_code: zipDigits.length === 8 ? zipDigits.slice(0, 5) + '-' + zipDigits.slice(5) : '',
+      bedrooms: im.bedrooms,
+      bathrooms: im.bathrooms,
+      parking: im.parking,
+      area: im.area,
+      sale_price: im.sale_price,
+      rent_price: im.rent_price,
+      condo_fee: im.condo_fee,
+      iptu: im.iptu,
+      description: im.description,
+    }
+    const wanted = Array.isArray(body.selected_imovel_fields) ? body.selected_imovel_fields : null
+
+    if (prop) {
+      Object.keys(fields).forEach((k) => {
+        const v = fields[k]
+        if (isEmpty(v)) return
+        const explicit = wanted && wanted.indexOf(k) >= 0
+        if (isEmpty(prop.get(k)) || explicit) prop.set(k, v)
+      })
+      prop.set('owner_id', prop.getString('owner_id') || owner.id)
+      tx.save(prop)
+      res = { prop, owner, criado: false, ownerNew }
+      return
+    }
+
+    // imóvel novo: código automático (a sequência só anda dentro da transação que tem o bloqueio)
+    const orgRec = tx.findRecordById('organizations', orgId)
+    const seq = orgRec.getInt('property_code_seq') + 1
+    orgRec.set('property_code_seq', seq)
+    tx.save(orgRec)
+    const code = TYPE_CODE[type] + '-' + String(seq).padStart(4, '0')
+    const np = new Record(tx.findCollectionByNameOrId('properties'))
+    np.set('organization_id', orgId)
+    np.set('code', code)
+    np.set(
+      'title',
+      TYPE_LABEL[type] + ' · ' + (im.neighborhood || im.city || 'Feira de Santana') + ' · ' + code,
+    )
+    np.set('purpose', purpose)
+    np.set('property_type', type)
+    np.set('use_type', 'residencial')
+    np.set('status', 'rascunho')
+    np.set('source', 'ficha_pdf')
+    np.set('captured_by', actor.id)
+    np.set('owner_id', owner.id)
+    np.set('publish_to', ['site'])
+    np.set('state', String(im.state || 'BA').toUpperCase())
+    np.set('last_reviewed_at', new Date().toISOString())
+    Object.keys(fields).forEach((k) => {
+      if (!isEmpty(fields[k])) np.set(k, fields[k])
     })
-    return e.json(400, {
-      fase: fase,
-      detalhe: String(
-        (err && err.message) || (err && err.value && err.value.message) || 'sem mensagem',
-      ),
-    })
-  }
+    tx.save(np)
+    res = { prop: np, owner, criado: true, ownerNew }
+  })
 
   try {
     const audit = new Record($app.findCollectionByNameOrId('audit_log'))
