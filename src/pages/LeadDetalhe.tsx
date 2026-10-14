@@ -26,6 +26,7 @@ import { EditLeadModal } from '@/components/leads/EditLeadModal'
 import { SendFichaModal } from '@/components/leads/SendFichaModal'
 import { ConvertLeadModal } from '@/components/leads/ConvertLeadModal'
 import { CorrectOriginModal } from '@/components/leads/CorrectOriginModal'
+import { DirectLeadModal } from '@/components/leads/DirectLeadModal'
 import { CreateVisitModal } from '@/components/agenda/CreateVisitModal'
 import { VisitDetailModal, getVisitStatusBadge } from '@/components/agenda/VisitDetailModal'
 import { listVisitsByLead, VisitRecord, formatDateTimeBahia } from '@/services/visits'
@@ -108,6 +109,7 @@ export default function LeadDetalhe() {
   const [sendFichaModalOpen, setSendFichaModalOpen] = useState(false)
   const [convertModalOpen, setConvertModalOpen] = useState(false)
   const [correctOriginModalOpen, setCorrectOriginModalOpen] = useState(false)
+  const [directModalOpen, setDirectModalOpen] = useState(false)
   const [createVisitModalOpen, setCreateVisitModalOpen] = useState(false)
   const [selectedVisit, setSelectedVisit] = useState<VisitRecord | null>(null)
   const [visitDetailModalOpen, setVisitDetailModalOpen] = useState(false)
@@ -151,6 +153,11 @@ export default function LeadDetalhe() {
   const canSeeNegotiationTab = isAdmin || isSdr || isAssignedCorretor
   // Permissão geral de edição de estágio, próximo passo e eventos: admin, SDR e o corretor do lead
   const canOperateLead = canManageLeads || isAssignedCorretor
+
+  // Botão "Direcionar" visível apenas quando papel é 'sdr' ou 'admin' E lead de origem Site E sem corretor responsável; não aparece para corretor.
+  const canDirectLead = Boolean(
+    canManageLeads && lead && lead.origin === 'site' && !lead.assigned_to,
+  )
 
   // Verifica mensagem vinda do state de navegação (ex.: "Lead cadastrado.")
   useEffect(() => {
@@ -394,6 +401,18 @@ export default function LeadDetalhe() {
 
         {/* Botões de Ação Superiores no Desktop */}
         <div className="hidden md:flex flex-wrap items-center gap-2">
+          {canDirectLead && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setDirectModalOpen(true)}
+              className="h-9 rounded-full px-4 text-xs font-normal gap-1.5"
+            >
+              <UserCheck className="h-3.5 w-3.5" />
+              <span>Direcionar</span>
+            </Button>
+          )}
+
           {isAdmin && (
             <Button
               variant="outline"
@@ -470,6 +489,17 @@ export default function LeadDetalhe() {
 
       {/* No celular: fileira rolante de ações logo abaixo do cabeçalho */}
       <div className="md:hidden flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+        {canDirectLead && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setDirectModalOpen(true)}
+            className="h-9 rounded-full px-3.5 text-xs font-normal shrink-0 gap-1.5"
+          >
+            <UserCheck className="h-3.5 w-3.5" />
+            <span>Direcionar</span>
+          </Button>
+        )}
         {isAdmin && (
           <Button
             variant="outline"
@@ -1213,6 +1243,20 @@ export default function LeadDetalhe() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL: Direcionar lead */}
+      {lead && canDirectLead && (
+        <DirectLeadModal
+          leadId={lead.id}
+          leadName={lead.name}
+          open={directModalOpen}
+          onOpenChange={setDirectModalOpen}
+          onSuccess={async (assignedUserName) => {
+            setSuccessBanner(`Lead direcionado a ${assignedUserName}.`)
+            await loadData()
+          }}
+        />
+      )}
 
       {/* MODAL 1: Editar dados */}
       {lead && (

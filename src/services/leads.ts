@@ -221,6 +221,25 @@ export interface LeadOriginResponse {
   origin: LeadOrigin
 }
 
+export interface BrokerSuggestionResponse {
+  user_id: string | null
+  name: string
+  reason: 'tipo' | 'fila' | 'fila_vazia' | string
+}
+
+export interface AssignLeadResponse {
+  assigned_to: string
+}
+
+export class LeadAssignConflictError extends Error {
+  serverMessage: string
+  constructor(message: string) {
+    super(message)
+    this.name = 'LeadAssignConflictError'
+    this.serverMessage = message
+  }
+}
+
 export interface ListLeadsParams {
   page?: number
   perPage?: number
@@ -899,4 +918,50 @@ export async function listEligibleLeadAssignees() {
     filter: 'active = true && (role = "corretor" || role = "admin")',
     sort: 'name',
   })
+}
+
+/**
+ * Lista corretores ativos ordenados por nome (users: active=true, role="corretor")
+ */
+export async function listActiveBrokers(): Promise<LeadUserRecord[]> {
+  return await pb.collection('users').getFullList<LeadUserRecord>({
+    filter: 'active = true && role = "corretor"',
+    sort: 'name',
+  })
+}
+
+/**
+ * Obtém sugestão de corretor para o lead (GET /backend/v1/leads/{id}/broker-suggestion)
+ */
+export async function getBrokerSuggestion(leadId: string): Promise<BrokerSuggestionResponse> {
+  return await pb.send<BrokerSuggestionResponse>(
+    `/backend/v1/leads/${encodeURIComponent(leadId)}/broker-suggestion`,
+    {
+      method: 'GET',
+    },
+  )
+}
+
+/**
+ * Direciona o lead a um corretor (POST /backend/v1/leads/{id}/assign com { user_id })
+ * Trata 409 de assign como LeadAssignConflictError identificável com a message do servidor
+ */
+export async function assignLead(leadId: string, userId: string): Promise<AssignLeadResponse> {
+  try {
+    return await pb.send<AssignLeadResponse>(
+      `/backend/v1/leads/${encodeURIComponent(leadId)}/assign`,
+      {
+        method: 'POST',
+        body: { user_id: userId },
+      },
+    )
+  } catch (err: unknown) {
+    if (err instanceof ClientResponseError && err.status === 409) {
+      const respData = err.response as { message?: string } | undefined
+      const msg =
+        respData?.message || err.message || 'Este corretor está com a agenda bloqueada agora.'
+      throw new LeadAssignConflictError(msg)
+    }
+    throw err
+  }
 }

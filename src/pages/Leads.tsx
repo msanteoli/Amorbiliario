@@ -17,6 +17,7 @@ import {
 } from '@/services/leads'
 import { formatPhoneNumber } from '@/lib/clientUtils'
 import { useAuth } from '@/contexts/AuthContext'
+import { DirectLeadModal } from '@/components/leads/DirectLeadModal'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -165,6 +166,12 @@ export default function Leads() {
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const [confirmSamePersonLead, setConfirmSamePersonLead] = useState<LeadRecord | null>(null)
 
+  // Modal Direcionar Lead
+  const [directingLead, setDirectingLead] = useState<LeadRecord | null>(null)
+  const [assignedSuccessMessageByLeadId, setAssignedSuccessMessageByLeadId] = useState<
+    Record<string, string>
+  >({})
+
   // Filters
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -240,6 +247,49 @@ export default function Leads() {
 
     return () => {
       active = false
+    }
+  }
+
+  const handleLeadDirected = (leadId: string, assignedUserName: string) => {
+    const successMsg = `Lead direcionado a ${assignedUserName}.`
+    setAssignedSuccessMessageByLeadId((prev) => ({
+      ...prev,
+      [leadId]: successMsg,
+    }))
+    // Atualiza estado local de leads e funnel
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === leadId
+          ? {
+              ...l,
+              assigned_to: 'assigned',
+              expand: {
+                ...l.expand,
+                assigned_to: { id: 'assigned', name: assignedUserName },
+              },
+            }
+          : l,
+      ),
+    )
+    setFunnelLeads((prev) =>
+      prev.map((l) =>
+        l.id === leadId
+          ? {
+              ...l,
+              assigned_to: 'assigned',
+              expand: {
+                ...l.expand,
+                assigned_to: { id: 'assigned', name: assignedUserName },
+              },
+            }
+          : l,
+      ),
+    )
+    // Refaz fetch para sincronizar dados reais do backend
+    if (activeTab === 'lista') {
+      fetchListLeads()
+    } else if (activeTab === 'funil') {
+      fetchFunnelLeads()
     }
   }
 
@@ -737,8 +787,12 @@ export default function Leads() {
                           <div className="col-span-2 text-xs text-muted-foreground truncate">
                             {assigneeName}
                           </div>
-                          <div className="col-span-2 text-right text-xs">
-                            {lead.next_step ? (
+                          <div className="col-span-2 text-right text-xs space-y-1">
+                            {assignedSuccessMessageByLeadId[lead.id] ? (
+                              <div className="text-[11px] text-success font-medium text-right">
+                                {assignedSuccessMessageByLeadId[lead.id]}
+                              </div>
+                            ) : lead.next_step ? (
                               <div className="space-y-0.5">
                                 <span className="text-foreground line-clamp-1 block">
                                   {lead.next_step}
@@ -758,6 +812,21 @@ export default function Leads() {
                               </div>
                             ) : (
                               <span className="text-muted-foreground">—</span>
+                            )}
+                            {canManageLeads && lead.origin === 'site' && !lead.assigned_to && (
+                              <div
+                                className="flex justify-end pt-0.5"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setDirectingLead(lead)}
+                                  className="h-6 rounded-full px-2.5 text-[11px] font-normal border-border"
+                                >
+                                  Direcionar
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -814,6 +883,26 @@ export default function Leads() {
                             </span>
                           )}
                         </div>
+                        {assignedSuccessMessageByLeadId[lead.id] && (
+                          <div className="text-[11px] text-success font-medium">
+                            {assignedSuccessMessageByLeadId[lead.id]}
+                          </div>
+                        )}
+                        {canManageLeads && lead.origin === 'site' && !lead.assigned_to && (
+                          <div
+                            className="pt-1 flex justify-end"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDirectingLead(lead)}
+                              className="h-7 rounded-full px-3 text-[11px] font-normal border-border"
+                            >
+                              Direcionar
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -929,6 +1018,25 @@ export default function Leads() {
                                       {formatDateTimeBR(item.next_step_due)}
                                     </div>
                                   )}
+                                  {assignedSuccessMessageByLeadId[item.id] && (
+                                    <div className="text-[11px] text-success font-medium">
+                                      {assignedSuccessMessageByLeadId[item.id]}
+                                    </div>
+                                  )}
+                                  {canManageLeads &&
+                                    item.origin === 'site' &&
+                                    !item.assigned_to && (
+                                      <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setDirectingLead(item)}
+                                          className="w-full h-7 rounded-full text-[11px] font-normal border-border"
+                                        >
+                                          Direcionar
+                                        </Button>
+                                      </div>
+                                    )}
                                 </div>
                               )
                             })
@@ -1014,6 +1122,28 @@ export default function Leads() {
                                         </span>
                                       )}
                                     </div>
+                                    {assignedSuccessMessageByLeadId[item.id] && (
+                                      <div className="text-[11px] text-success font-medium">
+                                        {assignedSuccessMessageByLeadId[item.id]}
+                                      </div>
+                                    )}
+                                    {canManageLeads &&
+                                      item.origin === 'site' &&
+                                      !item.assigned_to && (
+                                        <div
+                                          className="pt-1 flex justify-end"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setDirectingLead(item)}
+                                            className="h-7 rounded-full px-3 text-[11px] font-normal border-border"
+                                          >
+                                            Direcionar
+                                          </Button>
+                                        </div>
+                                      )}
                                   </div>
                                 )
                               })}
@@ -1190,6 +1320,21 @@ export default function Leads() {
           )}
         </Tabs>
       </div>
+
+      {/* MODAL DIRECIONAR LEAD */}
+      {directingLead && (
+        <DirectLeadModal
+          leadId={directingLead.id}
+          leadName={directingLead.name}
+          open={Boolean(directingLead)}
+          onOpenChange={(open) => {
+            if (!open) setDirectingLead(null)
+          }}
+          onSuccess={(assignedUserName) => {
+            handleLeadDirected(directingLead.id, assignedUserName)
+          }}
+        />
+      )}
 
       {/* Confirmação de Mesma Pessoa */}
       <AlertDialog
