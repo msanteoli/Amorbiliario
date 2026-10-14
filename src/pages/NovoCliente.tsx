@@ -21,7 +21,7 @@ import {
   isValidCnpj,
   formatPhoneNumber,
   KIND_LABELS,
-  CONSENT_STATUS_LABELS,
+  CONSENT_CHANNEL_OPTIONS,
 } from '@/lib/clientUtils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -235,6 +235,11 @@ export default function NovoCliente() {
 
     if (kinds.length === 0) {
       setErrorMessage('Selecione ao menos um tipo de relação.')
+      return
+    }
+
+    if (consentStatus === 'opt_in' && !consentChannel.trim()) {
+      setErrorMessage('Selecione o canal de consentimento.')
       return
     }
 
@@ -797,46 +802,76 @@ export default function NovoCliente() {
           {/* Consentimento LGPD */}
           <div className="space-y-4">
             <h2 className="text-[20px] font-normal text-foreground">Consentimento LGPD</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label
-                  htmlFor="step2-consent-status"
-                  className="text-[13px] font-normal text-foreground block"
-                >
-                  Status de consentimento
-                </label>
-                <Select
-                  value={consentStatus}
-                  onValueChange={(val) => setConsentStatus(val as ConsentStatus)}
-                >
-                  <SelectTrigger
-                    id="step2-consent-status"
-                    className="h-12 rounded-lg border-border bg-background"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unknown">{CONSENT_STATUS_LABELS['unknown']}</SelectItem>
-                    <SelectItem value="opt_in">{CONSENT_STATUS_LABELS['opt_in']}</SelectItem>
-                    <SelectItem value="opt_out">{CONSENT_STATUS_LABELS['opt_out']}</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+              {/* Checkbox "Autorizou o contato" */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="step2-consent-checkbox"
+                    checked={consentStatus === 'opt_in'}
+                    onCheckedChange={(checked) => {
+                      const isChecked = Boolean(checked)
+                      setConsentStatus(isChecked ? 'opt_in' : 'unknown')
+                      if (!isChecked) {
+                        setConsentChannel('')
+                      }
+                    }}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1 leading-none">
+                    <label
+                      htmlFor="step2-consent-checkbox"
+                      className="text-sm font-medium text-foreground cursor-pointer"
+                    >
+                      Autorizou o contato
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Marque quando a pessoa deu o consentimento para ser contatada
+                    </p>
+                    {consentStatus === 'opt_out' && (
+                      <p className="text-xs font-medium text-destructive pt-1">
+                        Pediu para não ser contatado
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
 
+              {/* Select "Canal de consentimento" */}
               <div className="space-y-1">
                 <label
                   htmlFor="step2-consent-channel"
                   className="text-[13px] font-normal text-foreground block"
                 >
-                  Canal de consentimento
+                  Canal de consentimento{' '}
+                  {consentStatus === 'opt_in' && <span className="text-destructive">*</span>}
                 </label>
-                <input
-                  id="step2-consent-channel"
-                  placeholder="Ex.: WhatsApp, Formulário web, Presencial"
+                <Select
                   value={consentChannel}
-                  onChange={(e) => setConsentChannel(e.target.value)}
-                  className="w-full h-12 px-4 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+                  onValueChange={(val) => setConsentChannel(val)}
+                  disabled={consentStatus !== 'opt_in'}
+                  required={consentStatus === 'opt_in'}
+                >
+                  <SelectTrigger
+                    id="step2-consent-channel"
+                    className="h-12 rounded-lg border-border bg-background"
+                  >
+                    <SelectValue placeholder="Selecione o canal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {consentChannel &&
+                      !CONSENT_CHANNEL_OPTIONS.includes(
+                        consentChannel as (typeof CONSENT_CHANNEL_OPTIONS)[number],
+                      ) && (
+                        <SelectItem value={consentChannel}>{consentChannel} (anterior)</SelectItem>
+                      )}
+                    {CONSENT_CHANNEL_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

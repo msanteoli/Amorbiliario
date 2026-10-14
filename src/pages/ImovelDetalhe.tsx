@@ -24,10 +24,19 @@ import {
   publishProperty,
   isPngPhoto,
   getPortalPendingReasons,
+  updateProperty,
 } from '@/services/properties'
+import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/clients'
 import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
 import { getCondoPhotoUrl } from '@/services/condominiums'
 import { formatPhoneNumber, formatDate } from '@/lib/clientUtils'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { getPropertyStatusBadgeVariant } from '@/lib/badgeVariants'
@@ -162,6 +171,13 @@ export default function ImovelDetalhe() {
   const [photoToDelete, setPhotoToDelete] = useState<PropertyPhotoRecord | null>(null)
   const [deletingPhoto, setDeletingPhoto] = useState(false)
 
+  // Alterar captador (apenas admin)
+  const [changeCaptadorOpen, setChangeCaptadorOpen] = useState(false)
+  const [eligibleCaptadores, setEligibleCaptadores] = useState<ResponsibleUser[]>([])
+  const [selectedCaptadorId, setSelectedCaptadorId] = useState('')
+  const [savingCaptador, setSavingCaptador] = useState(false)
+  const [captadorError, setCaptadorError] = useState<string | null>(null)
+
   // Envio de fotos
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadList, setUploadList] = useState<UploadProgressItem[]>([])
@@ -172,6 +188,15 @@ export default function ImovelDetalhe() {
   const isAdmin = role === 'admin'
   const isCaptador = Boolean(property && property.captured_by === user?.id)
   const canManage = !isSdr && (isAdmin || isCaptador)
+
+  // Carrega lista de corretores/admins quando admin
+  useEffect(() => {
+    if (isAdmin) {
+      listEligibleResponsibleUsers()
+        .then(setEligibleCaptadores)
+        .catch(() => {})
+    }
+  }, [isAdmin])
 
   // Carrega imóvel, fotos, histórico e tarefas
   const loadData = async (imovelId: string) => {
@@ -1243,7 +1268,25 @@ export default function ImovelDetalhe() {
 
           {/* Captador */}
           <div className="space-y-1.5">
-            <span className="eyebrow text-muted-foreground block">Corretor captador</span>
+            <div className="flex items-center justify-between">
+              <span className="eyebrow text-muted-foreground block">Corretor captador</span>
+              {isAdmin && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedCaptadorId(property.captured_by || '')
+                    setCaptadorError(null)
+                    setChangeCaptadorOpen(true)
+                  }}
+                  className="h-7 text-xs rounded-full px-2.5 border-border gap-1"
+                >
+                  <Edit className="h-3 w-3" />
+                  <span>Alterar captador</span>
+                </Button>
+              )}
+            </div>
             <div className="p-3.5 rounded-lg border border-border bg-muted/20 space-y-1">
               <p className="font-normal text-foreground">{captadorName}</p>
               <p className="text-muted-foreground">Responsável pelo anúncio e captação inicial.</p>
@@ -1553,6 +1596,94 @@ export default function ImovelDetalhe() {
           }}
         />
       )}
+
+      {/* DIÁLOGO: Alterar captador (Apenas Admin) */}
+      <Dialog open={changeCaptadorOpen} onOpenChange={setChangeCaptadorOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar corretor captador</DialogTitle>
+            <DialogDescription>
+              O novo captador passa a ser o responsável pelo anúncio.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {captadorError && (
+              <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal">
+                {captadorError}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="select-captador"
+                className="text-xs font-medium text-foreground block"
+              >
+                Novo captador
+              </label>
+              <Select
+                value={selectedCaptadorId}
+                onValueChange={(val) => setSelectedCaptadorId(val)}
+              >
+                <SelectTrigger id="select-captador" className="h-10 text-xs border-border">
+                  <SelectValue placeholder="Selecione um corretor ou administrador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibleCaptadores.map((u) => (
+                    <SelectItem key={u.id} value={u.id} className="text-xs">
+                      {u.name} ({u.role === 'admin' ? 'Administrador' : 'Corretor'})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setChangeCaptadorOpen(false)}
+              disabled={savingCaptador}
+              className="text-xs h-9 rounded-full px-4 border-border"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                savingCaptador ||
+                !selectedCaptadorId ||
+                selectedCaptadorId === property?.captured_by
+              }
+              onClick={async () => {
+                if (!property || !selectedCaptadorId) return
+                setSavingCaptador(true)
+                setCaptadorError(null)
+                try {
+                  await updateProperty(property.id, {
+                    captured_by: selectedCaptadorId,
+                  })
+                  toast({
+                    title: 'Captador alterado.',
+                    description: 'O novo captador foi definido com sucesso.',
+                  })
+                  setChangeCaptadorOpen(false)
+                  await loadData(property.id)
+                } catch (err) {
+                  setCaptadorError(formatErrorMessage(err))
+                } finally {
+                  setSavingCaptador(false)
+                }
+              }}
+              className="text-xs h-9 rounded-full px-5 bg-primary text-primary-foreground gap-2"
+            >
+              {savingCaptador && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Salvar alteração</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

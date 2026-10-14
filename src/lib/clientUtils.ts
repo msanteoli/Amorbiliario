@@ -166,3 +166,17 @@ export const CONSENT_STATUS_LABELS: Record<string, string> = {
   opt_out: 'Não autorizou',
   unknown: 'Sem informação',
 }
+
+/**
+ * Opções padrão para o canal de consentimento LGPD
+ */
+export const CONSENT_CHANNEL_OPTIONS = [
+  'WhatsApp',
+  'Telefone',
+  'Formulário web',
+  'Presencial',
+  'E-mail',
+  'Portal imobiliário',
+  'Indicação',
+  'Outro',
+] as const

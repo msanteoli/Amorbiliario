@@ -1493,35 +1493,45 @@ export function PropertyForm({
             htmlFor="prop-captured-by"
             className="text-[13px] font-normal text-foreground block"
           >
-            Captador do imóvel <span className="text-destructive">*</span>
+            Corretor captador <span className="text-destructive">*</span>
           </label>
           {isCorretor ? (
-            <div className="p-3 rounded-lg border border-border bg-card text-xs text-foreground flex items-center justify-between">
-              <div>
-                <p>{currentUser.name || currentUser.email}</p>
-                <p className="text-xs text-muted-foreground">Você é o corretor captador</p>
-              </div>
-              <span className="eyebrow text-muted-foreground">Fixo</span>
+            <div className="space-y-1">
+              <Input
+                id="prop-captured-by"
+                value={currentUser.name || currentUser.email || 'Você'}
+                disabled
+                className="h-12 text-sm border-border bg-muted cursor-not-allowed opacity-90"
+              />
+              <p className="text-xs text-muted-foreground">Você cadastra em seu nome.</p>
             </div>
           ) : isAdmin ? (
-            <Select value={capturedBy} onValueChange={(val) => setCapturedBy(val)}>
-              <SelectTrigger id="prop-captured-by" className="h-12 text-sm border-border">
-                <SelectValue placeholder="Selecione o captador" />
-              </SelectTrigger>
-              <SelectContent>
-                {eligibleUsers.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} ({u.role})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <Select value={capturedBy} onValueChange={(val) => setCapturedBy(val)}>
+                <SelectTrigger id="prop-captured-by" className="h-12 text-sm border-border">
+                  <SelectValue placeholder="Selecione o corretor captador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibleUsers.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} ({u.role === 'admin' ? 'Administrador' : 'Corretor'})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Selecione o responsável pela captação deste imóvel.
+              </p>
+            </div>
           ) : (
-            <Input
-              value={currentUser.name || currentUser.email}
-              disabled
-              className="h-12 text-sm border-border"
-            />
+            <div className="space-y-1">
+              <Input
+                id="prop-captured-by"
+                value={currentUser.name || currentUser.email}
+                disabled
+                className="h-12 text-sm border-border bg-muted cursor-not-allowed"
+              />
+            </div>
           )}
         </div>
       </section>

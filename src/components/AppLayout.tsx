@@ -240,7 +240,7 @@ export function AppLayout() {
   }, [location.pathname, location.search, role, openGroups])
 
   // Indicador deslizante ativo no menu desktop
-  const navRef = useRef<HTMLElement>(null)
+  const navContainerRef = useRef<HTMLDivElement>(null)
   const [activeIndicatorStyle, setActiveIndicatorStyle] = useState<{
     top: number
     height: number
@@ -252,13 +252,13 @@ export function AppLayout() {
   })
 
   const updateActiveIndicator = useCallback(() => {
-    if (!navRef.current) return
-    const activeEl = navRef.current.querySelector<HTMLElement>('[aria-current="page"]')
+    if (!navContainerRef.current) return
+    const activeEl = navContainerRef.current.querySelector<HTMLElement>('[aria-current="page"]')
     if (activeEl) {
-      const navRect = navRef.current.getBoundingClientRect()
+      const containerRect = navContainerRef.current.getBoundingClientRect()
       const activeRect = activeEl.getBoundingClientRect()
       setActiveIndicatorStyle({
-        top: activeRect.top - navRect.top + navRef.current.scrollTop,
+        top: activeRect.top - containerRect.top,
         height: activeRect.height,
         visible: true,
       })
@@ -271,9 +271,11 @@ export function AppLayout() {
     updateActiveIndicator()
     const timer = setTimeout(updateActiveIndicator, 50)
     const timer2 = setTimeout(updateActiveIndicator, 260)
+    window.addEventListener('resize', updateActiveIndicator)
     return () => {
       clearTimeout(timer)
       clearTimeout(timer2)
+      window.removeEventListener('resize', updateActiveIndicator)
     }
   }, [updateActiveIndicator, location.pathname, location.search, openGroups, sidebarCollapsed])
 
@@ -547,16 +549,15 @@ export function AppLayout() {
           )}
         </div>
 
-        {/* Navegação Principal */}
-        <nav
-          ref={navRef}
-          aria-label="Menu principal"
-          className="flex-1 flex flex-col justify-between px-3 py-1 overflow-y-auto overflow-x-hidden relative"
+        {/* Contêiner de Navegação com Indicador Único para Grupos e Rodapé */}
+        <div
+          ref={navContainerRef}
+          className="flex-1 flex flex-col justify-between overflow-hidden relative"
         >
-          {/* Indicador que desliza por trás dos itens */}
+          {/* Indicador que desliza por trás dos itens (medido em relação ao navContainerRef) */}
           {activeIndicatorStyle.visible && (
             <div
-              className="absolute left-3 right-3 rounded-[4px] bg-[var(--nav-active)] transition-all duration-[260ms] pointer-events-none z-0"
+              className="absolute left-3 right-3 rounded-[4px] bg-[var(--nav-active)] transition-all duration-[260ms] pointer-events-none z-[15]"
               style={{
                 top: `${activeIndicatorStyle.top}px`,
                 height: `${activeIndicatorStyle.height}px`,
@@ -574,73 +575,79 @@ export function AppLayout() {
             </div>
           )}
 
-          <div className="space-y-3">
-            {/* Painel (sozinho no topo) */}
-            <div>{renderDesktopNavLink(PAINEL_NAV_ITEM)}</div>
+          {/* Grupos roláveis (Painel, Atendimento, Imóveis) */}
+          <nav
+            aria-label="Menu principal"
+            onScroll={updateActiveIndicator}
+            className="flex-1 px-3 py-1 overflow-y-auto overflow-x-hidden relative"
+          >
+            <div className="space-y-3">
+              {/* Painel (sozinho no topo) */}
+              <div>{renderDesktopNavLink(PAINEL_NAV_ITEM)}</div>
 
-            {/* Grupos de navegação */}
-            {visibleGroups.map((group) => {
-              const isOpen = openGroups[group.id] !== false
-              const groupId = group.id === 'atendimento' ? atendimentoGroupId : imoveisGroupId
-              const listId = `group-list-${group.id}`
+              {/* Grupos de navegação */}
+              {visibleGroups.map((group) => {
+                const isOpen = openGroups[group.id] !== false
+                const groupId = group.id === 'atendimento' ? atendimentoGroupId : imoveisGroupId
+                const listId = `group-list-${group.id}`
 
-              return (
-                <div key={group.id} role="group" aria-labelledby={groupId} className="space-y-1">
-                  {sidebarCollapsed ? (
-                    <div
-                      className="my-2 border-t border-[var(--nav-line)] mx-1"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      id={groupId}
-                      onClick={() => toggleGroup(group.id)}
-                      aria-expanded={isOpen}
-                      aria-controls={listId}
-                      className={cn(
-                        'w-full flex items-center justify-between px-3 py-1.5 font-sans font-medium text-[12px] text-[var(--nav-mute)] hover:text-[var(--nav-ink)] rounded-[4px] transition-colors',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)]',
-                      )}
-                    >
-                      <span>{group.title}</span>
-                      <ChevronDown
-                        className={cn(
-                          'h-3.5 w-3.5 transition-transform duration-200',
-                          isOpen ? '' : '-rotate-90',
-                        )}
+                return (
+                  <div key={group.id} role="group" aria-labelledby={groupId} className="space-y-1">
+                    {sidebarCollapsed ? (
+                      <div
+                        className="my-2 border-t border-[var(--nav-line)] mx-1"
                         aria-hidden="true"
                       />
-                    </button>
-                  )}
-
-                  {/* Conteúdo recolhível com animação grid-template-rows */}
-                  <div
-                    id={listId}
-                    className={cn(
-                      'grid transition-all duration-[240ms] ease-out',
-                      sidebarCollapsed || isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+                    ) : (
+                      <button
+                        type="button"
+                        id={groupId}
+                        onClick={() => toggleGroup(group.id)}
+                        aria-expanded={isOpen}
+                        aria-controls={listId}
+                        className={cn(
+                          'w-full flex items-center justify-between px-3 py-1.5 font-sans font-medium text-[12px] text-[var(--nav-mute)] hover:text-[var(--nav-ink)] rounded-[4px] transition-colors',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)]',
+                        )}
+                      >
+                        <span>{group.title}</span>
+                        <ChevronDown
+                          className={cn(
+                            'h-3.5 w-3.5 transition-transform duration-200',
+                            isOpen ? '' : '-rotate-90',
+                          )}
+                          aria-hidden="true"
+                        />
+                      </button>
                     )}
-                  >
-                    <div className="overflow-hidden">
-                      <ul className="space-y-0.5 list-none p-0 m-0">
-                        {group.items.map((item) => (
-                          <li key={item.id}>{renderDesktopNavLink(item)}</li>
-                        ))}
-                      </ul>
+
+                    {/* Conteúdo recolhível com animação grid-template-rows */}
+                    <div
+                      id={listId}
+                      className={cn(
+                        'grid transition-all duration-[240ms] ease-out',
+                        sidebarCollapsed || isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+                      )}
+                    >
+                      <div className="overflow-hidden">
+                        <ul className="space-y-0.5 list-none p-0 m-0">
+                          {group.items.map((item) => (
+                            <li key={item.id}>{renderDesktopNavLink(item)}</li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          </nav>
 
-          {/* Rodapé do menu: divisor --nav-line e Configurações */}
-          <div className="pt-3 pb-2 mt-auto">
-            <div className="border-t border-[var(--nav-line)] mb-2" />
-            <div>{renderDesktopNavLink(CONFIGURACOES_NAV_ITEM)}</div>
+          {/* Rodapé fixo do menu: divisor --nav-line e Configurações */}
+          <div className="px-3 pt-2 pb-2 shrink-0 border-t border-[var(--nav-line)] mt-1 bg-transparent relative z-20">
+            <div className="relative z-20">{renderDesktopNavLink(CONFIGURACOES_NAV_ITEM)}</div>
           </div>
-        </nav>
+        </div>
       </aside>
 
       {/* ═════════════════════════════════════════════════════════════ */}

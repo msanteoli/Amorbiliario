@@ -16,6 +16,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -489,26 +490,34 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
             </span>
           </div>
 
-          <div className="space-y-1">
-            <label htmlFor="edit-consent" className="text-[13px] font-normal text-foreground block">
-              Consentimento de comunicação
-            </label>
-            <Select
-              value={consentStatus}
-              onValueChange={(val) => setConsentStatus(val as LeadConsentStatus)}
-            >
-              <SelectTrigger
-                id="edit-consent"
-                className="h-12 rounded-lg border-border bg-background"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unknown">Sem informação</SelectItem>
-                <SelectItem value="opt_in">Autorizou</SelectItem>
-                <SelectItem value="opt_out">Não autorizou</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-2 pt-1">
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="edit-lead-consent-checkbox"
+                checked={consentStatus === 'opt_in'}
+                onCheckedChange={(checked) => {
+                  const isChecked = Boolean(checked)
+                  setConsentStatus(isChecked ? 'opt_in' : 'unknown')
+                }}
+                className="mt-1"
+              />
+              <div className="space-y-1 leading-none">
+                <label
+                  htmlFor="edit-lead-consent-checkbox"
+                  className="text-sm font-medium text-foreground cursor-pointer"
+                >
+                  Autorizou o contato
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Marque quando a pessoa deu o consentimento para ser contatada
+                </p>
+                {consentStatus === 'opt_out' && (
+                  <p className="text-xs font-medium text-destructive pt-1">
+                    Pediu para não ser contatado
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="pt-3 gap-2">
