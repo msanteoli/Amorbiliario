@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/sheet'
 import { useAuth } from '@/contexts/AuthContext'
 import { getOrganization } from '@/services/admin'
+import { AmorbiliarioLogo } from '@/components/AmorbiliarioLogo'
 import { listLeads } from '@/services/leads'
 import { listVisits } from '@/services/visits'
 import { QuickSearchModal } from '@/components/QuickSearchModal'
@@ -469,11 +470,7 @@ export function AppLayout() {
               <path d="M22 42a16 16 0 0 1 16-16" stroke="currentColor" strokeWidth="2" />
             </svg>
 
-            {!sidebarCollapsed && (
-              <span className="font-sans font-semibold text-[19px] leading-none tracking-[-0.02em] text-[var(--nav-ink)] lowercase truncate">
-                imobdigital
-              </span>
-            )}
+            {!sidebarCollapsed && <AmorbiliarioLogo className="h-[18px] text-[var(--nav-ink)]" />}
           </Link>
 
           {/* Botão de 32 px com seta ‹ que recolhe o menu */}
@@ -722,7 +719,11 @@ export function AppLayout() {
         {/* BARRA SUPERIOR CELULAR (< 768px): 56 px */}
         <header className="md:hidden sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur">
           {/* Símbolo e palavra à esquerda */}
-          <Link to="/hoje" className="flex items-center gap-2" aria-label="Ir para o início">
+          <Link
+            to="/hoje"
+            className="flex items-center gap-2 min-w-0"
+            aria-label="Ir para o início"
+          >
             <svg
               viewBox="0 0 48 48"
               fill="none"
@@ -738,9 +739,7 @@ export function AppLayout() {
               <path d="M38 42V26" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
               <path d="M22 42a16 16 0 0 1 16-16" stroke="currentColor" strokeWidth="2" />
             </svg>
-            <span className="font-sans font-semibold text-base tracking-tight text-foreground lowercase">
-              imobdigital
-            </span>
+            <AmorbiliarioLogo className="h-[12px] min-[380px]:h-[14px] text-foreground max-w-[150px] min-[380px]:max-w-none" />
           </Link>
 
           {/* Lupa e círculo com iniciais à direita */}

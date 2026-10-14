@@ -215,6 +215,10 @@
     backdrop-filter: blur(8px);
   }
 
+  .am-palavra .acento {
+    fill: currentColor;
+  }
+
   /* KEEP ALL THE ANIMATIONS CLASSES THAT ARE USED BELOW */
   @keyframes accordion-down {
     from {

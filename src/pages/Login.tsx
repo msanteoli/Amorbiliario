@@ -17,6 +17,7 @@ import {
 import { requestPasswordReset } from '@/services/auth'
 import { AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { AmorbiliarioLogo } from '@/components/AmorbiliarioLogo'
 
 export default function Login() {
   const { login, isAuthenticated } = useAuth()
@@ -100,26 +101,7 @@ export default function Login() {
       <div className="w-full max-w-sm">
         {/* Assinatura completa acima do formulário */}
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="flex items-center gap-3">
-            <svg
-              viewBox="0 0 48 48"
-              fill="none"
-              className="w-9 h-9 text-primary shrink-0"
-              aria-hidden="true"
-            >
-              <path
-                d="M22 42H6V6h36v36h-4"
-                stroke="currentColor"
-                strokeWidth="4"
-                strokeLinecap="square"
-              />
-              <path d="M38 42V26" stroke="currentColor" strokeWidth="4" strokeLinecap="square" />
-              <path d="M22 42a16 16 0 0 1 16-16" stroke="currentColor" strokeWidth="2" />
-            </svg>
-            <span className="font-sans font-semibold text-[26px] leading-none tracking-[-0.02em] text-foreground lowercase">
-              imobdigital
-            </span>
-          </div>
+          <AmorbiliarioLogo className="h-[28px] text-foreground mx-auto" />
           <p className="text-xs text-muted-foreground mt-2">Sistema de gestão</p>
         </div>
 
