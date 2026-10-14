@@ -60,4 +60,5 @@ onRecordViewRequest(
   'negotiation_documents',
   'google_connections',
   'portal_feeds',
+  'agenda_blocks',
 )
