@@ -66,7 +66,7 @@ const DropdownMenuContent = React.forwardRef<
         className,
       )}
       {...props}
-    />{' '}
+    />
   </DropdownMenuPrimitive.Portal>
 ))
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
