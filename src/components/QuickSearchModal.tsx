@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { ALL_NAV_ITEMS, isItemVisibleForRole, type NavItemConfig } from '@/config/navegacao'
@@ -54,18 +54,21 @@ export function QuickSearchModal({ open, onClose }: QuickSearchModalProps) {
   }, [open])
 
   // Busca telas visíveis para o papel
-  const visibleNavItems: NavItemConfig[] = ALL_NAV_ITEMS.filter((item) =>
-    isItemVisibleForRole(item, role),
+  // Memorizado: um array novo a cada renderização fazia o efeito de busca rodar sem parar (laço infinito)
+  const visibleNavItems: NavItemConfig[] = useMemo(
+    () => ALL_NAV_ITEMS.filter((item) => isItemVisibleForRole(item, role)),
+    [role],
   )
 
   // Executa busca com debounce de 250ms a partir de 2 letras
   useEffect(() => {
     const trimmed = query.trim()
     if (trimmed.length < 2) {
-      setScreenResults([])
-      setPropertyResults([])
-      setLeadResults([])
-      setClientResults([])
+      // Só limpa se houver o que limpar: um [] novo a cada vez provocava nova renderização
+      setScreenResults((prev) => (prev.length ? [] : prev))
+      setPropertyResults((prev) => (prev.length ? [] : prev))
+      setLeadResults((prev) => (prev.length ? [] : prev))
+      setClientResults((prev) => (prev.length ? [] : prev))
       setLoading(false)
       setSelectedIndex(0)
       return
