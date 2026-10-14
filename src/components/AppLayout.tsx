@@ -23,6 +23,7 @@ import { AmorbiliarioLogo } from '@/components/AmorbiliarioLogo'
 import { listLeads } from '@/services/leads'
 import { listVisits } from '@/services/visits'
 import { QuickSearchModal } from '@/components/QuickSearchModal'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import {
   Search,
   ChevronDown,
@@ -81,6 +82,11 @@ export function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const role = user?.role
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   const [orgName, setOrgName] = useState<string>('')
   const [quickSearchOpen, setQuickSearchOpen] = useState(false)
@@ -706,7 +712,7 @@ export function AppLayout() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={logout}
+                onClick={handleLogout}
                 className="cursor-pointer text-destructive focus:text-destructive font-sans text-xs py-2 px-2"
               >
                 <LogOut className="h-4 w-4 mr-2" />
@@ -787,7 +793,7 @@ export function AppLayout() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="cursor-pointer text-destructive focus:text-destructive text-xs"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
@@ -803,7 +809,9 @@ export function AppLayout() {
           key={location.pathname}
           className="flex-1 p-4 sm:p-6 md:p-8 pb-24 md:pb-8 screen-fade-in"
         >
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
 
         {/* ═════════════════════════════════════════════════════════════ */}

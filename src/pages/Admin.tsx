@@ -1515,32 +1515,30 @@ export default function Admin() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="font-normal text-lg">Desativar usuário</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3 text-xs text-muted-foreground font-normal">
-                {loadingOpenItems ? (
-                  <div className="flex items-center gap-2 py-4 justify-center">
-                    <Loader2 className="h-4 w-4 animate-spin text-foreground" />
-                    <span>Verificando pendências em aberto...</span>
+            <AlertDialogDescription className="space-y-3 text-xs text-muted-foreground font-normal">
+              {loadingOpenItems ? (
+                <div className="flex items-center gap-2 py-4 justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin text-foreground" />
+                  <span>Verificando pendências em aberto...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Aviso com borda attention para itens abertos */}
+                  <div className="p-3.5 rounded-lg border border-attention/40 bg-muted/20 text-foreground text-xs font-normal">
+                    Esta pessoa tem <span className="tabular">{openItems?.leads ?? 0}</span> leads,{' '}
+                    <span className="tabular">{openItems?.visits ?? 0}</span> visitas e{' '}
+                    <span className="tabular">{openItems?.tasks ?? 0}</span> tarefas abertos. Eles
+                    não mudam sozinhos: reatribua depois.
                   </div>
-                ) : (
-                  <>
-                    {/* Aviso com borda attention para itens abertos */}
-                    <div className="p-3.5 rounded-lg border border-attention/40 bg-muted/20 text-foreground text-xs font-normal">
-                      Esta pessoa tem <span className="tabular">{openItems?.leads ?? 0}</span>{' '}
-                      leads, <span className="tabular">{openItems?.visits ?? 0}</span> visitas e{' '}
-                      <span className="tabular">{openItems?.tasks ?? 0}</span> tarefas abertos. Eles
-                      não mudam sozinhos: reatribua depois.
-                    </div>
-                    <p className="text-foreground">
-                      Tem certeza de que deseja desativar o acesso de{' '}
-                      <span className="font-medium">
-                        {deactivatingUser?.name || deactivatingUser?.email}
-                      </span>
-                      ?
-                    </p>
-                  </>
-                )}
-              </div>
+                  <p className="text-foreground">
+                    Tem certeza de que deseja desativar o acesso de{' '}
+                    <span className="font-medium">
+                      {deactivatingUser?.name || deactivatingUser?.email}
+                    </span>
+                    ?
+                  </p>
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">

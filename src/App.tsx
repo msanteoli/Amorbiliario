@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute, AdminRoute, BackupRoute } from '@/components/ProtectedRoute'
 import { AppLayout } from '@/components/AppLayout'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 import Login from '@/pages/Login'
 import ResetPassword from '@/pages/ResetPassword'
@@ -39,52 +40,54 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <Routes>
-            {/* Public login & reset password routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+          <ErrorBoundary>
+            <Routes>
+              {/* Public login & reset password routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
-            {/* O site público agora é outro projeto; a raiz do sistema leva ao painel (ou ao login) */}
-            <Route path="/" element={<Navigate to="/hoje" replace />} />
+              {/* O site público agora é outro projeto; a raiz do sistema leva ao painel (ou ao login) */}
+              <Route path="/" element={<Navigate to="/hoje" replace />} />
 
-            {/* Protected routes */}
-            <Route element={<ProtectedRoute />}>
-              {/* Rota de retorno da conexão Google (sem AppLayout, página limpa focada na autorização) */}
-              <Route path="/google/retorno" element={<GoogleRetorno />} />
+              {/* Protected routes */}
+              <Route element={<ProtectedRoute />}>
+                {/* Rota de retorno da conexão Google (sem AppLayout, página limpa focada na autorização) */}
+                <Route path="/google/retorno" element={<GoogleRetorno />} />
 
-              <Route element={<AppLayout />}>
-                <Route path="/hoje" element={<Hoje />} />
-                <Route path="/configuracoes" element={<Configuracoes />} />
-                <Route path="/leads" element={<Leads />} />{' '}
-                <Route path="/leads/novo" element={<NovoLead />} />
-                <Route path="/leads/:id" element={<LeadDetalhe />} />
-                <Route path="/clientes" element={<Clientes />} />
-                <Route path="/clientes/novo" element={<NovoCliente />} />
-                <Route path="/clientes/:id" element={<ClienteDetalhe />} />
-                <Route path="/clientes/:id/editar" element={<EditarCliente />} />
-                <Route path="/imoveis" element={<Imoveis />} />
-                <Route path="/imoveis/novo" element={<NovoImovel />} />
-                <Route path="/imoveis/:id" element={<ImovelDetalhe />} />
-                <Route path="/imoveis/:id/editar" element={<EditarImovel />} />
-                <Route path="/condominios" element={<Condominios />} />
-                <Route path="/condominios/:id" element={<CondominioDetalhe />} />
-                <Route path="/agenda" element={<Agenda />} />
-                {/* Backup: Admin & SDR route */}
-                <Route element={<BackupRoute />}>
-                  <Route path="/backup" element={<Backup />} />
-                </Route>
-                {/* Admin-only route */}
-                <Route element={<AdminRoute />}>
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/admin/importar-imoveis" element={<ImportarImoveis />} />
-                  <Route path="/portais" element={<Portais />} />
+                <Route element={<AppLayout />}>
+                  <Route path="/hoje" element={<Hoje />} />
+                  <Route path="/configuracoes" element={<Configuracoes />} />
+                  <Route path="/leads" element={<Leads />} />{' '}
+                  <Route path="/leads/novo" element={<NovoLead />} />
+                  <Route path="/leads/:id" element={<LeadDetalhe />} />
+                  <Route path="/clientes" element={<Clientes />} />
+                  <Route path="/clientes/novo" element={<NovoCliente />} />
+                  <Route path="/clientes/:id" element={<ClienteDetalhe />} />
+                  <Route path="/clientes/:id/editar" element={<EditarCliente />} />
+                  <Route path="/imoveis" element={<Imoveis />} />
+                  <Route path="/imoveis/novo" element={<NovoImovel />} />
+                  <Route path="/imoveis/:id" element={<ImovelDetalhe />} />
+                  <Route path="/imoveis/:id/editar" element={<EditarImovel />} />
+                  <Route path="/condominios" element={<Condominios />} />
+                  <Route path="/condominios/:id" element={<CondominioDetalhe />} />
+                  <Route path="/agenda" element={<Agenda />} />
+                  {/* Backup: Admin & SDR route */}
+                  <Route element={<BackupRoute />}>
+                    <Route path="/backup" element={<Backup />} />
+                  </Route>
+                  {/* Admin-only route */}
+                  <Route element={<AdminRoute />}>
+                    <Route path="/admin" element={<Admin />} />
+                    <Route path="/admin/importar-imoveis" element={<ImportarImoveis />} />
+                    <Route path="/portais" element={<Portais />} />
+                  </Route>
                 </Route>
               </Route>
-            </Route>
 
-            {/* 404 route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* 404 route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </TooltipProvider>
       </AuthProvider>
     </ThemeProvider>

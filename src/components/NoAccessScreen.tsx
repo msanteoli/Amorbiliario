@@ -1,9 +1,16 @@
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { ShieldAlert } from 'lucide-react'
 
 export function NoAccessScreen() {
   const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">
@@ -17,7 +24,7 @@ export function NoAccessScreen() {
         <p className="text-sm text-muted-foreground">
           Seu usuário não possui um perfil habilitado para acessar os módulos do sistema.
         </p>
-        <Button onClick={logout} variant="outline" className="mt-2">
+        <Button onClick={handleLogout} variant="outline" className="mt-2">
           Sair
         </Button>
       </div>
