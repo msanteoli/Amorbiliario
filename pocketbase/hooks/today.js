@@ -66,6 +66,11 @@ routerAdd(
       next_step: r.getString('next_step'),
       next_step_due: r.getString('next_step_due'),
       created: r.getString('created'),
+      // lead do site sem corretor há mais de 1 hora (prazo de atendimento do fluxo M14)
+      overdue:
+        r.getString('origin') === 'site' &&
+        r.getString('assigned_to') === '' &&
+        Date.now() - new Date(r.getString('created').replace(' ', 'T')).getTime() > 3600000,
     })
     const visitItem = (r) => ({
       id: r.id,
