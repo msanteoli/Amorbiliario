@@ -30,6 +30,8 @@ import { TaskDetailModal, getTaskStatusBadge } from '@/components/agenda/TaskDet
 import { CreateTaskModal } from '@/components/agenda/CreateTaskModal'
 import { GoogleSyncBadge } from '@/components/agenda/GoogleSyncBadge'
 import { getGoogleStatus } from '@/services/googleCalendar'
+import { AgendaBlockModal } from '@/components/agenda/AgendaBlockModal'
+import { AgendaBlockRecord, getCurrentActiveAgendaBlock } from '@/services/agendaBlocks'
 
 import { Cota } from '@/components/Cota'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -140,7 +142,24 @@ export default function Agenda() {
   // Modal criar tarefa
   const [createTaskOpen, setCreateTaskOpen] = useState(false)
 
-  // Carregar lista de corretores ativos para filtros e status do google
+  // Bloqueio de agenda
+  const [agendaBlockModalOpen, setAgendaBlockModalOpen] = useState(false)
+  const [activeAgendaBlock, setActiveAgendaBlock] = useState<AgendaBlockRecord | null>(null)
+
+  // Carregar lista de corretores ativos para filtros, status do google e bloqueio ativo
+  const loadActiveAgendaBlock = useCallback(async () => {
+    if (role === 'corretor') {
+      try {
+        const block = await getCurrentActiveAgendaBlock()
+        setActiveAgendaBlock(block)
+      } catch {
+        setActiveAgendaBlock(null)
+      }
+    } else {
+      setActiveAgendaBlock(null)
+    }
+  }, [role])
+
   useEffect(() => {
     if (canFilterBroker) {
       listActiveBrokers()
@@ -156,7 +175,8 @@ export default function Agenda() {
           setUserNeedsGoogleReconnect(false)
         })
     }
-  }, [canFilterBroker, role])
+    loadActiveAgendaBlock()
+  }, [canFilterBroker, role, loadActiveAgendaBlock])
 
   // ═══════════════════════════════════════════════════════════════
   // CARREGAR VISITAS
@@ -379,6 +399,37 @@ export default function Agenda() {
         </Alert>
       )}
 
+      {/* Aviso no topo da Agenda quando corretor estiver com bloqueio ativo agora */}
+      {isCorretor && activeAgendaBlock && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-lg border border-attention/40 bg-attention/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-foreground"
+        >
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
+            <AlertTriangle className="h-5 w-5 text-attention shrink-0 mt-0.5 sm:mt-0" />
+            <div className="text-xs sm:text-sm font-normal text-foreground">
+              <span>
+                Sua agenda está bloqueada até{' '}
+                <strong className="font-medium text-foreground">
+                  {formatDateTimeBahia(activeAgendaBlock.end_at)}
+                </strong>
+                . Você não recebe leads novos nesse período.
+              </span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setAgendaBlockModalOpen(true)}
+            className="rounded-full border-attention/40 text-foreground hover:bg-attention/15 text-xs font-normal shrink-0 self-start sm:self-auto h-8 px-4"
+          >
+            Ver bloqueios
+          </Button>
+        </div>
+      )}
+
       {/* Cabeçalho da Agenda */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -392,7 +443,21 @@ export default function Agenda() {
         </div>
 
         {/* Botões de Ação Superiores: o da aba aberta preenchido, o outro de contorno */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Botão de bloqueio de agenda: visível para corretor ("Bloquear minha agenda") e admin ("Bloquear agenda") */}
+          {!isSdr && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setAgendaBlockModalOpen(true)}
+              className="gap-1.5 text-xs font-normal rounded-full"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              <span>{isAdmin ? 'Bloqueios de agenda' : 'Bloquear minha agenda'}</span>
+            </Button>
+          )}
+
           {canCreateVisit && (
             <Button
               variant={activeTab === 'visitas' ? 'default' : 'outline'}
@@ -1244,6 +1309,16 @@ export default function Agenda() {
         onCreated={() => {
           setAlertSuccess('Tarefa criada com sucesso.')
           loadTasksData()
+        }}
+      />
+
+      {/* Modal de Bloqueio de Agenda */}
+      <AgendaBlockModal
+        open={agendaBlockModalOpen}
+        onOpenChange={setAgendaBlockModalOpen}
+        onUpdated={async () => {
+          await loadActiveAgendaBlock()
+          await loadVisitsData()
         }}
       />
     </div>

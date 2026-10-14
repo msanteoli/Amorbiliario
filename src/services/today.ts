@@ -9,6 +9,7 @@ export interface TodayLeadItem {
   next_step: string
   next_step_due: string
   created: string
+  overdue?: boolean
 }
 
 export interface TodayVisitItem {

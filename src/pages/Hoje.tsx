@@ -163,6 +163,7 @@ export default function Hoje() {
     options?: {
       isNextStepOverdueHighlight?: boolean
       isDedupe?: boolean
+      isNewUnassigned?: boolean
       helpText?: string
     },
   ) => {
@@ -170,25 +171,40 @@ export default function Hoje() {
 
     const countDisplay = section.more ? '500+' : section.count
 
+    // Para leads novos sem corretor: ordenar atrasados (overdue=true) primeiro, mantendo a ordem relativa
+    const itemsToRender = options?.isNewUnassigned
+      ? [...section.items].sort((a, b) => {
+          const aOverdue = Boolean(a.overdue)
+          const bOverdue = Boolean(b.overdue)
+          if (aOverdue === bOverdue) return 0
+          return aOverdue ? -1 : 1
+        })
+      : section.items
+
+    const hasAnyOverdue = options?.isNewUnassigned && itemsToRender.some((i) => i.overdue)
+
     return (
       <section className="space-y-2">
         <div className="border-b border-border pb-2">
           <Cota
             title={title}
             count={countDisplay}
-            isAttention={Boolean(options?.isNextStepOverdueHighlight || options?.isDedupe)}
+            isAttention={Boolean(
+              options?.isNextStepOverdueHighlight || options?.isDedupe || hasAnyOverdue,
+            )}
           />
           {options?.helpText && (
             <p className="text-xs text-muted-foreground mt-1">{options.helpText}</p>
           )}
         </div>
 
-        {section.items.length === 0 ? (
+        {itemsToRender.length === 0 ? (
           <div className="py-4 text-xs text-muted-foreground">Nada por aqui.</div>
         ) : (
           <div className="divide-y divide-border">
-            {section.items.map((lead) => {
+            {itemsToRender.map((lead) => {
               const overdue = lead.next_step_due && isOverdue(lead.next_step_due)
+              const isUnassignedOverdue = Boolean(options?.isNewUnassigned && lead.overdue)
               return (
                 <div
                   key={lead.id}
@@ -201,10 +217,20 @@ export default function Hoje() {
                       itemClick(lead)
                     }
                   }}
-                  className="min-h-[56px] py-3 flex items-center justify-between gap-4 cursor-pointer hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className={`min-h-[56px] py-3 flex items-center justify-between gap-4 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                    isUnassignedOverdue
+                      ? 'bg-attention/10 hover:bg-attention/15 border-l-2 border-attention px-2.5'
+                      : 'hover:bg-muted/40'
+                  }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-normal text-foreground truncate">
+                    <p
+                      className={`text-sm truncate ${
+                        isUnassignedOverdue
+                          ? 'font-medium text-attention'
+                          : 'font-normal text-foreground'
+                      }`}
+                    >
                       {lead.name || 'Lead sem nome'}
                     </p>
                     <div className="text-xs text-muted-foreground truncate mt-0.5">
@@ -220,7 +246,14 @@ export default function Hoje() {
                       ) : options?.isDedupe ? (
                         <span>Duplicidade detectada</span>
                       ) : (
-                        <span>{lead.created && `Criado em ${formatDateBahia(lead.created)}`}</span>
+                        <span>
+                          {lead.created && `Criado em ${formatDateBahia(lead.created)}`}
+                          {isUnassignedOverdue && (
+                            <span className="text-attention font-normal dado text-xs ml-2">
+                              • Mais de 1h sem corretor
+                            </span>
+                          )}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -228,6 +261,8 @@ export default function Hoje() {
                   <div className="flex items-center gap-2 shrink-0">
                     {options?.isDedupe ? (
                       <Badge variant="attention">Pendência de duplicidade</Badge>
+                    ) : isUnassignedOverdue ? (
+                      <Badge variant="attention">Passou de 1 hora sem corretor</Badge>
                     ) : options?.isNextStepOverdueHighlight && overdue ? (
                       <Badge variant="attention">Atrasado</Badge>
                     ) : lead.stage ? (
@@ -667,6 +702,7 @@ export default function Hoje() {
                 'Leads novos sem dono',
                 data.sections.new_unassigned_leads,
                 (lead) => navigate(`/leads/${lead.id}`),
+                { isNewUnassigned: true },
               )}
 
               {renderLeadSection(
