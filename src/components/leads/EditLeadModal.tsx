@@ -79,6 +79,7 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
   const [notes, setNotes] = useState<string>(lead.notes || '')
 
   // Consentimento
+  const initialConsentStatus = lead.consent_status || 'unknown'
   const [consentStatus, setConsentStatus] = useState<LeadConsentStatus>(
     lead.consent_status || 'unknown',
   )
@@ -155,7 +156,12 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
         search_bedrooms: searchBedrooms ? Number(searchBedrooms) : 0,
         search_min_price: parsedMinPrice > 0 ? parsedMinPrice : 0,
         search_max_price: parsedMaxPrice > 0 ? parsedMaxPrice : 0,
-        consent_status: consentStatus,
+        consent_status:
+          consentStatus === 'opt_in'
+            ? 'opt_in'
+            : initialConsentStatus === 'opt_out'
+              ? 'opt_out'
+              : 'unknown',
       })
 
       onSaved(updated)
@@ -497,7 +503,13 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
                 checked={consentStatus === 'opt_in'}
                 onCheckedChange={(checked) => {
                   const isChecked = Boolean(checked)
-                  setConsentStatus(isChecked ? 'opt_in' : 'unknown')
+                  setConsentStatus(
+                    isChecked
+                      ? 'opt_in'
+                      : initialConsentStatus === 'opt_out'
+                        ? 'opt_out'
+                        : 'unknown',
+                  )
                 }}
                 className="mt-1"
               />
@@ -511,12 +523,12 @@ export function EditLeadModal({ lead, open, onOpenChange, onSaved }: EditLeadMod
                 <p className="text-xs text-muted-foreground">
                   Marque quando a pessoa deu o consentimento para ser contatada
                 </p>
-                {consentStatus === 'opt_out' && (
+                {initialConsentStatus === 'opt_out' && consentStatus !== 'opt_in' && (
                   <p className="text-xs font-medium text-destructive pt-1">
                     Pediu para não ser contatado
                   </p>
                 )}
-              </div>
+              </div>{' '}
             </div>
           </div>
 

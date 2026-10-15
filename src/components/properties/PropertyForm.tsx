@@ -206,11 +206,7 @@ export function PropertyForm({
   const [description, setDescription] = useState(initialData?.description || '')
 
   // Captador
-  const defaultCapturedBy = isEditing
-    ? initialData?.captured_by || currentUser.id
-    : isCorretor
-      ? currentUser.id
-      : initialData?.captured_by || currentUser.id
+  const defaultCapturedBy = isEditing ? initialData?.captured_by || currentUser.id : currentUser.id
   const [capturedBy, setCapturedBy] = useState(defaultCapturedBy)
 
   // Permissão de editar Onde anunciar: admin e corretor captador

@@ -67,6 +67,7 @@ export default function EditarCliente() {
   const [kinds, setKinds] = useState<ClientKind[]>(['comprador'])
   const [responsibleId, setResponsibleId] = useState<string>('')
   const [consentStatus, setConsentStatus] = useState<ConsentStatus>('unknown')
+  const [initialConsentStatus, setInitialConsentStatus] = useState<ConsentStatus>('unknown')
   const [consentChannel, setConsentChannel] = useState('')
 
   // Lista de responsáveis
@@ -96,7 +97,9 @@ export default function EditarCliente() {
         setEmail(clientData.email || '')
         setKinds(clientData.kind || ['comprador'])
         setResponsibleId(clientData.responsible_id || '')
-        setConsentStatus(clientData.consent_status || 'unknown')
+        const loadedStatus = clientData.consent_status || 'unknown'
+        setConsentStatus(loadedStatus)
+        setInitialConsentStatus(loadedStatus)
         setConsentChannel(clientData.consent_channel || '')
 
         if (privateData) {
@@ -196,6 +199,14 @@ export default function EditarCliente() {
       return
     }
 
+    // Se a pessoa marcou: grava 'opt_in'. Se desmarcou e originalmente era 'opt_out', preserva 'opt_out' sem gravar por esta tela (ou mantém o original se desmarcado).
+    const resolvedConsentStatus: ConsentStatus =
+      consentStatus === 'opt_in'
+        ? 'opt_in'
+        : initialConsentStatus === 'opt_out'
+          ? 'opt_out'
+          : 'unknown'
+
     setSaving(true)
     try {
       await updateClient(
@@ -208,8 +219,8 @@ export default function EditarCliente() {
           email: trimmedEmail || undefined,
           kind: kinds,
           responsible_id: isCorretor ? undefined : responsibleId || undefined,
-          consent_status: consentStatus,
-          consent_channel: consentChannel || undefined,
+          consent_status: resolvedConsentStatus,
+          consent_channel: consentStatus === 'opt_in' ? consentChannel.trim() : undefined,
           cpf: canSeeCpf ? rawCpf : undefined,
           cnpj: canSeeCpf && personType === 'juridica' ? rawCnpj : '',
           birth_date: canSeeCpf ? birthDate : undefined,
@@ -457,7 +468,13 @@ export default function EditarCliente() {
                   checked={consentStatus === 'opt_in'}
                   onCheckedChange={(checked) => {
                     const isChecked = Boolean(checked)
-                    setConsentStatus(isChecked ? 'opt_in' : 'unknown')
+                    setConsentStatus(
+                      isChecked
+                        ? 'opt_in'
+                        : initialConsentStatus === 'opt_out'
+                          ? 'opt_out'
+                          : 'unknown',
+                    )
                     if (!isChecked) {
                       setConsentChannel('')
                     }
@@ -474,7 +491,7 @@ export default function EditarCliente() {
                   <p className="text-xs text-muted-foreground">
                     Marque quando a pessoa deu o consentimento para ser contatada
                   </p>
-                  {consentStatus === 'opt_out' && (
+                  {initialConsentStatus === 'opt_out' && consentStatus !== 'opt_in' && (
                     <p className="text-xs font-medium text-destructive pt-1">
                       Pediu para não ser contatado
                     </p>

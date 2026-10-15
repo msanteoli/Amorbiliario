@@ -1666,7 +1666,6 @@ export default function ImovelDetalhe() {
                   })
                   toast({
                     title: 'Captador alterado.',
-                    description: 'O novo captador foi definido com sucesso.',
                   })
                   setChangeCaptadorOpen(false)
                   await loadData(property.id)

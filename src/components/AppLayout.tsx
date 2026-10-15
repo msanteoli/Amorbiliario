@@ -239,9 +239,21 @@ export function AppLayout() {
     })
   }, [location.pathname, location.search, role, openGroups])
 
-  // Indicador deslizante ativo no menu desktop
-  const navContainerRef = useRef<HTMLDivElement>(null)
-  const [activeIndicatorStyle, setActiveIndicatorStyle] = useState<{
+  // Indicadores deslizantes ativos no menu desktop (um para a área rolável e outro para o rodapé fixo)
+  const scrollNavRef = useRef<HTMLElement>(null)
+  const footerNavRef = useRef<HTMLDivElement>(null)
+
+  const [scrollIndicatorStyle, setScrollIndicatorStyle] = useState<{
+    top: number
+    height: number
+    visible: boolean
+  }>({
+    top: 0,
+    height: 40,
+    visible: false,
+  })
+
+  const [footerIndicatorStyle, setFooterIndicatorStyle] = useState<{
     top: number
     height: number
     visible: boolean
@@ -252,18 +264,36 @@ export function AppLayout() {
   })
 
   const updateActiveIndicator = useCallback(() => {
-    if (!navContainerRef.current) return
-    const activeEl = navContainerRef.current.querySelector<HTMLElement>('[aria-current="page"]')
-    if (activeEl) {
-      const containerRect = navContainerRef.current.getBoundingClientRect()
-      const activeRect = activeEl.getBoundingClientRect()
-      setActiveIndicatorStyle({
-        top: activeRect.top - containerRect.top,
-        height: activeRect.height,
-        visible: true,
-      })
-    } else {
-      setActiveIndicatorStyle((prev) => ({ ...prev, visible: false }))
+    // 1. Verifica itens na área rolável (Painel, Atendimento, Imóveis)
+    if (scrollNavRef.current) {
+      const activeEl = scrollNavRef.current.querySelector<HTMLElement>('[aria-current="page"]')
+      if (activeEl) {
+        const containerRect = scrollNavRef.current.getBoundingClientRect()
+        const activeRect = activeEl.getBoundingClientRect()
+        setScrollIndicatorStyle({
+          top: activeRect.top - containerRect.top + scrollNavRef.current.scrollTop,
+          height: activeRect.height,
+          visible: true,
+        })
+      } else {
+        setScrollIndicatorStyle((prev) => ({ ...prev, visible: false }))
+      }
+    }
+
+    // 2. Verifica item no rodapé fixo (Configurações)
+    if (footerNavRef.current) {
+      const activeEl = footerNavRef.current.querySelector<HTMLElement>('[aria-current="page"]')
+      if (activeEl) {
+        const containerRect = footerNavRef.current.getBoundingClientRect()
+        const activeRect = activeEl.getBoundingClientRect()
+        setFooterIndicatorStyle({
+          top: activeRect.top - containerRect.top,
+          height: activeRect.height,
+          visible: true,
+        })
+      } else {
+        setFooterIndicatorStyle((prev) => ({ ...prev, visible: false }))
+      }
     }
   }, [])
 
@@ -549,38 +579,39 @@ export function AppLayout() {
           )}
         </div>
 
-        {/* Contêiner de Navegação com Indicador Único para Grupos e Rodapé */}
-        <div
-          ref={navContainerRef}
-          className="flex-1 flex flex-col justify-between overflow-hidden relative"
-        >
-          {/* Indicador que desliza por trás dos itens (medido em relação ao navContainerRef) */}
-          {activeIndicatorStyle.visible && (
-            <div
-              className="absolute left-3 right-3 rounded-[4px] bg-[var(--nav-active)] transition-all duration-[260ms] pointer-events-none z-[15]"
-              style={{
-                top: `${activeIndicatorStyle.top}px`,
-                height: `${activeIndicatorStyle.height}px`,
-                transitionTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-              }}
-              aria-hidden="true"
-            >
-              {/* Filete de 3px à esquerda com brilho */}
-              <span
-                className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l bg-[var(--nav-accent)]"
-                style={{
-                  boxShadow: '0 0 10px 1px rgba(142, 166, 255, 0.55)',
-                }}
-              />
-            </div>
-          )}
-
+        {/* Contêiner de Navegação: área rolável acima e rodapé fixo abaixo */}
+        <div className="flex-1 flex flex-col justify-between overflow-hidden relative">
           {/* Grupos roláveis (Painel, Atendimento, Imóveis) */}
           <nav
+            ref={scrollNavRef}
             aria-label="Menu principal"
             onScroll={updateActiveIndicator}
             className="flex-1 px-3 py-1 overflow-y-auto overflow-x-hidden relative"
           >
+            {/* Indicador deslizante da seção rolável */}
+            {scrollIndicatorStyle.visible && (
+              <div
+                className={cn(
+                  'absolute rounded-[4px] bg-[var(--nav-active)] transition-all duration-[260ms] pointer-events-none z-[5]',
+                  sidebarCollapsed ? 'left-1/2 -translate-x-1/2 w-10' : 'left-3 right-3',
+                )}
+                style={{
+                  top: `${scrollIndicatorStyle.top}px`,
+                  height: `${scrollIndicatorStyle.height}px`,
+                  transitionTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+                }}
+                aria-hidden="true"
+              >
+                {/* Filete de 3px à esquerda com brilho */}
+                <span
+                  className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l bg-[var(--nav-accent)]"
+                  style={{
+                    boxShadow: '0 0 10px 1px rgba(142, 166, 255, 0.55)',
+                  }}
+                />
+              </div>
+            )}
+
             <div className="space-y-3">
               {/* Painel (sozinho no topo) */}
               <div>{renderDesktopNavLink(PAINEL_NAV_ITEM)}</div>
@@ -643,9 +674,36 @@ export function AppLayout() {
             </div>
           </nav>
 
-          {/* Rodapé fixo do menu: divisor --nav-line e Configurações */}
-          <div className="px-3 pt-2 pb-2 shrink-0 border-t border-[var(--nav-line)] mt-1 bg-transparent relative z-20">
-            <div className="relative z-20">{renderDesktopNavLink(CONFIGURACOES_NAV_ITEM)}</div>
+          {/* Rodapé fixo do menu: separado por divisor --nav-line com pequeno espaço acima */}
+          <div
+            ref={footerNavRef}
+            className="px-3 pt-2 pb-2 shrink-0 border-t border-[var(--nav-line)] mt-1 bg-transparent relative z-20"
+          >
+            {/* Indicador deslizante específico para o rodapé */}
+            {footerIndicatorStyle.visible && (
+              <div
+                className={cn(
+                  'absolute rounded-[4px] bg-[var(--nav-active)] transition-all duration-[260ms] pointer-events-none z-[5]',
+                  sidebarCollapsed ? 'left-1/2 -translate-x-1/2 w-10' : 'left-3 right-3',
+                )}
+                style={{
+                  top: `${footerIndicatorStyle.top}px`,
+                  height: `${footerIndicatorStyle.height}px`,
+                  transitionTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+                }}
+                aria-hidden="true"
+              >
+                {/* Filete de 3px à esquerda com brilho */}
+                <span
+                  className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l bg-[var(--nav-accent)]"
+                  style={{
+                    boxShadow: '0 0 10px 1px rgba(142, 166, 255, 0.55)',
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="relative z-10">{renderDesktopNavLink(CONFIGURACOES_NAV_ITEM)}</div>
           </div>
         </div>
       </aside>
