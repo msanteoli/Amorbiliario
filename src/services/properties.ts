@@ -125,6 +125,7 @@ export interface PropertyRecord extends RecordModel {
   zip_code?: string
   publish_to?: string[]
   bedrooms?: number
+  suites?: number
   bathrooms?: number
   parking?: number
   area?: number
@@ -162,6 +163,7 @@ export interface CreatePropertyInput {
   zip_code?: string
   publish_to?: string[]
   bedrooms?: number
+  suites?: number
   bathrooms?: number
   parking?: number
   area?: number
@@ -193,6 +195,7 @@ export interface UpdatePropertyInput {
   zip_code?: string
   publish_to?: string[]
   bedrooms?: number
+  suites?: number
   bathrooms?: number
   parking?: number
   area?: number
@@ -378,6 +381,8 @@ export interface ListPropertiesParams {
   purpose?: PropertyPurpose | ''
   status?: PropertyStatus | ''
   minBedrooms?: number | ''
+  minParking?: number | ''
+  capturedBy?: string | ''
   minPrice?: number | ''
   maxPrice?: number | ''
   pendingReviewOnly?: boolean
@@ -592,6 +597,8 @@ export async function listProperties(params: ListPropertiesParams = {}) {
     purpose,
     status,
     minBedrooms,
+    minParking,
+    capturedBy,
     minPrice,
     maxPrice,
     pendingReviewOnly,
@@ -606,10 +613,23 @@ export async function listProperties(params: ListPropertiesParams = {}) {
     filterParts.push(`import_batch_id = "${importBatchId.replace(/['"\\]/g, '')}"`)
   }
 
-  // Busca textual por código, título ou bairro
+  // Busca textual por: código, título, rua, número, bairro, cidade e CEP
   if (search && search.trim()) {
     const term = search.trim().replace(/['"\\]/g, '')
-    filterParts.push(`(code ~ "${term}" || title ~ "${term}" || neighborhood ~ "${term}")`)
+    const digits = term.replace(/\D/g, '')
+    const searchConditions: string[] = [
+      `code ~ "${term}"`,
+      `title ~ "${term}"`,
+      `street ~ "${term}"`,
+      `street_number ~ "${term}"`,
+      `neighborhood ~ "${term}"`,
+      `city ~ "${term}"`,
+      `zip_code ~ "${term}"`,
+    ]
+    if (digits && digits !== term) {
+      searchConditions.push(`zip_code ~ "${digits}"`)
+    }
+    filterParts.push(`(${searchConditions.join(' || ')})`)
   }
 
   // Tipo de imóvel
@@ -632,22 +652,55 @@ export async function listProperties(params: ListPropertiesParams = {}) {
     filterParts.push(`bedrooms >= ${minBedrooms}`)
   }
 
-  // Faixa de preço (mínimo e máximo aplicada a venda ou locação)
-  // "um imóvel aparece se algum dos dois preços cair na faixa"
-  // Valores zero no banco significam "não informado", então preços válidos devem ser > 0
+  // Vagas (mínimo)
+  if (typeof minParking === 'number' && minParking > 0) {
+    filterParts.push(`parking >= ${minParking}`)
+  }
+
+  // Captador (captured_by)
+  if (capturedBy && capturedBy.trim()) {
+    filterParts.push(`captured_by = "${capturedBy.trim().replace(/['"\\]/g, '')}"`)
+  }
+
+  // Faixa de preço (mínimo e máximo):
+  // Regra de filtro: se a finalidade for Venda, filtra pelo preço de venda;
+  // se for Locação, pelo preço de locação;
+  // se for Todas, o imóvel entra quando um dos dois preços estiver na faixa.
+  // Valores zero no banco significam "não informado", então preços válidos devem ser > 0.
   const hasMin = typeof minPrice === 'number' && minPrice > 0
   const hasMax = typeof maxPrice === 'number' && maxPrice > 0
 
-  if (hasMin && hasMax) {
-    filterParts.push(
-      `((sale_price >= ${minPrice} && sale_price <= ${maxPrice}) || (rent_price >= ${minPrice} && rent_price <= ${maxPrice}))`,
-    )
-  } else if (hasMin) {
-    filterParts.push(`(sale_price >= ${minPrice} || rent_price >= ${minPrice})`)
-  } else if (hasMax) {
-    filterParts.push(
-      `((sale_price > 0 && sale_price <= ${maxPrice}) || (rent_price > 0 && rent_price <= ${maxPrice}))`,
-    )
+  if (hasMin || hasMax) {
+    if (purpose === 'venda') {
+      if (hasMin && hasMax) {
+        filterParts.push(`(sale_price >= ${minPrice} && sale_price <= ${maxPrice})`)
+      } else if (hasMin) {
+        filterParts.push(`sale_price >= ${minPrice}`)
+      } else if (hasMax) {
+        filterParts.push(`(sale_price > 0 && sale_price <= ${maxPrice})`)
+      }
+    } else if (purpose === 'locacao') {
+      if (hasMin && hasMax) {
+        filterParts.push(`(rent_price >= ${minPrice} && rent_price <= ${maxPrice})`)
+      } else if (hasMin) {
+        filterParts.push(`rent_price >= ${minPrice}`)
+      } else if (hasMax) {
+        filterParts.push(`(rent_price > 0 && rent_price <= ${maxPrice})`)
+      }
+    } else {
+      // Finalidade 'Todas' (ou não informada): um dos dois preços na faixa
+      if (hasMin && hasMax) {
+        filterParts.push(
+          `((sale_price >= ${minPrice} && sale_price <= ${maxPrice}) || (rent_price >= ${minPrice} && rent_price <= ${maxPrice}))`,
+        )
+      } else if (hasMin) {
+        filterParts.push(`(sale_price >= ${minPrice} || rent_price >= ${minPrice})`)
+      } else if (hasMax) {
+        filterParts.push(
+          `((sale_price > 0 && sale_price <= ${maxPrice}) || (rent_price > 0 && rent_price <= ${maxPrice}))`,
+        )
+      }
+    }
   }
 
   // Aba "Pendentes de revisão": status em (rascunho, disponivel, reservado) e last_reviewed_at < hoje menos 7 dias
@@ -716,6 +769,7 @@ export async function createProperty(
   if (input.zip_code !== undefined) payload.zip_code = input.zip_code.trim()
   if (Array.isArray(input.publish_to)) payload.publish_to = input.publish_to
   if (typeof input.bedrooms === 'number' && input.bedrooms > 0) payload.bedrooms = input.bedrooms
+  if (typeof input.suites === 'number' && input.suites >= 0) payload.suites = input.suites
   if (typeof input.bathrooms === 'number' && input.bathrooms > 0)
     payload.bathrooms = input.bathrooms
   if (typeof input.parking === 'number' && input.parking > 0) payload.parking = input.parking
@@ -771,6 +825,7 @@ export async function updateProperty(
   if (input.publish_to !== undefined) payload.publish_to = input.publish_to
 
   if (input.bedrooms !== undefined) payload.bedrooms = input.bedrooms > 0 ? input.bedrooms : 0
+  if (input.suites !== undefined) payload.suites = input.suites > 0 ? input.suites : 0
   if (input.bathrooms !== undefined) payload.bathrooms = input.bathrooms > 0 ? input.bathrooms : 0
   if (input.parking !== undefined) payload.parking = input.parking > 0 ? input.parking : 0
   if (input.area !== undefined) payload.area = input.area > 0 ? input.area : 0

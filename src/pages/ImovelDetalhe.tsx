@@ -28,6 +28,7 @@ import {
 } from '@/services/properties'
 import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/clients'
 import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
+import { formatRoomsText, formatParkingText } from '@/lib/propertyCardUtils'
 import { getCondoPhotoUrl } from '@/services/condominiums'
 import { formatPhoneNumber, formatDate } from '@/lib/clientUtils'
 import {
@@ -736,6 +737,19 @@ export default function ImovelDetalhe() {
             <h1 className="text-lg sm:text-2xl md:text-3xl font-light tracking-tight text-foreground mt-0.5 line-clamp-2">
               {displayTitle}
             </h1>
+            {(formatRoomsText(property.bedrooms, property.suites) ||
+              formatParkingText(property.parking)) && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                {formatRoomsText(property.bedrooms, property.suites) && (
+                  <span>{formatRoomsText(property.bedrooms, property.suites)}</span>
+                )}
+                {formatRoomsText(property.bedrooms, property.suites) &&
+                  formatParkingText(property.parking) && <span>·</span>}
+                {formatParkingText(property.parking) && (
+                  <span>{formatParkingText(property.parking)}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1114,11 +1128,17 @@ export default function ImovelDetalhe() {
             <span>Características e Valores</span>
           </div>
           <div className="space-y-3 text-xs">
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
                 <p className="eyebrow text-muted-foreground text-[10px]">Quartos</p>
                 <p className="tabular text-sm font-normal text-foreground mt-0.5">
                   {property.bedrooms && property.bedrooms > 0 ? property.bedrooms : '—'}
+                </p>
+              </div>
+              <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
+                <p className="eyebrow text-muted-foreground text-[10px]">Suítes</p>
+                <p className="tabular text-sm font-normal text-foreground mt-0.5">
+                  {property.suites && property.suites > 0 ? property.suites : '0'}
                 </p>
               </div>
               <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
@@ -1133,7 +1153,7 @@ export default function ImovelDetalhe() {
                   {property.parking && property.parking > 0 ? property.parking : '—'}
                 </p>
               </div>
-              <div className="p-2 rounded-lg border border-border bg-muted/20 text-center">
+              <div className="p-2 rounded-lg border border-border bg-muted/20 text-center col-span-2 sm:col-span-1">
                 <p className="eyebrow text-muted-foreground text-[10px]">Área</p>
                 <p className="tabular text-sm font-normal text-foreground mt-0.5">
                   {property.area && property.area > 0 ? `${property.area} m²` : '—'}

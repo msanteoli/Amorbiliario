@@ -70,6 +70,7 @@ export interface PropertyFormData {
 
   // Características
   bedrooms: string
+  suites: string
   bathrooms: string
   parking: string
   area: string
@@ -191,6 +192,7 @@ export function PropertyForm({
 
   // Características
   const [bedrooms, setBedrooms] = useState(initialData?.bedrooms || '')
+  const [suites, setSuites] = useState(initialData?.suites || '')
   const [bathrooms, setBathrooms] = useState(initialData?.bathrooms || '')
   const [parking, setParking] = useState(initialData?.parking || '')
   const [area, setArea] = useState(initialData?.area || '')
@@ -341,6 +343,7 @@ export function PropertyForm({
       }
 
       if (initialData.bedrooms !== undefined) setBedrooms(initialData.bedrooms)
+      if (initialData.suites !== undefined) setSuites(initialData.suites)
       if (initialData.bathrooms !== undefined) setBathrooms(initialData.bathrooms)
       if (initialData.parking !== undefined) setParking(initialData.parking)
       if (initialData.area !== undefined) setArea(initialData.area)
@@ -420,6 +423,19 @@ export function PropertyForm({
     setZeroValueError(null)
     setPurposeError(null)
 
+    // Validação de quartos e suítes:
+    // Suítes não pode ser maior que Quartos. Se for, mostrar exatamente a mensagem
+    // "Suítes não pode ser maior que o número de quartos." e não deixar salvar.
+    const numBedrooms = bedrooms ? parseInt(bedrooms, 10) : 0
+    const numSuites = suites ? parseInt(suites, 10) : 0
+    const validBed = !isNaN(numBedrooms) ? numBedrooms : 0
+    const validSui = !isNaN(numSuites) ? numSuites : 0
+
+    if (validSui > validBed) {
+      setZeroValueError('Suítes não pode ser maior que o número de quartos.')
+      return
+    }
+
     // Validação da Finalidade (duas caixas de seleção)
     if (!purposeVenda && !purposeLocacao) {
       setPurposeError('Marque venda, locação ou as duas')
@@ -482,6 +498,7 @@ export function PropertyForm({
       zip_code: zipCode.trim(),
       publish_to: nextPublishTo,
       bedrooms: bedrooms.trim(),
+      suites: suites.trim(),
       bathrooms: bathrooms.trim(),
       parking: parking.trim(),
       area: area.trim(),
@@ -1043,7 +1060,7 @@ export function PropertyForm({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <div className="space-y-1.5">
             <label
               htmlFor="prop-bedrooms"
@@ -1059,6 +1076,21 @@ export function PropertyForm({
               placeholder="0"
               value={bedrooms}
               onChange={(e) => setBedrooms(e.target.value)}
+              className="h-12 text-sm border-border tabular"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="prop-suites" className="text-[13px] font-normal text-foreground block">
+              Suítes
+            </label>
+            <Input
+              id="prop-suites"
+              type="number"
+              min="0"
+              max="99"
+              placeholder="0"
+              value={suites}
+              onChange={(e) => setSuites(e.target.value)}
               className="h-12 text-sm border-border tabular"
             />
           </div>
@@ -1095,7 +1127,7 @@ export function PropertyForm({
               className="h-12 text-sm border-border tabular"
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 col-span-2 sm:col-span-1">
             <label htmlFor="prop-area" className="text-[13px] font-normal text-foreground block">
               Área (m²)
             </label>

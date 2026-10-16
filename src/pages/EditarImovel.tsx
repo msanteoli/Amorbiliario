@@ -89,6 +89,7 @@ export default function EditarImovel() {
           zip_code: prop.zip_code || '',
           publish_to: Array.isArray(prop.publish_to) ? prop.publish_to : [],
           bedrooms: prop.bedrooms && prop.bedrooms > 0 ? String(prop.bedrooms) : '',
+          suites: prop.suites && prop.suites > 0 ? String(prop.suites) : '',
           bathrooms: prop.bathrooms && prop.bathrooms > 0 ? String(prop.bathrooms) : '',
           parking: prop.parking && prop.parking > 0 ? String(prop.parking) : '',
           area: prop.area && prop.area > 0 ? String(prop.area) : '',
@@ -189,6 +190,7 @@ export default function EditarImovel() {
 
     // Processa cômodos e área
     const bedrooms = formData.bedrooms ? parseInt(formData.bedrooms, 10) : 0
+    const suites = formData.suites ? parseInt(formData.suites, 10) : 0
     const bathrooms = formData.bathrooms ? parseInt(formData.bathrooms, 10) : 0
     const parking = formData.parking ? parseInt(formData.parking, 10) : 0
     const area = formData.area ? parseFloat(formData.area.replace(',', '.')) : 0
@@ -227,6 +229,7 @@ export default function EditarImovel() {
         zip_code: formData.zip_code ? formData.zip_code.replace(/\D/g, '') : '',
         publish_to: formData.publish_to,
         bedrooms: !isNaN(bedrooms) ? bedrooms : 0,
+        suites: !isNaN(suites) ? suites : 0,
         bathrooms: !isNaN(bathrooms) ? bathrooms : 0,
         parking: !isNaN(parking) ? parking : 0,
         area: !isNaN(area) ? area : 0,

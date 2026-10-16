@@ -15,6 +15,9 @@ import {
   getPhotoFileUrl,
   formatErrorMessage,
 } from '@/services/properties'
+import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/clients'
+import { formatRoomsText, formatParkingText } from '@/lib/propertyCardUtils'
+import { maskCurrencyInput, parseCurrencyInput } from '@/lib/currencyUtils'
 import { useAuth } from '@/contexts/AuthContext'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -83,8 +86,25 @@ export default function Imoveis() {
   const [selectedPurpose, setSelectedPurpose] = useState<PropertyPurpose | ''>('')
   const [selectedStatus, setSelectedStatus] = useState<PropertyStatus | ''>('')
   const [minBedroomsInput, setMinBedroomsInput] = useState<string>('')
+  const [minParkingInput, setMinParkingInput] = useState<string>('')
+  const [selectedCaptador, setSelectedCaptador] = useState<string>('')
   const [minPriceInput, setMinPriceInput] = useState<string>('')
   const [maxPriceInput, setMaxPriceInput] = useState<string>('')
+
+  // Usuários corretores e admins para o filtro de captador
+  const [captadores, setCaptadores] = useState<ResponsibleUser[]>([])
+
+  useEffect(() => {
+    let active = true
+    listEligibleResponsibleUsers()
+      .then((items) => {
+        if (active) setCaptadores(items)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Debounce de 300 ms para o campo de busca
   useEffect(() => {
@@ -102,8 +122,9 @@ export default function Imoveis() {
     setErrorMessage(null)
 
     const minBed = minBedroomsInput ? Number(minBedroomsInput) : undefined
-    const minP = minPriceInput ? Number(minPriceInput) : undefined
-    const maxP = maxPriceInput ? Number(maxPriceInput) : undefined
+    const minPark = minParkingInput ? Number(minParkingInput) : undefined
+    const minP = parseCurrencyInput(minPriceInput)
+    const maxP = parseCurrencyInput(maxPriceInput)
 
     listProperties({
       page: currentPage,
@@ -113,8 +134,10 @@ export default function Imoveis() {
       purpose: selectedPurpose || undefined,
       status: selectedStatus || undefined,
       minBedrooms: Number.isNaN(minBed) ? undefined : minBed,
-      minPrice: Number.isNaN(minP) ? undefined : minP,
-      maxPrice: Number.isNaN(maxP) ? undefined : maxP,
+      minParking: Number.isNaN(minPark) ? undefined : minPark,
+      capturedBy: selectedCaptador || undefined,
+      minPrice: minP !== undefined && !Number.isNaN(minP) ? minP : undefined,
+      maxPrice: maxP !== undefined && !Number.isNaN(maxP) ? maxP : undefined,
       pendingReviewOnly: activeTab === 'pendentes',
       importBatchId: importBatchIdParam || undefined,
       sort: '-created',
@@ -143,6 +166,8 @@ export default function Imoveis() {
     selectedPurpose,
     selectedStatus,
     minBedroomsInput,
+    minParkingInput,
+    selectedCaptador,
     minPriceInput,
     maxPriceInput,
     activeTab,
@@ -155,6 +180,8 @@ export default function Imoveis() {
     setSelectedPurpose('')
     setSelectedStatus('')
     setMinBedroomsInput('')
+    setMinParkingInput('')
+    setSelectedCaptador('')
     setMinPriceInput('')
     setMaxPriceInput('')
     if (importBatchIdParam) {
@@ -170,6 +197,8 @@ export default function Imoveis() {
     selectedPurpose ||
     selectedStatus ||
     minBedroomsInput ||
+    minParkingInput ||
+    selectedCaptador ||
     minPriceInput ||
     maxPriceInput ||
     importBatchIdParam,
@@ -256,7 +285,7 @@ export default function Imoveis() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Buscar por código, título ou bairro..."
+            placeholder="Buscar por código, endereço, bairro ou título..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="w-full h-12 pl-11 pr-4 rounded-full border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -328,6 +357,27 @@ export default function Imoveis() {
             </SelectContent>
           </Select>
 
+          {/* Captador */}
+          <Select
+            value={selectedCaptador || 'todos'}
+            onValueChange={(val) => {
+              setSelectedCaptador(val === 'todos' ? '' : val)
+              setCurrentPage(1)
+            }}
+          >
+            <SelectTrigger className="h-9 rounded-full px-3.5 text-xs border-border bg-background shrink-0 w-auto min-w-[140px]">
+              <SelectValue placeholder="Captador" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os captadores</SelectItem>
+              {captadores.map((cap) => (
+                <SelectItem key={cap.id} value={cap.id}>
+                  {cap.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* Quartos */}
           <Select
             value={minBedroomsInput || 'todos'}
@@ -347,6 +397,63 @@ export default function Imoveis() {
               <SelectItem value="4">4+ quartos</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Vagas */}
+          <Select
+            value={minParkingInput || 'todos'}
+            onValueChange={(val) => {
+              setMinParkingInput(val === 'todos' ? '' : val)
+              setCurrentPage(1)
+            }}
+          >
+            <SelectTrigger className="h-9 rounded-full px-3.5 text-xs border-border bg-background shrink-0 w-auto min-w-[110px]">
+              <SelectValue placeholder="Vagas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Vagas: qualquer</SelectItem>
+              <SelectItem value="1">1+</SelectItem>
+              <SelectItem value="2">2+</SelectItem>
+              <SelectItem value="3">3+</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Preço mín. */}
+          <div className="relative shrink-0 w-28 sm:w-32">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-normal text-muted-foreground pointer-events-none">
+              R$
+            </span>
+            <Input
+              type="text"
+              placeholder="Preço mín."
+              value={minPriceInput}
+              onChange={(e) => {
+                const val = e.target.value
+                const formatted = val ? maskCurrencyInput(val) : ''
+                setMinPriceInput(formatted)
+                setCurrentPage(1)
+              }}
+              className="h-9 rounded-full pl-8 pr-2.5 text-xs border-border bg-background tabular"
+            />
+          </div>
+
+          {/* Preço máx. */}
+          <div className="relative shrink-0 w-28 sm:w-32">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-normal text-muted-foreground pointer-events-none">
+              R$
+            </span>
+            <Input
+              type="text"
+              placeholder="Preço máx."
+              value={maxPriceInput}
+              onChange={(e) => {
+                const val = e.target.value
+                const formatted = val ? maskCurrencyInput(val) : ''
+                setMaxPriceInput(formatted)
+                setCurrentPage(1)
+              }}
+              className="h-9 rounded-full pl-8 pr-2.5 text-xs border-border bg-background tabular"
+            />
+          </div>
 
           {hasActiveFilters && (
             <button
@@ -518,7 +625,10 @@ export default function Imoveis() {
                       </div>
                       <span className="text-xs text-muted-foreground">
                         {PROPERTY_TYPE_LABELS[property.property_type] || property.property_type}
-                        {property.bedrooms ? ` · ${property.bedrooms} qto(s)` : ''}
+                        {formatRoomsText(property.bedrooms, property.suites) &&
+                          ` · ${formatRoomsText(property.bedrooms, property.suites)}`}
+                        {formatParkingText(property.parking) &&
+                          ` · ${formatParkingText(property.parking)}`}
                       </span>
                     </div>
 
@@ -691,6 +801,14 @@ export default function Imoveis() {
                     <span className="font-normal text-xs text-foreground line-clamp-1 mt-0.5">
                       {property.title ||
                         `${PROPERTY_TYPE_LABELS[property.property_type] || property.property_type} · ${property.neighborhood || 'Sem bairro'} · ${property.code}`}
+                    </span>
+
+                    <span className="text-[11px] text-muted-foreground truncate block">
+                      {PROPERTY_TYPE_LABELS[property.property_type] || property.property_type}
+                      {formatRoomsText(property.bedrooms, property.suites) &&
+                        ` · ${formatRoomsText(property.bedrooms, property.suites)}`}
+                      {formatParkingText(property.parking) &&
+                        ` · ${formatParkingText(property.parking)}`}
                     </span>
 
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-1">

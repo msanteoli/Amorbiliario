@@ -67,6 +67,7 @@ export default function NovoImovel() {
 
     // Processa números de cômodos e área
     const bedrooms = formData.bedrooms ? parseInt(formData.bedrooms, 10) : undefined
+    const suites = formData.suites ? parseInt(formData.suites, 10) : undefined
     const bathrooms = formData.bathrooms ? parseInt(formData.bathrooms, 10) : undefined
     const parking = formData.parking ? parseInt(formData.parking, 10) : undefined
     const area = formData.area ? parseFloat(formData.area.replace(',', '.')) : undefined
@@ -98,6 +99,7 @@ export default function NovoImovel() {
           publish_to: formData.publish_to,
           bedrooms:
             typeof bedrooms === 'number' && !isNaN(bedrooms) && bedrooms > 0 ? bedrooms : undefined,
+          suites: typeof suites === 'number' && !isNaN(suites) && suites > 0 ? suites : 0,
           bathrooms:
             typeof bathrooms === 'number' && !isNaN(bathrooms) && bathrooms > 0
               ? bathrooms
