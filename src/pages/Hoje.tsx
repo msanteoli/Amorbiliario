@@ -24,8 +24,9 @@ import { Cota } from '@/components/Cota'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { RefreshCw, ChevronRight, AlertCircle, AlertTriangle } from 'lucide-react'
+import { RefreshCw, ChevronRight, AlertCircle, AlertTriangle, X } from 'lucide-react'
 import { getRoleLabel } from '@/lib/roles'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   getGoogleStatus,
   getGoogleConnectUrl,
@@ -39,11 +40,13 @@ import { getLeadStageBadgeVariant, getVisitStatusBadgeVariant } from '@/lib/badg
 
 export default function Hoje() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [data, setData] = useState<TodayResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [ownersWithoutProp, setOwnersWithoutProp] = useState<OwnerWithoutPropertyItem[]>([])
+  const [dismissedCount, setDismissedCount] = useState<number | null>(null)
   const [googleStatus, setGoogleStatus] = useState<GoogleConnectionStatus | null>(null)
   const [googleConnecting, setGoogleConnecting] = useState(false)
   const [googleConfigError, setGoogleConfigError] = useState<string | null>(null)
@@ -52,6 +55,42 @@ export default function Hoje() {
   const [rescheduleVisitModalOpen, setRescheduleVisitModalOpen] = useState(false)
   const [rescheduleTargetVisit, setRescheduleTargetVisit] = useState<VisitRecord | null>(null)
   const [initialRescheduleAction, setInitialRescheduleAction] = useState<boolean>(false)
+
+  // Carrega o descarte guardado no localStorage para o usuário logado
+  useEffect(() => {
+    if (!user?.id) {
+      setDismissedCount(null)
+      return
+    }
+    try {
+      const storageKey = `aviso-proprietarios-sem-imovel:${user.id}`
+      const stored = localStorage.getItem(storageKey)
+      if (stored !== null && stored.trim() !== '') {
+        const parsed = Number(stored)
+        if (!Number.isNaN(parsed) && Number.isFinite(parsed) && parsed >= 0) {
+          setDismissedCount(parsed)
+          return
+        }
+      }
+      setDismissedCount(null)
+    } catch {
+      // Falha silenciosa em caso de restrição no localStorage (modo anônimo, cookies bloqueados)
+      setDismissedCount(null)
+    }
+  }, [user?.id])
+
+  const handleDismissOwnersWarning = useCallback(() => {
+    const currentCount = ownersWithoutProp.length
+    setDismissedCount(currentCount)
+    if (user?.id) {
+      try {
+        const storageKey = `aviso-proprietarios-sem-imovel:${user.id}`
+        localStorage.setItem(storageKey, String(currentCount))
+      } catch {
+        // Falha silenciosa se o localStorage estiver bloqueado
+      }
+    }
+  }, [ownersWithoutProp.length, user?.id])
 
   const loadOwnersWarning = useCallback(async () => {
     try {
@@ -760,36 +799,48 @@ export default function Hoje() {
               />
 
               {/* Aviso de proprietários sem imóvel (M7) */}
-              {ownersWithoutProp.length > 0 && (
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="rounded-lg border border-attention/30 bg-attention/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div className="flex items-start gap-3 min-w-0">
-                    <AlertTriangle className="h-5 w-5 text-attention shrink-0 mt-0.5" />
-                    <div className="space-y-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">
-                        {ownersWithoutProp.length === 1
-                          ? '1 proprietário sem imóvel ligado'
-                          : `${ownersWithoutProp.length} proprietários sem imóvel ligado`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Proprietário é quem tem um imóvel com a imobiliária. Quem vendeu o imóvel
-                        continua como cliente.
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate('/admin?tab=sem-imovel')}
-                    className="rounded-full border-attention/40 text-foreground hover:bg-attention/15 min-h-[44px] h-11 px-5 text-xs font-normal shrink-0 self-start sm:self-auto"
+              {ownersWithoutProp.length > 0 &&
+                (dismissedCount === null || ownersWithoutProp.length > dismissedCount) && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="relative rounded-lg border border-attention/30 bg-attention/10 p-4 sm:pr-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
-                    Ver lista
-                  </Button>
-                </div>
-              )}
+                    <button
+                      type="button"
+                      onClick={handleDismissOwnersWarning}
+                      aria-label="Fechar aviso"
+                      title="Fechar aviso"
+                      className="absolute top-3 right-3 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-attention/20 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Fechar aviso</span>
+                    </button>
+
+                    <div className="flex items-start gap-3 min-w-0 pr-6 sm:pr-0">
+                      <AlertTriangle className="h-5 w-5 text-attention shrink-0 mt-0.5" />
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {ownersWithoutProp.length === 1
+                            ? '1 proprietário sem imóvel ligado'
+                            : `${ownersWithoutProp.length} proprietários sem imóvel ligado`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Proprietário é quem tem um imóvel com a imobiliária. Quem vendeu o imóvel
+                          continua como cliente.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate('/admin?tab=sem-imovel')}
+                      className="rounded-full border-attention/40 text-foreground hover:bg-attention/15 min-h-[44px] h-11 px-5 text-xs font-normal shrink-0 self-start sm:self-auto"
+                    >
+                      Ver lista
+                    </Button>
+                  </div>
+                )}
 
               {renderLeadsByStageSection(data.sections.leads_by_stage)}
 
