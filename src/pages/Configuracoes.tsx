@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme, type ThemePreference } from '@/contexts/ThemeContext'
 import { requestPasswordReset } from '@/services/auth'
+import pb from '@/lib/pocketbase/client'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
+import { Input } from '@/components/ui/input'
 import {
   getGoogleStatus,
   getGoogleConnectUrl,
@@ -27,6 +30,43 @@ import { cn } from '@/lib/utils'
 export default function Configuracoes() {
   const { user } = useAuth()
   const { theme, setTheme } = useTheme()
+
+  // Edição do nome próprio
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState(user?.name || '')
+  const [savingName, setSavingName] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!editingName) {
+      setNameInput(user?.name || '')
+    }
+  }, [user?.name, editingName])
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setNameError(null)
+    const trimmed = nameInput.trim()
+    if (trimmed.length < 2 || trimmed.length > 60) {
+      setNameError('O nome deve ter entre 2 e 60 caracteres.')
+      return
+    }
+    if (!user?.id) return
+
+    setSavingName(true)
+    try {
+      const updated = await pb.collection('users').update(user.id, { name: trimmed })
+      if (pb.authStore.record && pb.authStore.record.id === user.id) {
+        pb.authStore.save(pb.authStore.token, updated)
+      }
+      setEditingName(false)
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err)
+      setNameError(msg)
+    } finally {
+      setSavingName(false)
+    }
+  }
 
   // Trocar senha
   const [sendingReset, setSendingReset] = useState(false)
@@ -174,11 +214,72 @@ export default function Configuracoes() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border/60">
-              <div>
+              <div className="space-y-1.5 sm:col-span-1">
                 <span className="text-xs font-sans text-muted-foreground block">Nome</span>
-                <span className="text-sm font-sans font-medium text-foreground block mt-0.5 truncate">
-                  {user?.name || 'Não informado'}
-                </span>
+                {editingName ? (
+                  <form onSubmit={handleSaveName} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="text"
+                        value={nameInput}
+                        onChange={(e) => {
+                          setNameInput(e.target.value)
+                          if (nameError) setNameError(null)
+                        }}
+                        disabled={savingName}
+                        placeholder="Seu nome"
+                        minLength={2}
+                        maxLength={60}
+                        className="h-9 text-sm font-sans border-border"
+                        autoFocus
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={
+                          savingName || nameInput.trim().length < 2 || nameInput.trim().length > 60
+                        }
+                        className="h-9 px-3 rounded-md font-sans text-xs shrink-0"
+                      >
+                        {savingName ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Salvar'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={savingName}
+                        onClick={() => {
+                          setEditingName(false)
+                          setNameInput(user?.name || '')
+                          setNameError(null)
+                        }}
+                        className="h-9 px-2 text-xs font-sans text-muted-foreground hover:text-foreground shrink-0"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                    {nameError && <p className="text-xs text-destructive font-sans">{nameError}</p>}
+                  </form>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-sans font-medium text-foreground block mt-0.5 truncate">
+                      {user?.name || 'Não informado'}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setNameInput(user?.name || '')
+                        setNameError(null)
+                        setEditingName(true)
+                      }}
+                      className="h-8 px-2.5 text-xs font-sans rounded-md border-border text-muted-foreground hover:text-foreground shrink-0"
+                    >
+                      Alterar
+                    </Button>
+                  </div>
+                )}
               </div>
               <div>
                 <span className="text-xs font-sans text-muted-foreground block">Papel</span>

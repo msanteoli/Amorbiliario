@@ -157,7 +157,7 @@ export function isNavItemActive(
   if (currentPath === itemPath) return true
   if (currentPath.startsWith(`${itemPath}/`)) return true
 
-  // Configurações: /admin, /portais, /backup também fazem parte de Configurações para efeito de menu
+  // Configurações: /admin, /portais, /integracoes, /backup também fazem parte de Configurações para efeito de menu
   if (itemPath === '/configuracoes') {
     if (
       currentPath === '/configuracoes' ||
@@ -166,6 +166,8 @@ export function isNavItemActive(
       currentPath.startsWith('/admin/') ||
       currentPath === '/portais' ||
       currentPath.startsWith('/portais/') ||
+      currentPath === '/integracoes' ||
+      currentPath.startsWith('/integracoes/') ||
       currentPath === '/backup' ||
       currentPath.startsWith('/backup/')
     ) {
@@ -209,6 +211,8 @@ export function getBreadcrumbForPath(pathname: string): { group?: string; screen
     pathname.startsWith('/admin/') ||
     pathname === '/portais' ||
     pathname.startsWith('/portais/') ||
+    pathname === '/integracoes' ||
+    pathname.startsWith('/integracoes/') ||
     pathname === '/backup' ||
     pathname.startsWith('/backup/')
   ) {

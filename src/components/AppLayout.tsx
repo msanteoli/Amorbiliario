@@ -18,12 +18,13 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { useAuth } from '@/contexts/AuthContext'
-import { getOrganization } from '@/services/admin'
+
 import { AmorbiliarioLogo } from '@/components/AmorbiliarioLogo'
 import { listLeads } from '@/services/leads'
 import { listVisits } from '@/services/visits'
 import { QuickSearchModal } from '@/components/QuickSearchModal'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { FirstAccessModal } from '@/components/FirstAccessModal'
 import {
   Search,
   ChevronDown,
@@ -72,8 +73,13 @@ function getUserInitials(name?: string, email?: string): string {
 }
 
 function getUserDisplayName(name?: string, email?: string): string {
-  if (name && name.trim()) return name.trim()
-  if (email && email.trim()) return email.split('@')[0]
+  if (name && name.trim()) {
+    // Retorna apenas o primeiro nome (ex.: "Matheus")
+    return name.trim().split(/\s+/)[0]
+  }
+  if (email && email.trim()) {
+    return email.split('@')[0]
+  }
   return 'Usuário'
 }
 
@@ -88,7 +94,6 @@ export function AppLayout() {
     navigate('/login', { replace: true })
   }
 
-  const [orgName, setOrgName] = useState<string>('')
   const [quickSearchOpen, setQuickSearchOpen] = useState(false)
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
 
@@ -161,21 +166,6 @@ export function AppLayout() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [])
 
-  // Carrega nome da organização
-  useEffect(() => {
-    let mounted = true
-    getOrganization()
-      .then((org) => {
-        if (mounted && org?.name) {
-          setOrgName(org.name)
-        }
-      })
-      .catch(() => {})
-    return () => {
-      mounted = false
-    }
-  }, [])
-
   // Carrega contagens de Leads e Agenda para badges
   const loadBadgeCounts = useCallback(async () => {
     if (!role) return
@@ -239,9 +229,8 @@ export function AppLayout() {
     })
   }, [location.pathname, location.search, role, openGroups])
 
-  // Indicadores deslizantes ativos no menu desktop (um para a área rolável e outro para o rodapé fixo)
+  // Indicador deslizante ativo no menu desktop (na área de navegação rolável)
   const scrollNavRef = useRef<HTMLElement>(null)
-  const footerNavRef = useRef<HTMLDivElement>(null)
 
   const [scrollIndicatorStyle, setScrollIndicatorStyle] = useState<{
     top: number
@@ -253,18 +242,7 @@ export function AppLayout() {
     visible: false,
   })
 
-  const [footerIndicatorStyle, setFooterIndicatorStyle] = useState<{
-    top: number
-    height: number
-    visible: boolean
-  }>({
-    top: 0,
-    height: 40,
-    visible: false,
-  })
-
   const updateActiveIndicator = useCallback(() => {
-    // 1. Verifica itens na área rolável (Painel, Atendimento, Imóveis)
     if (scrollNavRef.current) {
       const activeEl = scrollNavRef.current.querySelector<HTMLElement>('[aria-current="page"]')
       if (activeEl) {
@@ -277,22 +255,6 @@ export function AppLayout() {
         })
       } else {
         setScrollIndicatorStyle((prev) => ({ ...prev, visible: false }))
-      }
-    }
-
-    // 2. Verifica item no rodapé fixo (Configurações)
-    if (footerNavRef.current) {
-      const activeEl = footerNavRef.current.querySelector<HTMLElement>('[aria-current="page"]')
-      if (activeEl) {
-        const containerRect = footerNavRef.current.getBoundingClientRect()
-        const activeRect = activeEl.getBoundingClientRect()
-        setFooterIndicatorStyle({
-          top: activeRect.top - containerRect.top,
-          height: activeRect.height,
-          visible: true,
-        })
-      } else {
-        setFooterIndicatorStyle((prev) => ({ ...prev, visible: false }))
       }
     }
   }, [])
@@ -463,8 +425,21 @@ export function AppLayout() {
   const mobileActiveIndex = getMobileActiveIndex()
   const isMoreActive = mobileActiveIndex === 4
 
+  // Primeiro acesso: se o usuário estiver logado e name estiver vazio
+  const showFirstAccess = Boolean(user && (!user.name || !user.name.trim()))
+
   return (
     <div className="flex min-h-screen w-full bg-background text-foreground">
+      {/* Primeiro acesso: bloqueio obrigatório para informar nome */}
+      {showFirstAccess && user && (
+        <FirstAccessModal
+          userId={user.id}
+          onNameSaved={() => {
+            // Recarregamento suave ou o próprio listener authStore do AuthContext atualiza
+          }}
+        />
+      )}
+
       {/* Busca rápida com Ctrl+K */}
       <QuickSearchModal open={quickSearchOpen} onClose={() => setQuickSearchOpen(false)} />
 
@@ -579,9 +554,9 @@ export function AppLayout() {
           )}
         </div>
 
-        {/* Contêiner de Navegação: área rolável acima e rodapé fixo abaixo */}
+        {/* Contêiner de Navegação: área rolável com Configurações ao final e rodapé apenas com bloco do usuário */}
         <div className="flex-1 flex flex-col justify-between overflow-hidden relative">
-          {/* Grupos roláveis (Painel, Atendimento, Imóveis) */}
+          {/* Grupos roláveis (Painel, Atendimento, Imóveis e Configurações no fim) */}
           <nav
             ref={scrollNavRef}
             aria-label="Menu principal"
@@ -616,7 +591,7 @@ export function AppLayout() {
               {/* Painel (sozinho no topo) */}
               <div>{renderDesktopNavLink(PAINEL_NAV_ITEM)}</div>
 
-              {/* Grupos de navegação */}
+              {/* Grupos de navegação: Atendimento e Imóveis */}
               {visibleGroups.map((group) => {
                 const isOpen = openGroups[group.id] !== false
                 const groupId = group.id === 'atendimento' ? atendimentoGroupId : imoveisGroupId
@@ -671,39 +646,84 @@ export function AppLayout() {
                   </div>
                 )
               })}
+
+              {/* Divisor sutil e Configurações no fim da lista (item comum) */}
+              <div className="my-2 border-t border-[var(--nav-line)] mx-1" aria-hidden="true" />
+              <div>{renderDesktopNavLink(CONFIGURACOES_NAV_ITEM)}</div>
             </div>
           </nav>
 
-          {/* Rodapé fixo do menu: separado por divisor --nav-line com pequeno espaço acima */}
-          <div
-            ref={footerNavRef}
-            className="px-3 pt-2 pb-2 shrink-0 border-t border-[var(--nav-line)] mt-1 bg-transparent relative z-20"
-          >
-            {/* Indicador deslizante específico para o rodapé */}
-            {footerIndicatorStyle.visible && (
-              <div
-                className={cn(
-                  'absolute rounded-[4px] bg-[var(--nav-active)] transition-all duration-[260ms] pointer-events-none z-[5]',
-                  sidebarCollapsed ? 'left-1/2 -translate-x-1/2 w-10' : 'left-3 right-3',
-                )}
-                style={{
-                  top: `${footerIndicatorStyle.top}px`,
-                  height: `${footerIndicatorStyle.height}px`,
-                  transitionTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-                }}
-                aria-hidden="true"
-              >
-                {/* Filete de 3px à esquerda com brilho */}
-                <span
-                  className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l bg-[var(--nav-accent)]"
-                  style={{
-                    boxShadow: '0 0 10px 1px rgba(142, 166, 255, 0.55)',
-                  }}
-                />
-              </div>
-            )}
+          {/* Rodapé do menu desktop: Bloco do usuário */}
+          <div className="p-3 shrink-0 border-t border-[var(--nav-line)] bg-transparent relative z-20">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Opções do usuário"
+                  className={cn(
+                    'w-full flex items-center gap-2.5 p-1.5 rounded-[6px] hover:bg-[var(--nav-hover)] transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-accent)] select-none text-left',
+                    sidebarCollapsed ? 'justify-center p-1' : '',
+                  )}
+                >
+                  <div className="w-[34px] h-[34px] rounded-full bg-primary text-primary-foreground font-sans font-semibold text-[13px] flex items-center justify-center shrink-0 shadow-sm">
+                    {userInitials}
+                  </div>
 
-            <div className="relative z-10">{renderDesktopNavLink(CONFIGURACOES_NAV_ITEM)}</div>
+                  {!sidebarCollapsed && (
+                    <div className="min-w-0 flex-1">
+                      <div className="font-sans font-semibold text-[13px] leading-tight text-[var(--nav-ink)] truncate">
+                        {userDisplayName}
+                      </div>
+                      <div className="font-sans text-[11px] leading-tight text-[var(--nav-mute)] truncate mt-0.5">
+                        {userRoleFormatted}
+                      </div>
+                    </div>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                align={sidebarCollapsed ? 'center' : 'start'}
+                side="top"
+                sideOffset={10}
+                className="w-[220px] rounded-[8px] p-1.5 border border-[var(--nav-line)] bg-[var(--nav-bg)] text-[var(--nav-fg)] shadow-lg font-sans"
+              >
+                <DropdownMenuLabel className="font-normal px-2 py-1.5 border-b border-[var(--nav-line)] mb-1">
+                  <div className="text-xs font-semibold text-[var(--nav-ink)] truncate">
+                    {user?.name || userDisplayName}
+                  </div>
+                  <div className="text-[11px] text-[var(--nav-mute)] truncate font-mono">
+                    {user?.email}
+                  </div>
+                  <div className="text-[10px] text-[var(--nav-mute)] mt-0.5">
+                    {userRoleFormatted}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => navigate('/configuracoes')}
+                  className="cursor-pointer font-sans text-xs py-2 px-2 rounded hover:bg-[var(--nav-hover)] focus:bg-[var(--nav-hover)] text-[var(--nav-fg)] focus:text-[var(--nav-ink)]"
+                >
+                  <User className="h-4 w-4 mr-2 text-[var(--nav-mute)]" />
+                  <span>Minha conta</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('/configuracoes')}
+                  className="cursor-pointer font-sans text-xs py-2 px-2 rounded hover:bg-[var(--nav-hover)] focus:bg-[var(--nav-hover)] text-[var(--nav-fg)] focus:text-[var(--nav-ink)]"
+                >
+                  <Settings className="h-4 w-4 mr-2 text-[var(--nav-mute)]" />
+                  <span>Configurações</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[var(--nav-line)] my-1" />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer font-sans text-xs py-2 px-2 rounded text-destructive hover:text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span>Sair</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </aside>
@@ -746,7 +766,7 @@ export function AppLayout() {
                     {userDisplayName}
                   </div>
                   <div className="font-sans text-[12px] leading-tight text-muted-foreground truncate">
-                    {userRoleFormatted} {orgName ? `· ${orgName}` : ''}
+                    {userRoleFormatted}
                   </div>
                 </div>
 
@@ -844,9 +864,7 @@ export function AppLayout() {
                   <div className="text-xs text-muted-foreground truncate font-mono">
                     {user?.email}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {userRoleFormatted} {orgName ? `· ${orgName}` : ''}
-                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{userRoleFormatted}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

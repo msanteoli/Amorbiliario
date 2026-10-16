@@ -48,16 +48,9 @@ export const CONFIG_SECTIONS: ConfigSectionItem[] = [
     roles: ['admin'],
   },
   {
-    id: 'mcp',
-    label: 'Acesso MCP',
-    href: '/admin?aba=mcp',
-    icon: Key,
-    roles: ['admin'],
-  },
-  {
-    id: 'portais',
-    label: 'Portais',
-    href: '/portais',
+    id: 'integracoes',
+    label: 'Integrações',
+    href: '/integracoes',
     icon: Globe,
     roles: ['admin'],
   },
@@ -94,6 +87,18 @@ export function ConfigSidebar({ currentSection, className }: ConfigSidebarProps)
 
     if (item.id === 'minha-conta') {
       return currentPath === '/configuracoes'
+    }
+
+    if (item.id === 'integracoes') {
+      return (
+        currentPath === '/integracoes' ||
+        currentPath.startsWith('/integracoes/') ||
+        currentPath === '/portais' ||
+        currentPath.startsWith('/portais/') ||
+        (currentPath === '/admin' &&
+          (new URLSearchParams(currentSearch).get('aba') === 'mcp' ||
+            new URLSearchParams(currentSearch).get('tab') === 'mcp'))
+      )
     }
 
     if (item.href.startsWith('/admin')) {
