@@ -24,7 +24,6 @@ routerAdd(
     }
     const validCpf = (v) => {
       const d = digits(v)
-      present = v !== null && v !== undefined && v !== '' && v !== 0
       if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false
       let s = 0
       for (let i = 0; i < 9; i++) s += parseInt(d[i], 10) * (10 - i)
@@ -32,7 +31,7 @@ routerAdd(
       if (r === 10) r = 0
       if (r !== parseInt(d[9], 10)) return false
       s = 0
-      for (let i = 0; i < 10; i++) s += parseInt(d[i], 10) * (11 - i)
+      for (let i = 0; i < 10; i++) s += parseInt(d[10], 10) * (11 - i)
       r = (s * 10) % 11
       if (r === 10) r = 0
       return r === parseInt(d[10], 10)
@@ -87,8 +86,9 @@ routerAdd(
     if (!im.state) pendencias.push('UF')
 
     let res = null
-    // recusa decidida dentro da transação, antes de any gravação; auditada e devolvida depois dela
-    let denied = null // { collection, recordId, reason }
+    let captadorMudou = null
+    // recusa decidida dentro da transação; auditada e devolvida depois dela (mensagem neutra)
+    let denied = null
     $app.runInTransaction((tx) => {
       // toma o bloqueio de escrita já no início: transações simultâneas esperam em fila, sem disputar a sequência
       tx.db()
@@ -96,7 +96,37 @@ routerAdd(
         .bind({ id: orgId })
         .execute()
 
-      // 1) proprietário (só busca): id informado (confirmado na prévia) > CPF > telefone com o mesmo nome > novo
+      // regra de 16/10: quando quem importa não é o admin, cada admin ativo da organização recebe uma tarefa
+      // para confirmar o captador do imóvel. Só cria tarefa; não fecha nem altera nada.
+      const tarefaCaptador = (imovel) => {
+        if (role === 'admin') return
+        const admins = tx.findRecordsByFilter(
+          'users',
+          "organization_id = {:o} && role = 'admin' && active = true",
+          '',
+          50,
+          0,
+          { o: orgId },
+        )
+        admins.forEach((adm) => {
+          const t = new Record(tx.findCollectionByNameOrId('tasks'))
+          t.set('organization_id', orgId)
+          t.set('title', 'Confirmar captador: ' + imovel.getString('code'))
+          t.set(
+            'description',
+            'Imóvel importado por ' +
+              (actor.getString('name') || actor.getString('email')) +
+              '. Confirme o captador e troque se for outro corretor.',
+          )
+          t.set('assigned_to', adm.id)
+          t.set('status', 'aberta')
+          t.set('property_id', imovel.id)
+          t.set('created_by', actor.id)
+          tx.save(t)
+        })
+      }
+
+      // 1) proprietário: id informado (confirmado na prévia) > CPF > telefone com o mesmo nome > novo
       let owner = null
       if (body.owner_id) {
         try {
@@ -137,50 +167,12 @@ routerAdd(
         denied = { collection: 'clients', recordId: owner.id, reason: 'corretor_nao_responsavel' }
         return
       }
-
-      // 2) imóvel (só busca): o informado, ou o do mesmo endereço e proprietário, ou um novo
-      let prop = null
-      if (body.property_id) {
-        try {
-          prop = tx.findRecordById('properties', String(body.property_id))
-        } catch (_) {}
-        if (!prop || prop.getString('organization_id') !== orgId)
-          throw new NotFoundError('Imóvel não encontrado.')
-      }
-      if (!prop && owner && zipDigits.length === 8) {
-        const rows = tx.findRecordsByFilter(
-          'properties',
-          'organization_id = {:o} && owner_id = {:w} && street_number = {:n} && zip_code != "" && (zip_code = {:z} || zip_code = {:zf})',
-          '',
-          1,
-          0,
-          {
-            o: orgId,
-            w: owner.id,
-            n: String(im.street_number || ''),
-            z: zipDigits,
-            zf: zipDigits.slice(0, 5) + '-' + zipDigits.slice(5),
-          },
-        )
-        if (rows.length) prop = rows[0]
-      }
-      // mesma regra da coleção (updateRule): corretor só altera imóvel que ele captou
-      if (prop && role === 'corretor' && prop.getString('captured_by') !== actor.id) {
-        denied = {
-          collection: 'properties',
-          recordId: prop.id,
-          reason: 'recusa antes de gravar: corretor_nao_captou',
-        }
-        return
-      }
-
-      // 3) gravações: proprietário novo ou completado, CPF
       const ownerNew = !owner
       if (!owner) {
         const cl = new Record(tx.findCollectionByNameOrId('clients'))
         cl.set('organization_id', orgId)
         cl.set('name', name)
-        if (phone) cl.set('owner', phone)
+        if (phone) cl.set('phone', phone)
         cl.set('kind', ['proprietario'])
         cl.set('responsible_id', actor.id)
         tx.save(cl)
@@ -212,7 +204,32 @@ routerAdd(
         }
       }
 
-      // 4) imóvel: completa o encontrado ou cria um novo
+      // 2) imóvel: o informado, ou o do mesmo endereço e proprietário, ou um novo
+      let prop = null
+      if (body.property_id) {
+        try {
+          prop = tx.findRecordById('properties', String(body.property_id))
+        } catch (_) {}
+        if (!prop || prop.getString('organization_id') !== orgId)
+          throw new NotFoundError('Imóvel não encontrado.')
+      }
+      if (!prop && !ownerNew && zipDigits.length === 8) {
+        const rows = tx.findRecordsByFilter(
+          'properties',
+          'organization_id = {:o} && owner_id = {:w} && street_number = {:n} && zip_code != "" && (zip_code = {:z} || zip_code = {:zf})',
+          '',
+          1,
+          0,
+          {
+            o: orgId,
+            w: owner.id,
+            n: String(im.street_number || ''),
+            z: zipDigits,
+            zf: zipDigits.slice(0, 5) + '-' + zipDigits.slice(5),
+          },
+        )
+        if (rows.length) prop = rows[0]
+      }
       const fields = {
         street: im.street,
         street_number: String(im.street_number || 'S/N'),
@@ -231,17 +248,37 @@ routerAdd(
         iptu: im.iptu,
         description: im.description,
       }
-      const wanted = Array.isArray(body.selected_imovel_fields) ? body.selected_imovel_fields : null
-
+      // mesma regra da coleção (updateRule): corretor só altera imóvel que ele captou (e só ele muda o captador)
+      if (prop && role === 'corretor' && prop.getString('captured_by') !== actor.id) {
+        denied = { collection: 'properties', recordId: prop.id, reason: 'corretor_nao_captou' }
+        return
+      }
       if (prop) {
+        // regra de 16/10: a ficha nunca altera campo já preenchido; só preenche os vazios
         Object.keys(fields).forEach((k) => {
           const v = fields[k]
           if (isEmpty(v)) return
-          const explicit = wanted && wanted.indexOf(k) >= 0
-          if (isEmpty(prop.get(k)) || explicit) prop.set(k, v)
+          if (isEmpty(prop.get(k))) prop.set(k, v)
         })
         prop.set('owner_id', prop.getString('owner_id') || owner.id)
+        // captador indicado: quem sobe a ficha pode marcar outro corretor/admin ativo da organização como captador
+        const capId = String(body.captador_id || '')
+        if (capId && capId !== prop.getString('captured_by')) {
+          let cap = null
+          try {
+            cap = tx.findRecordById('users', capId)
+          } catch (_) {}
+          const capOk =
+            cap &&
+            cap.getString('organization_id') === orgId &&
+            cap.get('active') === true &&
+            ['corretor', 'admin'].indexOf(cap.getString('role')) >= 0
+          if (!capOk) throw new BadRequestError('Captador inválido.')
+          captadorMudou = { de: prop.getString('captured_by'), para: cap.id, imovel: prop.id }
+          prop.set('captured_by', cap.id)
+        }
         tx.save(prop)
+        tarefaCaptador(prop)
         res = { prop, owner, criado: false, ownerNew }
         return
       }
@@ -266,7 +303,6 @@ routerAdd(
       np.set('purpose', purpose)
       np.set('property_type', type)
       np.set('use_type', 'residencial')
-      np.set('status', 'rascartes')
       np.set('status', 'rascunho')
       np.set('source', 'ficha_pdf')
       np.set('captured_by', actor.id)
@@ -278,6 +314,7 @@ routerAdd(
         if (!isEmpty(fields[k])) np.set(k, fields[k])
       })
       tx.save(np)
+      tarefaCaptador(np)
       res = { prop: np, owner, criado: true, ownerNew }
     })
 
@@ -294,7 +331,6 @@ routerAdd(
         rec.set('occurred_at', new Date().toISOString())
         $app.save(rec)
       } catch (_) {}
-      // mensagem neutra para o proprietário: não confirma que a pessoa é cliente de outro corretor
       throw new ForbiddenError(
         denied.collection === 'properties'
           ? 'Você só pode completar imóveis que você captou. Fale com o administrador.'
@@ -303,6 +339,21 @@ routerAdd(
     }
 
     try {
+      if (captadorMudou) {
+        const ca = new Record($app.findCollectionByNameOrId('audit_log'))
+        ca.set('organization_id', orgId)
+        ca.set('actor_id', actor.id)
+        ca.set('actor_role', role)
+        ca.set('action', 'captador_indicado')
+        ca.set('collection_name', 'properties')
+        ca.set('record_id', captadorMudou.imovel)
+        ca.set(
+          'reason',
+          'captador_de=' + captadorMudou.de + '; captador_para=' + captadorMudou.para,
+        )
+        ca.set('occurred_at', new Date().toISOString())
+        $app.save(ca)
+      }
       const audit = new Record($app.findCollectionByNameOrId('audit_log'))
       audit.set('organization_id', orgId)
       audit.set('actor_id', actor.id)

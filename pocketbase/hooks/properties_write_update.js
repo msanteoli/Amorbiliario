@@ -109,7 +109,6 @@ onRecordUpdateRequest((e) => {
     if (pubAllowed.indexOf(String(pubRaw[i])) < 0)
       throw new BadRequestError('Opção de anúncio inválida.')
   }
-
   const pubOld = orig.getStringSlice('publish_to').slice().sort().join(',')
   const pubNew = rec.getStringSlice('publish_to').slice().sort().join(',')
   if (pubOld !== pubNew && ['admin', 'corretor'].indexOf(role) < 0) {
@@ -229,6 +228,24 @@ onRecordUpdateRequest((e) => {
 
   const res = e.next()
   try {
+    // troca de captador fecha a tarefa "Confirmar captador" aberta para este imóvel
+    if (capId !== orig.getString('captured_by')) {
+      const abertas = $app.findRecordsByFilter(
+        'tasks',
+        'organization_id = {:o} && property_id = {:p} && status = "aberta" && title ~ "Confirmar captador"',
+        '',
+        100,
+        0,
+        { o: rec.getString('organization_id'), p: rec.id },
+      )
+      const agora = new Date().toISOString()
+      abertas.forEach((t) => {
+        t.set('status', 'concluida')
+        t.set('closed_by', e.auth.id)
+        t.set('closed_at', agora)
+        $app.save(t)
+      })
+    }
     const col = $app.findCollectionByNameOrId('audit_log')
     changed.forEach((f) => {
       const audit = new Record(col)
