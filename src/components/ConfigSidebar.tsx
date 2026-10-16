@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { User, Users, Building, UserX, FileText, Globe, Database } from 'lucide-react'
+import { User, Users, Building, UserX, FileText, Globe, Database, Key } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ConfigSectionItem {
@@ -45,6 +45,13 @@ export const CONFIG_SECTIONS: ConfigSectionItem[] = [
     label: 'Auditoria',
     href: '/admin?aba=auditoria',
     icon: FileText,
+    roles: ['admin'],
+  },
+  {
+    id: 'mcp',
+    label: 'Acesso MCP',
+    href: '/admin?aba=mcp',
+    icon: Key,
     roles: ['admin'],
   },
   {

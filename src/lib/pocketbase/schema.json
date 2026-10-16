@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-15T19:07:35.940Z",
+  "generatedAt": "2026-10-16T15:57:14.499Z",
   "collections": [
     {
       "name": "users",
@@ -146,6 +146,12 @@
         {
           "name": "property_code_seq",
           "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "mcp_enabled",
+          "type": "bool",
           "required": false,
           "system": false
         }
@@ -2192,6 +2198,89 @@
         }
       ],
       "indexes": ["CREATE INDEX idx_agenda_blocks_user ON agenda_blocks (user_id, end_at)"]
+    },
+    {
+      "name": "mcp_keys",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.role = 'admin' && @request.auth.active = true && organization_id = @request.auth.organization_id",
+        "view": "@request.auth.id != '' && @request.auth.role = 'admin' && @request.auth.active = true && organization_id = @request.auth.organization_id",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "user_id",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "token_prefix",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "scope",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["leitura", "leitura_escrita"]
+        },
+        {
+          "name": "active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created_by",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "revoked_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "last_used_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX idx_mcp_keys_hash ON mcp_keys (token_hash)"]
     }
   ]
 }

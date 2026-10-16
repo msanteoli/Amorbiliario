@@ -11,6 +11,7 @@ onRecordViewRequest(
       import_batches: ['admin'],
       google_connections: ['admin'],
       portal_feeds: ['admin'],
+      mcp_keys: ['admin'],
     }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
@@ -60,5 +61,5 @@ onRecordViewRequest(
   'negotiation_documents',
   'google_connections',
   'portal_feeds',
-  'agenda_blocks',
+  'mcp_keys',
 )

@@ -17,6 +17,12 @@ import {
   AUDIT_ACTION_LABELS,
   AUDIT_REASON_LABELS,
   formatAdminErrorMessage,
+  McpKeyItem,
+  getMcpAdminStatus,
+  enableMcp,
+  disableMcp,
+  createMcpKey,
+  revokeMcpKey,
 } from '@/services/admin'
 import { listOwnersWithoutProperty, OwnerWithoutPropertyItem } from '@/services/properties'
 import { formatDateTimeBahia, bahiaLocalToIsoUtc } from '@/services/visits'
@@ -68,6 +74,10 @@ import {
   FilterX,
   FileSpreadsheet,
   Layers,
+  Key,
+  Copy,
+  Check,
+  AlertTriangle,
 } from 'lucide-react'
 
 export default function Admin() {
@@ -77,19 +87,19 @@ export default function Admin() {
   // Abas (lê ?aba= ou retrocompatibilidade com ?tab=, com suporte a 'proprietarios' e 'sem-imovel')
   const parseTabFromParams = (
     params: URLSearchParams,
-  ): 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel' => {
+  ): 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel' | 'mcp' => {
     const raw = params.get('aba') || params.get('tab')
     if (raw === 'proprietarios' || raw === 'sem-imovel') {
       return 'sem-imovel'
     }
-    if (raw === 'usuarios' || raw === 'organizacao' || raw === 'auditoria') {
+    if (raw === 'usuarios' || raw === 'organizacao' || raw === 'auditoria' || raw === 'mcp') {
       return raw
     }
     return 'usuarios'
   }
 
   const [activeTab, setActiveTab] = useState<
-    'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel'
+    'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel' | 'mcp'
   >(() => parseTabFromParams(searchParams))
 
   // Feedback global da página
@@ -512,11 +522,164 @@ export default function Admin() {
     selectedActor !== 'all' ||
     selectedCollection !== 'all'
 
+  // ═════════════════════════════════════════════════════════════════
+  // ABA 5: ACESSO MCP (Servidor de Integração Assistente)
+  // ═════════════════════════════════════════════════════════════
+  const [mcpEnabled, setMcpEnabled] = useState(false)
+  const [mcpKeys, setMcpKeys] = useState<McpKeyItem[]>([])
+  const [loadingMcp, setLoadingMcp] = useState(false)
+  const [togglingMcp, setTogglingMcp] = useState(false)
+  const [confirmDisableMcpOpen, setConfirmDisableMcpOpen] = useState(false)
+
+  // Modal Nova Chave
+  const [createKeyModalOpen, setCreateKeyModalOpen] = useState(false)
+  const [keyName, setKeyName] = useState('')
+  const [keyUserId, setKeyUserId] = useState('')
+  const [keyScope, setKeyScope] = useState<'leitura' | 'leitura_escrita'>('leitura')
+  const [submittingKey, setSubmittingKey] = useState(false)
+  const [keyError, setKeyError] = useState<string | null>(null)
+
+  // Chave recém-criada exibida uma única vez
+  const [revealedToken, setRevealedToken] = useState<string | null>(null)
+  const [copiedToken, setCopiedToken] = useState(false)
+
+  // Revogar Chave
+  const [revokingKey, setRevokingKey] = useState<McpKeyItem | null>(null)
+  const [submittingRevoke, setSubmittingRevoke] = useState(false)
+
+  const loadMcp = useCallback(async () => {
+    setLoadingMcp(true)
+    try {
+      const res = await getMcpAdminStatus()
+      setMcpEnabled(res.enabled)
+      setMcpKeys(res.keys || [])
+    } catch (err) {
+      setGlobalError(formatAdminErrorMessage(err, 'Erro ao carregar configurações de acesso.'))
+    } finally {
+      setLoadingMcp(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'mcp') {
+      if (users.length === 0) {
+        loadUsers()
+      }
+      loadMcp()
+    }
+  }, [activeTab, loadMcp, loadUsers, users.length])
+
+  // Usuários elegíveis para chave: admin ou corretor ativos
+  const eligibleUsers = useMemo(() => {
+    return users.filter((u) => u.active && (u.role === 'admin' || u.role === 'corretor'))
+  }, [users])
+
+  const handleToggleMcp = () => {
+    if (mcpEnabled) {
+      setConfirmDisableMcpOpen(true)
+    } else {
+      executeEnableMcp()
+    }
+  }
+
+  const executeEnableMcp = async () => {
+    setTogglingMcp(true)
+    setGlobalError(null)
+    setGlobalSuccess(null)
+    try {
+      const res = await enableMcp()
+      setMcpEnabled(res.enabled)
+      setGlobalSuccess('Acesso ativado com sucesso.')
+      await loadMcp()
+    } catch (err) {
+      setGlobalError(formatAdminErrorMessage(err, 'Falha ao ativar acesso.'))
+    } finally {
+      setTogglingMcp(false)
+    }
+  }
+
+  const executeDisableMcp = async () => {
+    setTogglingMcp(true)
+    setGlobalError(null)
+    setGlobalSuccess(null)
+    try {
+      const res = await disableMcp()
+      setMcpEnabled(res.enabled)
+      setConfirmDisableMcpOpen(false)
+      setGlobalSuccess('Acesso desativado. Todas as chaves foram desligadas.')
+      await loadMcp()
+    } catch (err) {
+      setGlobalError(formatAdminErrorMessage(err, 'Falha ao desativar acesso.'))
+    } finally {
+      setTogglingMcp(false)
+    }
+  }
+
+  const handleCreateKeySubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setKeyError(null)
+    const trimmed = keyName.trim()
+    if (trimmed.length < 2) {
+      setKeyError('Informe um nome com pelo menos 2 caracteres.')
+      return
+    }
+    if (!keyUserId) {
+      setKeyError('Selecione um usuário responsável.')
+      return
+    }
+
+    setSubmittingKey(true)
+    try {
+      const res = await createMcpKey({
+        name: trimmed,
+        user_id: keyUserId,
+        scope: keyScope,
+      })
+      setRevealedToken(res.token)
+      setCopiedToken(false)
+      setKeyName('')
+      setKeyUserId('')
+      setKeyScope('leitura')
+      await loadMcp()
+    } catch (err) {
+      setKeyError(formatAdminErrorMessage(err, 'Falha ao criar chave de acesso.'))
+    } finally {
+      setSubmittingKey(false)
+    }
+  }
+
+  const handleCopyToken = async () => {
+    if (!revealedToken) return
+    try {
+      await navigator.clipboard.writeText(revealedToken)
+      setCopiedToken(true)
+      setTimeout(() => setCopiedToken(false), 3000)
+    } catch (_) {
+      // fallback caso clipboard falhe
+    }
+  }
+
+  const handleConfirmRevoke = async () => {
+    if (!revokingKey) return
+    setSubmittingRevoke(true)
+    try {
+      await revokeMcpKey(revokingKey.id)
+      setRevokingKey(null)
+      setGlobalSuccess(`Chave "${revokingKey.name}" revogada com sucesso.`)
+      await loadMcp()
+    } catch (err) {
+      setGlobalError(formatAdminErrorMessage(err, 'Falha ao revogar chave.'))
+    } finally {
+      setSubmittingRevoke(false)
+    }
+  }
+
   const currentConfigSection = useMemo(() => {
     if (activeTab === 'usuarios') return 'equipe'
     if (activeTab === 'organizacao') return 'organizacao'
     if (activeTab === 'sem-imovel') return 'proprietarios'
     if (activeTab === 'auditoria') return 'auditoria'
+    if (activeTab === 'mcp') return 'mcp'
     return 'equipe'
   }, [activeTab])
 
@@ -588,7 +751,7 @@ export default function Admin() {
             onValueChange={(val) => {
               setGlobalSuccess(null)
               setGlobalError(null)
-              const nextTab = val as 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel'
+              const nextTab = val as 'usuarios' | 'organizacao' | 'auditoria' | 'sem-imovel' | 'mcp'
               setActiveTab(nextTab)
               // Atualiza o parâmetro na URL mantendo qualquer outro parâmetro existente
               const nextParams = new URLSearchParams(searchParams)
@@ -623,6 +786,12 @@ export default function Admin() {
                 className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 Auditoria
+              </TabsTrigger>
+              <TabsTrigger
+                value="mcp"
+                className="rounded-full px-4 py-1.5 text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                Acesso MCP
               </TabsTrigger>
             </TabsList>
             <TabsContent value="usuarios" className="space-y-4">
@@ -1276,6 +1445,200 @@ export default function Admin() {
                 </div>
               )}
             </TabsContent>
+
+            {/* ═════════════════════════════════════════════════════════════ */}
+            {/* ABA 5: ACESSO MCP */}
+            {/* ═════════════════════════════════════════════════════════════ */}
+            <TabsContent value="mcp" className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-[20px] font-normal text-foreground">Acesso MCP</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Conexão segura para assistentes e integrações externas autorizadas
+                  </p>
+                </div>
+                {mcpEnabled && (
+                  <Button
+                    onClick={() => {
+                      setKeyError(null)
+                      setKeyName('')
+                      setKeyUserId('')
+                      setKeyScope('leitura')
+                      setRevealedToken(null)
+                      setCopiedToken(false)
+                      setCreateKeyModalOpen(true)
+                    }}
+                    className="h-9 rounded-full px-4 text-xs font-normal bg-primary text-primary-foreground gap-1.5 shrink-0 self-start sm:self-auto"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Nova chave</span>
+                  </Button>
+                )}
+              </div>
+
+              {/* Bloco de Estado Geral Ligado/Desligado */}
+              <div className="rounded-lg border border-border bg-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                      Situação do servidor
+                    </span>
+                    <Badge
+                      variant={mcpEnabled ? 'success' : 'secondary'}
+                      className="text-[11px] font-normal"
+                    >
+                      {mcpEnabled ? 'Ligado' : 'Desligado'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground max-w-xl">
+                    {mcpEnabled
+                      ? 'O servidor está ativo e aceita conexões de chaves válidas vinculadas a usuários da organização.'
+                      : 'O servidor está inativo. Nenhuma chave consegue consultar dados enquanto estiver desligado.'}
+                  </p>
+                </div>
+
+                <div className="shrink-0">
+                  <Button
+                    type="button"
+                    variant={mcpEnabled ? 'outline' : 'default'}
+                    onClick={handleToggleMcp}
+                    disabled={loadingMcp || togglingMcp}
+                    className={`h-9 rounded-full px-5 text-xs font-normal gap-1.5 ${
+                      mcpEnabled
+                        ? 'border-border text-destructive hover:bg-destructive/10'
+                        : 'bg-primary text-primary-foreground'
+                    }`}
+                  >
+                    {togglingMcp && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    <span>{mcpEnabled ? 'Desligar acesso' : 'Ligar acesso'}</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Lista de Chaves */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-foreground">Chaves autorizadas</h3>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={loadMcp}
+                    disabled={loadingMcp}
+                    className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {loadingMcp ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Atualizar'}
+                  </Button>
+                </div>
+
+                {loadingMcp ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : mcpKeys.length === 0 ? (
+                  <div className="rounded-lg border border-border bg-card p-10 text-center space-y-2">
+                    <Key className="h-8 w-8 text-muted-foreground/50 mx-auto" />
+                    <p className="text-xs text-muted-foreground">
+                      Nenhuma chave cadastrada até o momento.
+                    </p>
+                    {mcpEnabled && (
+                      <p className="text-xs text-muted-foreground">
+                        Clique em &quot;Nova chave&quot; acima para autorizar um novo assistente.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
+                    {mcpKeys.map((k) => {
+                      const user = users.find((u) => u.id === k.user_id)
+                      const userName = user ? user.name || user.email : 'Usuário não localizado'
+                      const userRoleLabel = user ? getRoleLabel(user.role) : ''
+                      const isRevoked = !k.active || Boolean(k.revoked_at)
+                      const scopeLabel =
+                        k.scope === 'leitura_escrita' ? 'Leitura e escrita' : 'Somente leitura'
+
+                      return (
+                        <div
+                          key={k.id}
+                          className={`p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 transition-colors ${
+                            isRevoked ? 'opacity-60 bg-muted/10' : ''
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-normal text-foreground">{k.name}</span>
+                              <Badge
+                                variant={isRevoked ? 'destructive' : 'success'}
+                                className="text-[10px] px-1.5 py-0 font-normal"
+                              >
+                                {isRevoked ? 'Revogada' : 'Ativa'}
+                              </Badge>
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0 font-normal"
+                              >
+                                {scopeLabel}
+                              </Badge>
+                              <code className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                {k.token_prefix}...
+                              </code>
+                            </div>
+
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                              <span>
+                                Usuário:{' '}
+                                <span className="text-foreground font-normal">{userName}</span>
+                                {userRoleLabel && (
+                                  <span className="text-muted-foreground ml-1">
+                                    ({userRoleLabel})
+                                  </span>
+                                )}
+                              </span>
+                              <span>•</span>
+                              <span>
+                                Último uso:{' '}
+                                <span className="text-foreground tabular">
+                                  {k.last_used_at
+                                    ? formatDateTimeBahia(k.last_used_at)
+                                    : 'Nunca utilizada'}
+                                </span>
+                              </span>
+                              {isRevoked && k.revoked_at && (
+                                <>
+                                  <span>•</span>
+                                  <span>
+                                    Revogada em:{' '}
+                                    <span className="text-foreground tabular">
+                                      {formatDateTimeBahia(k.revoked_at)}
+                                    </span>
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {!isRevoked && (
+                            <div className="shrink-0 self-start sm:self-center">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setRevokingKey(k)}
+                                className="h-8 rounded-full px-3 text-xs font-normal border-border text-destructive hover:bg-destructive/10"
+                              >
+                                Revogar
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
@@ -1558,6 +1921,265 @@ export default function Admin() {
             >
               {submittingDeactivate && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
               Desativar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ═════════════════════════════════════════════════════════════ */}
+      {/* MODAL: CONFIRMAÇÃO DE DESLIGAMENTO MCP */}
+      {/* ═════════════════════════════════════════════════════════════ */}
+      <AlertDialog open={confirmDisableMcpOpen} onOpenChange={setConfirmDisableMcpOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-normal text-lg">Desligar acesso MCP</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground font-normal">
+              Ao desligar, todas as chaves param de funcionar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel
+              disabled={togglingMcp}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                executeDisableMcp()
+              }}
+              disabled={togglingMcp}
+              className="h-9 rounded-full px-5 text-xs font-normal bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {togglingMcp && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Desligar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ═════════════════════════════════════════════════════════════ */}
+      {/* MODAL: NOVA CHAVE MCP */}
+      {/* ═════════════════════════════════════════════════════════════ */}
+      <Dialog
+        open={createKeyModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreateKeyModalOpen(false)
+            setRevealedToken(null)
+            setKeyError(null)
+          } else {
+            setCreateKeyModalOpen(true)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal text-lg">
+              {revealedToken ? 'Chave de acesso gerada' : 'Nova chave de acesso'}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {revealedToken
+                ? 'Guarde agora: ela não aparece de novo.'
+                : 'Defina a identificação, o usuário responsável e o nível de permissão.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {revealedToken ? (
+            <div className="space-y-4 py-2">
+              <div className="p-3.5 rounded-lg border border-attention/50 bg-attention/10 space-y-1.5">
+                <div className="flex items-center gap-2 text-attention-foreground font-medium text-xs">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-attention" />
+                  <span>Atenção</span>
+                </div>
+                <p className="text-xs text-foreground font-normal">
+                  Guarde agora: ela não aparece de novo
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="revealed-token" className="text-xs text-muted-foreground block">
+                  Chave de acesso
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="revealed-token"
+                    readOnly
+                    value={revealedToken}
+                    className="h-11 font-mono text-xs pr-24 border-border bg-muted/40 selection:bg-primary selection:text-primary-foreground"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleCopyToken}
+                    className="absolute right-1 top-1 h-9 rounded-md px-3 text-xs gap-1 bg-primary text-primary-foreground"
+                  >
+                    {copiedToken ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" />
+                        <span>Copiado</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>Copiar</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setCreateKeyModalOpen(false)
+                    setRevealedToken(null)
+                  }}
+                  className="h-9 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground"
+                >
+                  Concluir
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <form onSubmit={handleCreateKeySubmit} className="space-y-4">
+              {keyError && (
+                <p className="text-xs text-destructive font-normal" role="alert">
+                  {keyError}
+                </p>
+              )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="key-name" className="text-[13px] font-normal text-foreground block">
+                  Nome da chave <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="key-name"
+                  value={keyName}
+                  onChange={(e) => setKeyName(e.target.value)}
+                  placeholder="Ex: Claude Desktop, Assistente Corretor"
+                  required
+                  disabled={submittingKey}
+                  className="h-12 text-sm border-border"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="key-user" className="text-[13px] font-normal text-foreground block">
+                  Usuário responsável <span className="text-destructive">*</span>
+                </Label>
+                <Select value={keyUserId} onValueChange={setKeyUserId} disabled={submittingKey}>
+                  <SelectTrigger id="key-user" className="h-12 text-sm border-border">
+                    <SelectValue placeholder="Selecione um administrador ou corretor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eligibleUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name || u.email} ({getRoleLabel(u.role)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  A chave atuará com as permissões e a visão deste usuário.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="key-scope"
+                  className="text-[13px] font-normal text-foreground block"
+                >
+                  Escopo de permissão <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={keyScope}
+                  onValueChange={(val) => setKeyScope(val as 'leitura' | 'leitura_escrita')}
+                  disabled={submittingKey}
+                >
+                  <SelectTrigger id="key-scope" className="h-12 text-sm border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="leitura">
+                      Somente leitura (consulta de imóveis, clientes e tarefas)
+                    </SelectItem>
+                    <SelectItem value="leitura_escrita">
+                      Leitura e escrita (permite também criar tarefas)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DialogFooter className="pt-3 gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCreateKeyModalOpen(false)}
+                  disabled={submittingKey}
+                  className="h-9 rounded-full px-4 text-xs font-normal border-border"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submittingKey || !keyUserId || keyName.trim().length < 2}
+                  className="h-9 rounded-full px-5 text-xs font-normal bg-primary text-primary-foreground gap-2"
+                >
+                  {submittingKey && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Criar chave</span>
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ═════════════════════════════════════════════════════════════ */}
+      {/* MODAL: CONFIRMAÇÃO DE REVOGAÇÃO DE CHAVE */}
+      {/* ═════════════════════════════════════════════════════════════ */}
+      <AlertDialog
+        open={Boolean(revokingKey)}
+        onOpenChange={(open) => {
+          if (!open) setRevokingKey(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-normal text-lg">
+              Revogar chave de acesso
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-xs text-muted-foreground font-normal">
+              <span>
+                Tem certeza de que deseja revogar a chave{' '}
+                <strong className="text-foreground">{revokingKey?.name}</strong>?
+              </span>
+              <span className="block text-foreground">
+                Qualquer assistente conectado utilizando esta chave deixará de autenticar
+                imediatamente. Esta ação não pode ser desfeita.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel
+              disabled={submittingRevoke}
+              className="h-9 rounded-full px-4 text-xs font-normal border-border"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleConfirmRevoke()
+              }}
+              disabled={submittingRevoke}
+              className="h-9 rounded-full px-5 text-xs font-normal bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {submittingRevoke && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Revogar chave
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

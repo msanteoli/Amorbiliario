@@ -358,3 +358,92 @@ export async function undoImportBatch(batchId: string): Promise<UndoImportBatchR
     },
   )
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// ACESSO MCP (ADMINISTRAÇÃO)
+// ═════════════════════════════════════════════════════════════════
+
+export interface McpKeyItem {
+  id: string
+  name: string
+  user_id: string
+  token_prefix: string
+  scope: 'leitura' | 'leitura_escrita' | string
+  active: boolean
+  revoked_at: string
+  last_used_at: string
+  created: string
+}
+
+export interface McpAdminStatusResponse {
+  enabled: boolean
+  keys: McpKeyItem[]
+}
+
+export interface CreateMcpKeyPayload {
+  name: string
+  user_id: string
+  scope: 'leitura' | 'leitura_escrita'
+}
+
+export interface CreateMcpKeyResponse {
+  id: string
+  token_prefix: string
+  token: string
+  scope: string
+}
+
+export interface RevokeMcpKeyResponse {
+  id: string
+  active: boolean
+}
+
+/**
+ * GET /backend/v1/admin/mcp
+ */
+export async function getMcpAdminStatus(): Promise<McpAdminStatusResponse> {
+  return await pb.send<McpAdminStatusResponse>('/backend/v1/admin/mcp', {
+    method: 'GET',
+    requestKey: null,
+  })
+}
+
+/**
+ * POST /backend/v1/admin/mcp/enable
+ */
+export async function enableMcp(): Promise<{ enabled: boolean }> {
+  return await pb.send<{ enabled: boolean }>('/backend/v1/admin/mcp/enable', {
+    method: 'POST',
+  })
+}
+
+/**
+ * POST /backend/v1/admin/mcp/disable
+ */
+export async function disableMcp(): Promise<{ enabled: boolean }> {
+  return await pb.send<{ enabled: boolean }>('/backend/v1/admin/mcp/disable', {
+    method: 'POST',
+  })
+}
+
+/**
+ * POST /backend/v1/admin/mcp/keys
+ */
+export async function createMcpKey(payload: CreateMcpKeyPayload): Promise<CreateMcpKeyResponse> {
+  return await pb.send<CreateMcpKeyResponse>('/backend/v1/admin/mcp/keys', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+/**
+ * POST /backend/v1/admin/mcp/keys/{id}/revoke
+ */
+export async function revokeMcpKey(id: string): Promise<RevokeMcpKeyResponse> {
+  return await pb.send<RevokeMcpKeyResponse>(
+    `/backend/v1/admin/mcp/keys/${encodeURIComponent(id)}/revoke`,
+    {
+      method: 'POST',
+    },
+  )
+}
