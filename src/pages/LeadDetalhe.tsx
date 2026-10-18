@@ -84,7 +84,10 @@ import {
   FileText,
   MessageSquare,
   ShieldAlert,
+  Trash2,
 } from 'lucide-react'
+import { deleteLead } from '@/services/adminDeletion'
+import { DeleteRecordDialog } from '@/components/admin/DeleteRecordDialog'
 
 export default function LeadDetalhe() {
   const { id } = useParams<{ id: string }>()
@@ -132,6 +135,9 @@ export default function LeadDetalhe() {
   const [noteContactText, setNoteContactText] = useState('')
   const [submittingNote, setSubmittingNote] = useState(false)
   const [submittingContact, setSubmittingContact] = useState(false)
+
+  // Modal M15b: Exclusão de lead (só admin)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   // Mudança de etapa: diálogo de motivo para perdido
   const [lostReasonDialogOpen, setLostReasonDialogOpen] = useState(false)
@@ -484,6 +490,18 @@ export default function LeadDetalhe() {
               <span>Criar tarefa</span>
             </Button>
           )}
+
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="h-9 rounded-full px-4 text-xs font-normal border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Excluir</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -558,6 +576,17 @@ export default function LeadDetalhe() {
             className="h-9 rounded-full px-3.5 text-xs font-normal border-border shrink-0"
           >
             <span>Criar tarefa</span>
+          </Button>
+        )}
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDeleteDialogOpen(true)}
+            className="h-9 rounded-full px-3.5 text-xs font-normal border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0 gap-1.5"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Excluir</span>
           </Button>
         )}
       </div>
@@ -1374,6 +1403,22 @@ export default function LeadDetalhe() {
           setTaskDetailModalOpen(false)
         }}
       />
+
+      {/* MODAL M15b: EXCLUSÃO DE LEAD */}
+      {lead && isAdmin && (
+        <DeleteRecordDialog
+          type="lead"
+          recordId={lead.id}
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onDelete={async () => {
+            await deleteLead(lead.id)
+          }}
+          onDeleted={() => {
+            navigate('/leads', { state: { successMessage: 'Lead excluído.' } })
+          }}
+        />
+      )}
     </div>
   )
 }

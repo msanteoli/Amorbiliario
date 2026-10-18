@@ -91,6 +91,8 @@ import {
   X,
   Check,
 } from 'lucide-react'
+import { deleteProperty } from '@/services/adminDeletion'
+import { DeleteRecordDialog } from '@/components/admin/DeleteRecordDialog'
 
 // Mapa de campos para o histórico de alterações
 const HISTORY_FIELD_LABELS: Record<string, string> = {
@@ -148,6 +150,9 @@ export default function ImovelDetalhe() {
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [warningMessage, setWarningMessage] = useState<string | null>(null)
+
+  // Modais M15b: Exclusão de imóvel (só admin)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   // Confirmar dados
   const [confirming, setConfirming] = useState(false)
@@ -805,6 +810,18 @@ export default function ImovelDetalhe() {
                 <Edit className="h-3.5 w-3.5" />
                 <span>Editar</span>
               </Link>
+            </Button>
+          )}
+
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="h-9 rounded-full px-4 text-xs font-normal border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Excluir</span>
             </Button>
           )}
         </div>
@@ -1703,6 +1720,22 @@ export default function ImovelDetalhe() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL M15b: EXCLUSÃO DE IMÓVEL */}
+      {property && isAdmin && (
+        <DeleteRecordDialog
+          type="imovel"
+          recordId={property.id}
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onDelete={async () => {
+            await deleteProperty(property.id)
+          }}
+          onDeleted={() => {
+            navigate('/imoveis', { state: { successMessage: 'Imóvel excluído.' } })
+          }}
+        />
+      )}
     </div>
   )
 }

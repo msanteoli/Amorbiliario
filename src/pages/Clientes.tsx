@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Check } from 'lucide-react'
 import {
   listClients,
   listEligibleResponsibleUsers,
@@ -45,9 +47,18 @@ import {
 
 export default function Clientes() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
 
   const [clients, setClients] = useState<ClientRecord[]>([])
+  const [successBanner, setSuccessBanner] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (location.state?.successMessage) {
+      setSuccessBanner(location.state.successMessage)
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
@@ -125,6 +136,24 @@ export default function Clientes() {
 
   return (
     <div className="space-y-6">
+      {/* Banner de sucesso */}
+      {successBanner && (
+        <Alert className="border-success/30 bg-success/10 text-success">
+          <Check className="h-4 w-4 text-success" />
+          <AlertDescription className="text-sm font-medium flex items-center justify-between text-foreground">
+            <span>{successBanner}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSuccessBanner(null)}
+              className="h-6 text-xs"
+            >
+              Fechar
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>

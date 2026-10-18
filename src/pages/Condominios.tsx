@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Check } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   listCondominiumsWithPropertyCount,
@@ -34,7 +36,17 @@ import {
 
 export default function Condominios() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
+
+  const [successBanner, setSuccessBanner] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (location.state?.successMessage) {
+      setSuccessBanner(location.state.successMessage)
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
 
   // Permissões:
   // admin: criar, editar, importar
@@ -95,6 +107,24 @@ export default function Condominios() {
 
   return (
     <div className="space-y-6">
+      {/* Banner de sucesso */}
+      {successBanner && (
+        <Alert className="border-success/30 bg-success/10 text-success">
+          <Check className="h-4 w-4 text-success" />
+          <AlertDescription className="text-sm font-medium flex items-center justify-between text-foreground">
+            <span>{successBanner}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSuccessBanner(null)}
+              className="h-6 text-xs"
+            >
+              Fechar
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -49,12 +49,16 @@ import {
   MapPin,
   Sparkles,
   ShieldAlert,
+  Trash2,
 } from 'lucide-react'
+import { deleteCondominium } from '@/services/adminDeletion'
+import { DeleteRecordDialog } from '@/components/admin/DeleteRecordDialog'
 
 export default function CondominioDetalhe() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
 
   // Permissões
   // admin e corretor podem editar e gerenciar fotos
@@ -64,6 +68,9 @@ export default function CondominioDetalhe() {
   const [condo, setCondo] = useState<CondominiumRecord | null>(null)
   const [photos, setPhotos] = useState<CondominiumPhotoRecord[]>([])
   const [properties, setProperties] = useState<PropertyRecord[]>([])
+
+  // Modal M15b: Exclusão de condomínio (só admin)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState<string | null>(null)
@@ -293,11 +300,23 @@ export default function CondominioDetalhe() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div className="text-xs text-muted-foreground tabular">
             <span className="font-medium text-foreground">{properties.length}</span>{' '}
             {properties.length === 1 ? 'imóvel vinculado' : 'imóveis vinculados'}
           </div>
+
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="h-9 rounded-full px-4 text-xs font-normal border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Excluir</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -707,6 +726,22 @@ export default function CondominioDetalhe() {
           </div>
         )}
       </div>
+
+      {/* MODAL M15b: EXCLUSÃO DE CONDOMÍNIO */}
+      {condo && isAdmin && (
+        <DeleteRecordDialog
+          type="condominio"
+          recordId={condo.id}
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onDelete={async () => {
+            await deleteCondominium(condo.id)
+          }}
+          onDeleted={() => {
+            navigate('/condominios', { state: { successMessage: 'Condomínio excluído.' } })
+          }}
+        />
+      )}
     </div>
   )
 }

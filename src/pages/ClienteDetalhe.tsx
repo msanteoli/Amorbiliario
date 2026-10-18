@@ -48,7 +48,11 @@ import {
   Building2,
   Check,
   Clock,
+  Trash2,
+  UserX,
 } from 'lucide-react'
+import { deleteClient } from '@/services/adminDeletion'
+import { DeleteRecordDialog, AnonymizeClientDialog } from '@/components/admin/DeleteRecordDialog'
 
 export default function ClienteDetalhe() {
   const { id } = useParams<{ id: string }>()
@@ -77,6 +81,10 @@ export default function ClienteDetalhe() {
   const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<TaskRecord | null>(null)
   const [taskDetailModalOpen, setTaskDetailModalOpen] = useState(false)
+
+  // Modais de exclusão e anonimização (M15b - só admin)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [anonymizeDialogOpen, setAnonymizeDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -227,6 +235,30 @@ export default function ClienteDetalhe() {
               <span>Editar</span>
             </Link>
           </Button>
+
+          {isAdmin && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAnonymizeDialogOpen(true)}
+                className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
+              >
+                <UserX className="h-3.5 w-3.5" />
+                <span>Anonimizar</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteDialogOpen(true)}
+                className="h-9 rounded-full px-4 text-xs font-normal border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Excluir</span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -579,6 +611,53 @@ export default function ClienteDetalhe() {
           setTaskDetailModalOpen(false)
         }}
       />
+
+      {/* MODAL M15b: EXCLUSÃO DE CLIENTE */}
+      {client && isAdmin && (
+        <DeleteRecordDialog
+          type="cliente"
+          recordId={client.id}
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onDelete={async () => {
+            await deleteClient(client.id)
+          }}
+          onDeleted={() => {
+            navigate('/clientes', { state: { successMessage: 'Cliente excluído.' } })
+          }}
+          onAnonymized={async () => {
+            setSuccessBanner('Cliente anonimizado.')
+            if (id) {
+              const [c, cp] = await Promise.all([
+                getClientById(id),
+                getClientPrivate(id).catch(() => null),
+              ])
+              setClient(c)
+              setClientPrivate(cp)
+            }
+          }}
+        />
+      )}
+
+      {/* MODAL M15b: ANONIMIZAÇÃO DIRETA DE CLIENTE */}
+      {client && isAdmin && (
+        <AnonymizeClientDialog
+          clientId={client.id}
+          open={anonymizeDialogOpen}
+          onOpenChange={setAnonymizeDialogOpen}
+          onAnonymized={async () => {
+            setSuccessBanner('Cliente anonimizado.')
+            if (id) {
+              const [c, cp] = await Promise.all([
+                getClientById(id),
+                getClientPrivate(id).catch(() => null),
+              ])
+              setClient(c)
+              setClientPrivate(cp)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

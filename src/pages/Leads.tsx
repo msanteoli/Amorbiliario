@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Check } from 'lucide-react'
 import {
   listLeads,
   listAllLeadsForFunnel,
@@ -128,12 +130,21 @@ export function isLeadNextStepOverdue(lead: LeadRecord): boolean {
 
 export default function Leads() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
 
   const isCorretor = user?.role === 'corretor'
   const canManageLeads = user?.role === 'admin' || user?.role === 'sdr'
 
   const [searchParams] = useSearchParams()
+  const [successBanner, setSuccessBanner] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (location.state?.successMessage) {
+      setSuccessBanner(location.state.successMessage)
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
 
   // View state: 'lista' | 'funil' | 'pendencias'
   const [activeTab, setActiveTab] = useState<'lista' | 'funil' | 'pendencias'>(() => {
@@ -459,6 +470,24 @@ export default function Leads() {
 
   return (
     <div className="space-y-6">
+      {/* Banner de sucesso */}
+      {successBanner && (
+        <Alert className="border-success/30 bg-success/10 text-success">
+          <Check className="h-4 w-4 text-success" />
+          <AlertDescription className="text-sm font-medium flex items-center justify-between text-foreground">
+            <span>{successBanner}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSuccessBanner(null)}
+              className="h-6 text-xs"
+            >
+              Fechar
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Top Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
