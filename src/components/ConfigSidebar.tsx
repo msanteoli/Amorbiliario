@@ -1,6 +1,15 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { User, Users, Building, UserX, FileText, Globe, Database, Key } from 'lucide-react'
+import {
+  User,
+  Users,
+  Building,
+  UserX,
+  FileText,
+  Globe,
+  PanelsTopLeft,
+  Database,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface ConfigSectionItem {
@@ -52,6 +61,13 @@ export const CONFIG_SECTIONS: ConfigSectionItem[] = [
     label: 'Integrações',
     href: '/integracoes',
     icon: Globe,
+    roles: ['admin'],
+  },
+  {
+    id: 'site',
+    label: 'Site',
+    href: '/site',
+    icon: PanelsTopLeft,
     roles: ['admin'],
   },
   {
@@ -114,6 +130,10 @@ export function ConfigSidebar({ currentSection, className }: ConfigSidebarProps)
 
     if (item.href === '/portais') {
       return currentPath === '/portais' || currentPath.startsWith('/portais/')
+    }
+
+    if (item.href === '/site') {
+      return currentPath === '/site' || currentPath.startsWith('/site/')
     }
 
     if (item.href === '/backup') {
