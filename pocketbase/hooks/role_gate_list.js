@@ -15,6 +15,10 @@ onRecordsListRequest(
       google_connections: ['admin'],
       portal_feeds: ['admin'],
       mcp_keys: ['admin'],
+      site_assets: ['admin'],
+      site_settings: ['admin'],
+      site_publications: ['admin'],
+      site_preview_tokens: ['admin'],
     }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
@@ -65,4 +69,8 @@ onRecordsListRequest(
   'google_connections',
   'portal_feeds',
   'mcp_keys',
+  'site_assets',
+  'site_settings',
+  'site_publications',
+  'site_preview_tokens',
 )
