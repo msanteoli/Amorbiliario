@@ -39,18 +39,20 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
   if (!rows.length) throw new NotFoundError('Imóvel não encontrado.')
   const p = rows[0]
 
-  const photos = $app
-    .findRecordsByFilter(
-      'property_photos',
-      'property_id = {:p} && is_active = true',
-      'created',
-      50,
-      0,
-      {
-        p: p.id,
-      },
-    )
-    .map((ph) => '/api/files/property_photos/' + ph.id + '/' + ph.getString('file'))
+  const photoRecs = $app.findRecordsByFilter(
+    'property_photos',
+    'property_id = {:p} && is_active = true',
+    'position,created',
+    50,
+    0,
+    {
+      p: p.id,
+    },
+  )
+  const photos = photoRecs.map(
+    (ph) => '/api/files/property_photos/' + ph.id + '/' + ph.getString('file'),
+  )
+  const coverIdx = photoRecs.map((ph) => ph.id).indexOf(p.getString('cover_photo_id'))
 
   const pu = p.getString('purpose')
   const price = (field, hasPurpose) => {
@@ -95,6 +97,6 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
     condominium: condominium,
     highlight: highlight,
     photos: photos,
-    cover: photos.length ? photos[0] : null,
+    cover: photos.length ? photos[coverIdx >= 0 ? coverIdx : 0] : null,
   })
 })

@@ -123,6 +123,7 @@ routerAdd('GET', '/backend/v1/public/properties', (e) => {
 
   // fotos ativas das linhas desta página, numa consulta só
   const photosBy = {}
+  const photoIdsBy = {}
   if (rows.length) {
     const fparams = {}
     const parts = []
@@ -133,7 +134,7 @@ routerAdd('GET', '/backend/v1/public/properties', (e) => {
     const photos = $app.findRecordsByFilter(
       'property_photos',
       '(' + parts.join(' || ') + ') && is_active = true',
-      'created',
+      'position,created',
       500,
       0,
       fparams,
@@ -141,6 +142,8 @@ routerAdd('GET', '/backend/v1/public/properties', (e) => {
     photos.forEach((ph) => {
       const pid = ph.getString('property_id')
       if (!photosBy[pid]) photosBy[pid] = []
+      if (!photoIdsBy[pid]) photoIdsBy[pid] = []
+      photoIdsBy[pid].push(ph.id)
       photosBy[pid].push('/api/files/property_photos/' + ph.id + '/' + ph.getString('file'))
     })
   }
@@ -154,6 +157,7 @@ routerAdd('GET', '/backend/v1/public/properties', (e) => {
   const items = rows.map((p) => {
     const pu = p.getString('purpose')
     const ph = photosBy[p.id] || []
+    const ci = (photoIdsBy[p.id] || []).indexOf(p.getString('cover_photo_id'))
     return {
       code: p.getString('code'),
       title: p.getString('title'),
@@ -169,7 +173,7 @@ routerAdd('GET', '/backend/v1/public/properties', (e) => {
       iptu: Number(p.get('iptu') || 0),
       sale: price(p, 'sale_price', pu === 'venda' || pu === 'ambos'),
       rent: price(p, 'rent_price', pu === 'locacao' || pu === 'ambos'),
-      cover: ph.length ? ph[0] : null,
+      cover: ph.length ? ph[ci >= 0 ? ci : 0] : null,
       highlight: (() => {
         const lv = p.getString('highlight_level')
         if (!lv || lv === 'comum') return 'comum'

@@ -29,6 +29,16 @@ onRecordCreateRequest((e) => {
   ).length
   if (active >= 20) throw new BadRequestError('Limite de 20 fotos por imóvel.')
 
+  // a foto nova entra no fim da ordem
+  const last = $app.findRecordsByFilter(
+    'property_photos',
+    'property_id = {:p} && is_active = true',
+    '-position',
+    1,
+    0,
+    { p: property.id },
+  )
+  rec.set('position', (last.length ? last[0].getInt('position') : 0) + 1)
   rec.set('is_active', true)
   return e.next()
 }, 'property_photos')

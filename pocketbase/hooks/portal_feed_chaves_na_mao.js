@@ -68,18 +68,22 @@ routerAdd('GET', '/backend/v1/public/feeds/{token}/chavesnamao.xml', (e) => {
     if (t === 'galpao') return { tipo: 'Galpão / Depósito', fin: 'CO' }
     return null
   }
-  // fotos válidas para o portal: ativas, .jpg/.jpeg/.webp (minúsculas, pelo nome), a capa (a mais antiga) primeiro
-  const goodPhotos = (pid) =>
-    $app
+  // fotos válidas para o portal: ativas, .jpg/.jpeg/.webp (minúsculas, pelo nome), na ordem escolhida no sistema,
+  // com a CAPA escolhida (se houver e for válida) na frente; sem escolha, a primeira da ordem é a capa
+  const goodPhotos = (pid, coverId) => {
+    const list = $app
       .findRecordsByFilter(
         'property_photos',
         'property_id = {:p} && is_active = true',
-        'created',
+        'position,created',
         100,
         0,
         { p: pid },
       )
       .filter((ph) => /\.(jpg|jpeg|webp)$/.test(ph.getString('file').toLowerCase()))
+    const i = coverId ? list.map((ph) => ph.id).indexOf(coverId) : -1
+    return i > 0 ? [list[i]].concat(list.slice(0, i), list.slice(i + 1)) : list
+  }
   // REGRA ÚNICA DE ELEGIBILIDADE (mesmos códigos e ordem em admin_portals_get.js e admin_portals_pending.js)
   const reasonsOf = (p, photos) => {
     const r = []
@@ -125,7 +129,7 @@ routerAdd('GET', '/backend/v1/public/feeds/{token}/chavesnamao.xml', (e) => {
     for (let i = 0; i < page.length; i++) {
       const p = page[i]
       try {
-        const photos = goodPhotos(p.id)
+        const photos = goodPhotos(p.id, p.getString('cover_photo_id'))
         if (reasonsOf(p, photos).length) continue
         const tm = typeMap(p)
         if (!tm) continue
