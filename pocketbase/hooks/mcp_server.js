@@ -108,6 +108,45 @@ routerAdd('POST', '/backend/v1/mcp', (e) => {
       },
       scope: 'leitura_escrita',
     },
+    {
+      name: 'editar_imovel',
+      description:
+        'Edita campos de anúncio de um imóvel pelo código (só admin; chave leitura_escrita). Campos: title, description, bedrooms, bathrooms, parking, area, sale_price, rent_price, condo_fee, iptu, street, street_number, complement, neighborhood, city. Não muda status, dono nem fotos.',
+      inputSchema: {
+        type: 'object',
+        properties: { codigo: { type: 'string' }, campos: { type: 'object' } },
+        required: ['codigo', 'campos'],
+      },
+      scope: 'leitura_escrita',
+      admin: true,
+    },
+    {
+      name: 'definir_anuncio_imovel',
+      description:
+        'Define onde o imóvel é anunciado (só admin; chave leitura_escrita). publicar_em: lista de site, chaves_na_mao, zap, vivareal, olx. Lista vazia despublica de tudo.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          codigo: { type: 'string' },
+          publicar_em: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['codigo', 'publicar_em'],
+      },
+      scope: 'leitura_escrita',
+      admin: true,
+    },
+    {
+      name: 'editar_condominio',
+      description:
+        'Edita um condomínio pelo nome exato (só admin; chave leitura_escrita). Campos: street, neighborhood, city, amenities, infrastructure, rules. Não renomeia.',
+      inputSchema: {
+        type: 'object',
+        properties: { nome: { type: 'string' }, campos: { type: 'object' } },
+        required: ['nome', 'campos'],
+      },
+      scope: 'leitura_escrita',
+      admin: true,
+    },
   ]
 
   if (body.method === 'tools/list') {
@@ -127,6 +166,10 @@ routerAdd('POST', '/backend/v1/mcp', (e) => {
   if (tool.scope === 'leitura_escrita' && key.getString('scope') !== 'leitura_escrita') {
     audit('mcp_negado', 'escopo_somente_leitura')
     return fail(id, -32001, 'Esta chave é só de leitura.')
+  }
+  if (tool.admin === true && role !== 'admin') {
+    audit('mcp_negado', 'so_admin_edita')
+    return fail(id, -32003, 'Só o admin edita pelo MCP.')
   }
 
   // limite: 60 chamadas por minuto por chave
@@ -213,6 +256,225 @@ routerAdd('POST', '/backend/v1/mcp', (e) => {
     if (args.prazo) t.set('due_at', String(args.prazo))
     $app.save(t)
     result = { id: t.id, titulo: titulo }
+  } else if (tool.name === 'editar_imovel' || tool.name === 'definir_anuncio_imovel') {
+    const rows = $app.findRecordsByFilter(
+      'properties',
+      'organization_id = {:o} && code = {:c}',
+      '',
+      1,
+      0,
+      { o: orgId, c: String(args.codigo || '').trim() },
+    )
+    if (!rows.length) return fail(id, -32004, 'Imóvel não encontrado.')
+    const p = rows[0]
+    const orig = p.original()
+    const changed = []
+    let cnm = false
+    if (tool.name === 'definir_anuncio_imovel') {
+      const allowed = ['site', 'chaves_na_mao', 'zap', 'vivareal', 'olx']
+      const list = Array.isArray(args.publicar_em) ? args.publicar_em.map((x) => String(x)) : null
+      if (!list) return fail(id, -32602, 'Informe publicar_em como lista.')
+      for (let i = 0; i < list.length; i++) {
+        if (allowed.indexOf(list[i]) < 0)
+          return fail(id, -32602, 'Opção de anúncio inválida. Use: ' + allowed.join(', ') + '.')
+      }
+      const before = p.getStringSlice('publish_to')
+      cnm = before.indexOf('chaves_na_mao') >= 0 !== list.indexOf('chaves_na_mao') >= 0
+      if (before.slice().sort().join(',') !== list.slice().sort().join(','))
+        changed.push('publish_to')
+      p.set('publish_to', list)
+    } else {
+      const campos =
+        args.campos && typeof args.campos === 'object' && !Array.isArray(args.campos)
+          ? args.campos
+          : null
+      if (!campos) return fail(id, -32602, 'Informe campos como objeto.')
+      const textos = {
+        title: 200,
+        description: 5000,
+        street: 160,
+        street_number: 20,
+        complement: 160,
+        neighborhood: 160,
+        city: 160,
+      }
+      const inteiros = ['bedrooms', 'bathrooms', 'parking']
+      const decimais = ['area', 'sale_price', 'rent_price', 'condo_fee', 'iptu']
+      const keys = Object.keys(campos)
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i]
+        const v = campos[k]
+        if (textos[k] !== undefined) {
+          const t = String(v === null || v === undefined ? '' : v).trim()
+          if (t.length > textos[k]) return fail(id, -32602, 'Texto grande demais em ' + k + '.')
+          p.set(k, t)
+        } else if (inteiros.indexOf(k) >= 0) {
+          const n = Number(v)
+          if (
+            typeof v === 'boolean' ||
+            v === '' ||
+            v === null ||
+            !isFinite(n) ||
+            n < 0 ||
+            Math.floor(n) !== n
+          )
+            return fail(id, -32602, 'Valor inválido em ' + k + '.')
+          p.set(k, n)
+        } else if (decimais.indexOf(k) >= 0) {
+          const n = Number(v)
+          if (typeof v === 'boolean' || v === '' || v === null || !isFinite(n) || n < 0)
+            return fail(id, -32602, 'Valor inválido em ' + k + '.')
+          p.set(k, n)
+        } else {
+          return fail(
+            id,
+            -32602,
+            'Campo não permitido: ' +
+              k +
+              '. Permitidos: ' +
+              Object.keys(textos).concat(inteiros, decimais).join(', ') +
+              '.',
+          )
+        }
+      }
+      // imóvel Disponível continua completo (o save dentro do endpoint não dispara a validação da edição normal)
+      if (p.getString('status') === 'disponivel') {
+        const pu = p.getString('purpose')
+        const consult = p.get('price_on_request') === true
+        const falta = []
+        if (!p.getString('title')) falta.push('título')
+        if (!p.getString('description')) falta.push('descrição')
+        if (!p.getString('street')) falta.push('rua')
+        if (!p.getString('street_number')) falta.push('número')
+        if (!p.getString('neighborhood')) falta.push('bairro')
+        if (!p.getString('city')) falta.push('cidade')
+        if (!(Number(p.get('area') || 0) > 0)) falta.push('área')
+        if (
+          (pu === 'venda' || pu === 'ambos') &&
+          !(Number(p.get('sale_price') || 0) > 0 || consult)
+        )
+          falta.push('preço de venda')
+        if (
+          (pu === 'locacao' || pu === 'ambos') &&
+          !(Number(p.get('rent_price') || 0) > 0 || consult)
+        )
+          falta.push('preço de locação')
+        if (falta.length)
+          return fail(
+            id,
+            -32602,
+            'Imóvel Disponível precisa continuar completo. Falta: ' + falta.join(', ') + '.',
+          )
+      }
+      const watched = Object.keys(textos).concat(inteiros, decimais)
+      watched.forEach((f) => {
+        if (String(p.get(f)) !== String(orig.get(f))) changed.push(f)
+      })
+      if (changed.length) p.set('last_reviewed_at', new Date().toISOString())
+    }
+    if (changed.length) {
+      $app.save(p)
+      const col = $app.findCollectionByNameOrId('audit_log')
+      const rec = (action, field, reason) => {
+        const a = new Record(col)
+        a.set('organization_id', orgId)
+        a.set('actor_id', actor.id)
+        a.set('actor_role', role)
+        a.set('action', action)
+        a.set('collection_name', 'properties')
+        a.set('record_id', p.id)
+        if (field) a.set('field_name', field)
+        a.set('reason', reason)
+        a.set('occurred_at', new Date().toISOString())
+        $app.save(a)
+      }
+      try {
+        changed.forEach((f) => rec('imovel_alterado', f, 'mcp'))
+        if (cnm)
+          rec(
+            'portal_alterado',
+            '',
+            p.getStringSlice('publish_to').indexOf('chaves_na_mao') >= 0
+              ? 'chaves_na_mao:on'
+              : 'chaves_na_mao:off',
+          )
+      } catch (err) {
+        $app.logger().error('mcp_audit_failed', 'err', String((err && err.message) || err))
+      }
+    }
+    result = { codigo: p.getString('code'), alterados: changed }
+  } else if (tool.name === 'editar_condominio') {
+    const key = (s) =>
+      String(s || '')
+        .toLowerCase()
+        .replace(/[áàâãä]/g, 'a')
+        .replace(/[éèêë]/g, 'e')
+        .replace(/[íìîï]/g, 'i')
+        .replace(/[óòôõö]/g, 'o')
+        .replace(/[úùûü]/g, 'u')
+        .replace(/ç/g, 'c')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim()
+    const rows = $app.findRecordsByFilter(
+      'condominiums',
+      'organization_id = {:o} && name_key = {:k}',
+      '',
+      1,
+      0,
+      { o: orgId, k: key(args.nome) },
+    )
+    if (!rows.length) return fail(id, -32004, 'Condomínio não encontrado.')
+    const c = rows[0]
+    const campos =
+      args.campos && typeof args.campos === 'object' && !Array.isArray(args.campos)
+        ? args.campos
+        : null
+    if (!campos) return fail(id, -32602, 'Informe campos como objeto.')
+    const max = {
+      street: 160,
+      neighborhood: 160,
+      city: 160,
+      amenities: 2000,
+      infrastructure: 2000,
+      rules: 2000,
+    }
+    const changed = []
+    const keys = Object.keys(campos)
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i]
+      if (max[k] === undefined)
+        return fail(
+          id,
+          -32602,
+          'Campo não permitido: ' + k + '. Permitidos: ' + Object.keys(max).join(', ') + '.',
+        )
+      const t = String(campos[k] === null || campos[k] === undefined ? '' : campos[k]).trim()
+      if (t.length > max[k]) return fail(id, -32602, 'Texto grande demais em ' + k + '.')
+      if (t !== c.getString(k)) changed.push(k)
+      c.set(k, t)
+    }
+    if (changed.length) {
+      $app.save(c)
+      try {
+        const col = $app.findCollectionByNameOrId('audit_log')
+        changed.forEach((f) => {
+          const a = new Record(col)
+          a.set('organization_id', orgId)
+          a.set('actor_id', actor.id)
+          a.set('actor_role', role)
+          a.set('action', 'condominio_alterado')
+          a.set('collection_name', 'condominiums')
+          a.set('record_id', c.id)
+          a.set('field_name', f)
+          a.set('reason', 'mcp')
+          a.set('occurred_at', new Date().toISOString())
+          $app.save(a)
+        })
+      } catch (err) {
+        $app.logger().error('mcp_audit_failed', 'err', String((err && err.message) || err))
+      }
+    }
+    result = { condominio: c.getString('name'), alterados: changed }
   }
 
   audit('mcp_chamada', tool.name)
