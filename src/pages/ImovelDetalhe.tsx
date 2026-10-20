@@ -25,6 +25,9 @@ import {
   isPngPhoto,
   getPortalPendingReasons,
   updateProperty,
+  updatePropertyPhotosOrder,
+  setPropertyCoverPhoto,
+  sortPropertyPhotos,
 } from '@/services/properties'
 import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/clients'
 import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
@@ -90,6 +93,11 @@ import {
   ChevronRight,
   X,
   Check,
+  Star,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
+  RotateCcw,
 } from 'lucide-react'
 import { deleteProperty } from '@/services/adminDeletion'
 import { DeleteRecordDialog } from '@/components/admin/DeleteRecordDialog'
@@ -188,6 +196,12 @@ export default function ImovelDetalhe() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadList, setUploadList] = useState<UploadProgressItem[]>([])
   const [isUploading, setIsUploading] = useState(false)
+
+  // Reordenação e Capa
+  const [draggedPhotoId, setDraggedPhotoId] = useState<string | null>(null)
+  const [dragOverPhotoId, setDragOverPhotoId] = useState<string | null>(null)
+  const [isSavingPhotoAction, setIsSavingPhotoAction] = useState(false)
+  const [photoActionError, setPhotoActionError] = useState<string | null>(null)
 
   const role = user?.role || ''
   const isSdr = role === 'sdr'
@@ -412,6 +426,133 @@ export default function ImovelDetalhe() {
       toast({
         title: 'Fotos enviadas com sucesso.',
       })
+    }
+  }
+
+  // Ações de Ordem e Capa de Fotos (M28)
+  const handleMovePhoto = async (index: number, direction: 'up' | 'down') => {
+    if (!property || isSavingPhotoAction || !canManage) return
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= photos.length) return
+
+    const previousPhotos = [...photos]
+    const reordered = [...photos]
+    const [moved] = reordered.splice(index, 1)
+    reordered.splice(targetIndex, 0, moved)
+
+    // Atualização otimista
+    setPhotos(reordered)
+    setIsSavingPhotoAction(true)
+    setPhotoActionError(null)
+
+    try {
+      await updatePropertyPhotosOrder(
+        property.id,
+        reordered.map((p) => p.id),
+      )
+    } catch (err: unknown) {
+      setPhotos(previousPhotos)
+      const msg = err instanceof Error ? err.message : 'Erro ao reordenar fotos.'
+      setPhotoActionError(msg)
+      toast({
+        title: 'Erro ao reordenar fotos',
+        description: msg,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSavingPhotoAction(false)
+    }
+  }
+
+  const handleDragStart = (e: React.DragEvent, photoId: string) => {
+    if (!canManage || isSavingPhotoAction) return
+    setDraggedPhotoId(photoId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', photoId)
+  }
+
+  const handleDragOver = (e: React.DragEvent, photoId: string) => {
+    if (!canManage || isSavingPhotoAction) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverPhotoId !== photoId) {
+      setDragOverPhotoId(photoId)
+    }
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetPhotoId: string) => {
+    e.preventDefault()
+    if (!property || isSavingPhotoAction || !canManage) {
+      setDraggedPhotoId(null)
+      setDragOverPhotoId(null)
+      return
+    }
+
+    const sourcePhotoId = draggedPhotoId || e.dataTransfer.getData('text/plain')
+    setDraggedPhotoId(null)
+    setDragOverPhotoId(null)
+
+    if (!sourcePhotoId || sourcePhotoId === targetPhotoId) return
+
+    const fromIndex = photos.findIndex((p) => p.id === sourcePhotoId)
+    const toIndex = photos.findIndex((p) => p.id === targetPhotoId)
+    if (fromIndex < 0 || toIndex < 0) return
+
+    const previousPhotos = [...photos]
+    const reordered = [...photos]
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, moved)
+
+    // Atualização otimista
+    setPhotos(reordered)
+    setIsSavingPhotoAction(true)
+    setPhotoActionError(null)
+
+    try {
+      await updatePropertyPhotosOrder(
+        property.id,
+        reordered.map((p) => p.id),
+      )
+    } catch (err: unknown) {
+      setPhotos(previousPhotos)
+      const msg = err instanceof Error ? err.message : 'Erro ao reordenar fotos.'
+      setPhotoActionError(msg)
+      toast({
+        title: 'Erro ao reordenar fotos',
+        description: msg,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSavingPhotoAction(false)
+    }
+  }
+
+  const handleSetCover = async (photoId: string) => {
+    if (!property || isSavingPhotoAction || !canManage) return
+    const prevCover = property.cover_photo_id
+    const prevProp = { ...property }
+
+    // Atualização otimista
+    setProperty({ ...property, cover_photo_id: photoId })
+    setIsSavingPhotoAction(true)
+    setPhotoActionError(null)
+
+    try {
+      await setPropertyCoverPhoto(property.id, photoId)
+      toast({
+        title: photoId ? 'Foto definida como capa.' : 'Capa voltou ao padrão (primeira foto).',
+      })
+    } catch (err: unknown) {
+      setProperty(prevProp)
+      const msg = err instanceof Error ? err.message : 'Erro ao definir capa.'
+      setPhotoActionError(msg)
+      toast({
+        title: 'Erro ao definir capa',
+        description: msg,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSavingPhotoAction(false)
     }
   }
 
@@ -827,7 +968,7 @@ export default function ImovelDetalhe() {
         </div>
       </div>
 
-      {/* 1. SEÇÃO: GALERIA DE FOTOS (fileira rolante de miniaturas de 8px, a primeira maior, contador "N de 20 fotos" em texto de apoio e aviso com borda attention) */}
+      {/* 1. SEÇÃO: GALERIA DE FOTOS (ordem das fotos e capa - M28) */}
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-3">
           <div>
@@ -836,10 +977,28 @@ export default function ImovelDetalhe() {
               <span className="text-xs text-muted-foreground tabular font-normal">
                 {photos.length} de 20 fotos
               </span>
+              {isSavingPhotoAction && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Salvando...</span>
+                </span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
-              A primeira foto é utilizada como capa do imóvel.
+              Arraste para mudar a ordem, ou use as setas. A capa é a foto marcada; sem escolha, é a
+              primeira.
             </p>
+            {property.cover_photo_id && canManage && (
+              <button
+                type="button"
+                onClick={() => handleSetCover('')}
+                disabled={isSavingPhotoAction}
+                className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 mt-1 disabled:opacity-50"
+              >
+                <RotateCcw className="h-3 w-3" />
+                <span>Voltar ao padrão (primeira foto)</span>
+              </button>
+            )}
           </div>
 
           {canManage && (
@@ -851,14 +1010,14 @@ export default function ImovelDetalhe() {
                 multiple
                 accept=".jpg,.jpeg,.webp,image/jpeg,image/webp"
                 className="hidden"
-                disabled={isUploading || photos.length >= 20}
+                disabled={isUploading || isSavingPhotoAction || photos.length >= 20}
               />
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || photos.length >= 20}
+                disabled={isUploading || isSavingPhotoAction || photos.length >= 20}
                 className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
               >
                 {isUploading ? (
@@ -871,6 +1030,12 @@ export default function ImovelDetalhe() {
             </div>
           )}
         </div>
+
+        {photoActionError && (
+          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal">
+            {photoActionError}
+          </div>
+        )}
 
         {/* Aviso com borda attention */}
         {photos.length < 5 && (
@@ -885,61 +1050,159 @@ export default function ImovelDetalhe() {
             Nenhuma foto cadastrada.
           </div>
         ) : (
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
-            {photos.map((photo, index) => {
-              const isCover = index === 0
-              const isPng = isPngPhoto(photo.file)
-              return (
-                <div
-                  key={photo.id}
-                  className={`group relative rounded-lg overflow-hidden border border-border bg-muted shrink-0 cursor-pointer ${
-                    isCover ? 'w-40 h-40 sm:w-48 sm:h-48' : 'w-24 h-24 sm:w-28 sm:h-28'
-                  }`}
-                  onClick={() => setViewingPhotoIndex(index)}
-                >
-                  <img
-                    src={getPhotoFileUrl(photo, isCover ? '400x400' : '200x200')}
-                    alt={`Foto ${index + 1}`}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  {isCover && (
-                    <div className="absolute top-2 left-2">
-                      <span className="inline-flex items-center text-[10px] font-normal text-body bg-background/90 rounded-[4px] px-1.5 py-0.5 border border-border/40 shadow-xs">
-                        Capa
-                      </span>
-                    </div>
-                  )}
+          (() => {
+            // Capa efetiva: se property.cover_photo_id apontar para foto existente, é ela; senão é a primeira (index 0)
+            const effectiveCoverId =
+              property.cover_photo_id && photos.some((p) => p.id === property.cover_photo_id)
+                ? property.cover_photo_id
+                : photos[0]?.id
 
-                  {/* Selo para fotos PNG existentes */}
-                  {isPng && (
-                    <div className="absolute bottom-2 left-2 right-2 flex justify-center">
-                      <Badge
-                        variant="attention"
-                        className="text-[9px] px-1.5 py-0.5 h-auto text-center leading-tight shadow-xs"
-                      >
-                        não vai para o portal; substitua por JPEG ou WebP
-                      </Badge>
-                    </div>
-                  )}
+            return (
+              <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-2">
+                {photos.map((photo, index) => {
+                  const isCover = photo.id === effectiveCoverId
+                  const isPng = isPngPhoto(photo.file)
+                  const isBeingDragged = draggedPhotoId === photo.id
+                  const isDropTarget = dragOverPhotoId === photo.id && draggedPhotoId !== photo.id
 
-                  {canManage && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setPhotoToDelete(photo)
+                  return (
+                    <div
+                      key={photo.id}
+                      draggable={canManage && !isSavingPhotoAction}
+                      onDragStart={(e) => handleDragStart(e, photo.id)}
+                      onDragOver={(e) => handleDragOver(e, photo.id)}
+                      onDragLeave={() => {
+                        if (dragOverPhotoId === photo.id) setDragOverPhotoId(null)
                       }}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 hover:bg-destructive hover:text-destructive-foreground text-destructive transition-colors opacity-90 sm:opacity-0 sm:group-hover:opacity-100"
-                      title="Remover foto"
+                      onDrop={(e) => handleDrop(e, photo.id)}
+                      className={`group relative rounded-lg overflow-hidden border bg-muted shrink-0 transition-all ${
+                        isCover ? 'w-44 h-44 sm:w-52 sm:h-52' : 'w-28 h-28 sm:w-32 sm:h-32'
+                      } ${
+                        isDropTarget
+                          ? 'border-primary ring-2 ring-primary/50 scale-[1.02]'
+                          : 'border-border'
+                      } ${isBeingDragged ? 'opacity-40 scale-95' : 'opacity-100'}`}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                      <div
+                        className="w-full h-full cursor-pointer"
+                        onClick={() => setViewingPhotoIndex(index)}
+                      >
+                        <img
+                          src={getPhotoFileUrl(photo, isCover ? '400x400' : '200x200')}
+                          alt={`Foto ${index + 1}`}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105 pointer-events-none"
+                          loading="lazy"
+                        />
+                      </div>
+
+                      {/* Selo Capa */}
+                      {isCover && (
+                        <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-foreground bg-background/95 rounded-[4px] px-2 py-0.5 border border-border shadow-xs">
+                            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                            <span>Capa</span>
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Posição visual discreta */}
+                      <div className="absolute bottom-1.5 left-1.5 z-10 pointer-events-none">
+                        <span className="text-[10px] tabular px-1.5 py-0.2 rounded bg-black/60 text-white font-mono">
+                          #{index + 1}
+                        </span>
+                      </div>
+
+                      {/* Selo para fotos PNG existentes */}
+                      {isPng && (
+                        <div className="absolute bottom-7 left-1.5 right-1.5 flex justify-center z-10 pointer-events-none">
+                          <Badge
+                            variant="attention"
+                            className="text-[9px] px-1.5 py-0.5 h-auto text-center leading-tight shadow-xs"
+                          >
+                            não vai para o portal; substitua por JPEG ou WebP
+                          </Badge>
+                        </div>
+                      )}
+
+                      {/* Ações de foto para quem pode gerenciar */}
+                      {canManage && (
+                        <>
+                          {/* Botão de Excluir no canto superior direito */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPhotoToDelete(photo)
+                            }}
+                            disabled={isSavingPhotoAction}
+                            className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-background/90 hover:bg-destructive hover:text-destructive-foreground text-destructive transition-colors shadow-xs opacity-90 sm:opacity-0 sm:group-hover:opacity-100 disabled:opacity-40"
+                            title="Remover foto"
+                            aria-label="Remover foto"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+
+                          {/* Barra de Controles rápidos: Tornar Capa + Setas Subir/Descer */}
+                          <div className="absolute top-2 left-2 right-10 flex items-center gap-1 z-20 opacity-95 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            {!isCover && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleSetCover(photo.id)
+                                }}
+                                disabled={isSavingPhotoAction}
+                                className="p-1 rounded-md bg-background/90 hover:bg-background text-foreground border border-border text-[11px] shadow-xs flex items-center gap-1 disabled:opacity-40"
+                                title="Tornar capa"
+                                aria-label="Tornar capa"
+                              >
+                                <Star className="h-3 w-3 text-amber-500" />
+                                <span className="hidden sm:inline text-[10px]">Capa</span>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Setas Subir e Descer (no rodapé direito) */}
+                          <div className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-0.5 opacity-95 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            {index > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleMovePhoto(index, 'up')
+                                }}
+                                disabled={isSavingPhotoAction}
+                                className="p-1 rounded bg-background/90 hover:bg-background text-foreground border border-border shadow-xs disabled:opacity-40"
+                                title="Subir posição (mover para a esquerda)"
+                                aria-label="Subir posição"
+                              >
+                                <ChevronLeft className="h-3 w-3" />
+                              </button>
+                            )}
+                            {index < photos.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleMovePhoto(index, 'down')
+                                }}
+                                disabled={isSavingPhotoAction}
+                                className="p-1 rounded bg-background/90 hover:bg-background text-foreground border border-border shadow-xs disabled:opacity-40"
+                                title="Descer posição (mover para a direita)"
+                                aria-label="Descer posição"
+                              >
+                                <ChevronRight className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()
         )}
       </div>
 

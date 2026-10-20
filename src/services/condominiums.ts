@@ -7,6 +7,7 @@ export interface CondominiumPhotoRecord extends RecordModel {
   condominium_id: string
   file: string
   is_active: boolean
+  position?: number
   created?: string
   updated?: string
 }
@@ -22,6 +23,7 @@ export interface CondominiumRecord extends RecordModel {
   rules?: string
   is_active?: boolean
   created_batch_id?: string
+  cover_photo_id?: string
   created?: string
   updated?: string
   expand?: {
@@ -223,6 +225,50 @@ export async function getCondominiumById(id: string): Promise<CondominiumRecord>
 /**
  * Lista fotos de um condomínio (todas ou apenas ativas)
  */
+/**
+ * Ordena fotos de condomínio por position crescente, depois created
+ */
+export function sortCondoPhotos(photos: CondominiumPhotoRecord[]): CondominiumPhotoRecord[] {
+  return [...photos].sort((a, b) => {
+    const posA =
+      typeof a.position === 'number' && a.position > 0 ? a.position : Number.MAX_SAFE_INTEGER
+    const posB =
+      typeof b.position === 'number' && b.position > 0 ? b.position : Number.MAX_SAFE_INTEGER
+    if (posA !== posB) return posA - posB
+    const dateA = a.created ? new Date(a.created).getTime() : 0
+    const dateB = b.created ? new Date(b.created).getTime() : 0
+    return dateA - dateB
+  })
+}
+
+/**
+ * Obtém a capa efetiva do condomínio:
+ * Entre as fotos ativas, é a de cover_photo_id se ela existir e estiver ativa;
+ * senão é a primeira por position, depois created.
+ */
+export function getEffectiveCondoCoverPhoto(
+  condo: CondominiumRecord,
+  photosList?: CondominiumPhotoRecord[],
+): CondominiumPhotoRecord | null {
+  const rawPhotos = photosList || condo.expand?.condominium_photos_via_condominium_id
+  if (!Array.isArray(rawPhotos) || rawPhotos.length === 0) {
+    return null
+  }
+  const activePhotos = rawPhotos.filter((p) => p.is_active !== false)
+  if (activePhotos.length === 0) {
+    return null
+  }
+  const sorted = sortCondoPhotos(activePhotos)
+  if (condo.cover_photo_id) {
+    const cover = sorted.find((p) => p.id === condo.cover_photo_id)
+    if (cover) return cover
+  }
+  return sorted[0] || null
+}
+
+/**
+ * Lista fotos de um condomínio (todas ou apenas ativas), ordenadas por position,created
+ */
 export async function listCondominiumPhotos(
   condominiumId: string,
   onlyActive = false,
@@ -231,10 +277,75 @@ export async function listCondominiumPhotos(
     ? `condominium_id = "${condominiumId}" && is_active = true`
     : `condominium_id = "${condominiumId}"`
 
-  return await pb.collection('condominium_photos').getFullList<CondominiumPhotoRecord>({
+  const records = await pb.collection('condominium_photos').getFullList<CondominiumPhotoRecord>({
     filter,
-    sort: '-created',
+    sort: 'position,created',
   })
+  return sortCondoPhotos(records)
+}
+
+/**
+ * Atualiza a ordem das fotos ativas do condomínio
+ * PUT /backend/v1/condominiums/{id}/photos/order com { ordered_ids: string[] }
+ */
+export async function updateCondominiumPhotosOrder(
+  condominiumId: string,
+  orderedIds: string[],
+): Promise<{ ok: boolean; ordered_ids: string[] }> {
+  try {
+    return await pb.send<{ ok: boolean; ordered_ids: string[] }>(
+      `/backend/v1/condominiums/${condominiumId}/photos/order`,
+      {
+        method: 'PUT',
+        body: { ordered_ids: orderedIds },
+      },
+    )
+  } catch (err: unknown) {
+    const serverMsg = extractServerErrorMessage(err)
+    throw new Error(serverMsg)
+  }
+}
+
+/**
+ * Define a capa do condomínio (photoId vazio volta ao padrão)
+ * PUT /backend/v1/condominiums/{id}/cover com { photo_id: string }
+ */
+export async function setCondominiumCoverPhoto(
+  condominiumId: string,
+  photoId: string,
+): Promise<{ ok: boolean; cover_photo_id: string }> {
+  try {
+    return await pb.send<{ ok: boolean; cover_photo_id: string }>(
+      `/backend/v1/condominiums/${condominiumId}/cover`,
+      {
+        method: 'PUT',
+        body: { photo_id: photoId },
+      },
+    )
+  } catch (err: unknown) {
+    const serverMsg = extractServerErrorMessage(err)
+    throw new Error(serverMsg)
+  }
+}
+
+function extractServerErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const errObj = error as {
+      response?: { message?: string; data?: Record<string, unknown> }
+      data?: { message?: string }
+      message?: string
+    }
+    if (errObj.response?.message && typeof errObj.response.message === 'string') {
+      return errObj.response.message
+    }
+    if (errObj.data?.message && typeof errObj.data.message === 'string') {
+      return errObj.data.message
+    }
+    if (errObj.message && typeof errObj.message === 'string') {
+      return errObj.message
+    }
+  }
+  return 'Ocorreu um erro ao processar a requisição.'
 }
 
 /**

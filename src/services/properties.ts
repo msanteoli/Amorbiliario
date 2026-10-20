@@ -61,6 +61,9 @@ export interface PropertyPhotoRecord extends RecordModel {
   property_id: string
   file: string
   is_active: boolean
+  position?: number
+  created?: string
+  updated?: string
 }
 
 export interface PropertyUserRecord {
@@ -116,6 +119,7 @@ export interface PropertyRecord extends RecordModel {
   source?: PropertySource
   import_batch_id?: string
   status: PropertyStatus
+  cover_photo_id?: string
   street?: string
   street_number?: string
   complement?: string
@@ -567,15 +571,48 @@ export function formatPropertyPrice(property: {
 }
 
 /**
- * Obtém a primeira foto ativa do imóvel a partir do expand do PocketBase
+ * Ordena fotos por position crescente, depois created
  */
-export function getFirstActivePhoto(property: PropertyRecord): PropertyPhotoRecord | null {
-  const photos = property.expand?.property_photos_via_property_id
-  if (!Array.isArray(photos) || photos.length === 0) {
+export function sortPropertyPhotos(photos: PropertyPhotoRecord[]): PropertyPhotoRecord[] {
+  return [...photos].sort((a, b) => {
+    const posA =
+      typeof a.position === 'number' && a.position > 0 ? a.position : Number.MAX_SAFE_INTEGER
+    const posB =
+      typeof b.position === 'number' && b.position > 0 ? b.position : Number.MAX_SAFE_INTEGER
+    if (posA !== posB) return posA - posB
+    const dateA = a.created ? new Date(a.created).getTime() : 0
+    const dateB = b.created ? new Date(b.created).getTime() : 0
+    return dateA - dateB
+  })
+}
+
+/**
+ * Obtém a capa efetiva do imóvel:
+ * Entre as fotos ativas, é a de cover_photo_id se ela existir e estiver ativa;
+ * senão é a primeira por position, depois created.
+ */
+export function getEffectiveCoverPhoto(property: PropertyRecord): PropertyPhotoRecord | null {
+  const rawPhotos = property.expand?.property_photos_via_property_id
+  if (!Array.isArray(rawPhotos) || rawPhotos.length === 0) {
     return null
   }
-  const activePhotos = photos.filter((p) => p.is_active)
-  return activePhotos[0] || null
+  const activePhotos = rawPhotos.filter((p) => p.is_active !== false)
+  if (activePhotos.length === 0) {
+    return null
+  }
+  const sorted = sortPropertyPhotos(activePhotos)
+  if (property.cover_photo_id) {
+    const cover = sorted.find((p) => p.id === property.cover_photo_id)
+    if (cover) return cover
+  }
+  return sorted[0] || null
+}
+
+/**
+ * Mantido por compatibilidade: retorna a capa efetiva do imóvel
+ */
+export function getFirstActivePhoto(property: PropertyRecord): PropertyPhotoRecord | null {
+  return getEffectiveCoverPhoto(property)
 }
 
 /**
@@ -862,9 +899,76 @@ export async function updateProperty(
 export async function listPropertyPhotos(propertyId: string): Promise<PropertyPhotoRecord[]> {
   const records = await pb.collection('property_photos').getFullList<PropertyPhotoRecord>({
     filter: `property_id = "${propertyId}" && is_active = true`,
-    sort: 'created',
+    sort: 'position,created',
   })
-  return records
+  return sortPropertyPhotos(records)
+}
+
+/**
+ * Atualiza a ordem das fotos ativas do imóvel
+ * PUT /backend/v1/properties/{id}/photos/order com { ordered_ids: string[] }
+ */
+export async function updatePropertyPhotosOrder(
+  propertyId: string,
+  orderedIds: string[],
+): Promise<{ ok: boolean; ordered_ids: string[] }> {
+  try {
+    return await pb.send<{ ok: boolean; ordered_ids: string[] }>(
+      `/backend/v1/properties/${propertyId}/photos/order`,
+      {
+        method: 'PUT',
+        body: { ordered_ids: orderedIds },
+      },
+    )
+  } catch (err: unknown) {
+    const serverMsg = extractServerErrorMessage(err)
+    throw new Error(serverMsg)
+  }
+}
+
+/**
+ * Define a capa do imóvel (photoId vazio volta ao padrão)
+ * PUT /backend/v1/properties/{id}/cover com { photo_id: string }
+ */
+export async function setPropertyCoverPhoto(
+  propertyId: string,
+  photoId: string,
+): Promise<{ ok: boolean; cover_photo_id: string }> {
+  try {
+    return await pb.send<{ ok: boolean; cover_photo_id: string }>(
+      `/backend/v1/properties/${propertyId}/cover`,
+      {
+        method: 'PUT',
+        body: { photo_id: photoId },
+      },
+    )
+  } catch (err: unknown) {
+    const serverMsg = extractServerErrorMessage(err)
+    throw new Error(serverMsg)
+  }
+}
+
+/**
+ * Extrai a mensagem de erro do servidor de respostas pb.send
+ */
+export function extractServerErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const errObj = error as {
+      response?: { message?: string; data?: Record<string, unknown> }
+      data?: { message?: string }
+      message?: string
+    }
+    if (errObj.response?.message && typeof errObj.response.message === 'string') {
+      return errObj.response.message
+    }
+    if (errObj.data?.message && typeof errObj.data.message === 'string') {
+      return errObj.data.message
+    }
+    if (errObj.message && typeof errObj.message === 'string') {
+      return errObj.message
+    }
+  }
+  return 'Ocorreu um erro ao processar a requisição.'
 }
 
 /**

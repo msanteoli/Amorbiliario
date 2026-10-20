@@ -8,6 +8,8 @@ import {
   uploadCondominiumPhoto,
   setCondominiumPhotoActive,
   listPropertiesByCondominium,
+  updateCondominiumPhotosOrder,
+  setCondominiumCoverPhoto,
   getCondoPhotoUrl,
   CondominiumRecord,
   CondominiumPhotoRecord,
@@ -50,6 +52,10 @@ import {
   Sparkles,
   ShieldAlert,
   Trash2,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from 'lucide-react'
 import { deleteCondominium } from '@/services/adminDeletion'
 import { DeleteRecordDialog } from '@/components/admin/DeleteRecordDialog'
@@ -93,6 +99,11 @@ export default function CondominioDetalhe() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Reordenação e Capa de Fotos (M28)
+  const [draggedPhotoId, setDraggedPhotoId] = useState<string | null>(null)
+  const [dragOverPhotoId, setDragOverPhotoId] = useState<string | null>(null)
+  const [isSavingPhotoAction, setIsSavingPhotoAction] = useState(false)
 
   const loadAll = useCallback(async () => {
     if (!id) return
@@ -199,7 +210,7 @@ export default function CondominioDetalhe() {
   }
 
   const handleTogglePhotoActive = async (photo: CondominiumPhotoRecord) => {
-    if (!canEdit || !id) return
+    if (!canEdit || !id || isSavingPhotoAction) return
     setPhotoError(null)
 
     const newStatus = !photo.is_active
@@ -217,8 +228,127 @@ export default function CondominioDetalhe() {
       await setCondominiumPhotoActive(photo.id, newStatus)
       const refreshed = await listCondominiumPhotos(id, false)
       setPhotos(refreshed)
+      // Se era a capa e foi desativada, recarrega dados do condomínio
+      if (condo?.cover_photo_id === photo.id && !newStatus) {
+        const freshCondo = await getCondominiumById(id)
+        setCondo(freshCondo)
+      }
     } catch (err) {
       setPhotoError(formatErrorMessage(err))
+    }
+  }
+
+  // Ações de Ordem e Capa do Condomínio (M28)
+  const handleMovePhoto = async (activePhotoIndex: number, direction: 'up' | 'down') => {
+    if (!condo || isSavingPhotoAction || !canEdit) return
+    const activePhotosList = photos.filter((p) => p.is_active)
+    const targetIndex = direction === 'up' ? activePhotoIndex - 1 : activePhotoIndex + 1
+    if (targetIndex < 0 || targetIndex >= activePhotosList.length) return
+
+    const previousPhotos = [...photos]
+    const reorderedActive = [...activePhotosList]
+    const [moved] = reorderedActive.splice(activePhotoIndex, 1)
+    reorderedActive.splice(targetIndex, 0, moved)
+
+    // Recompõe a lista completa mantendo ativas na nova ordem seguidas das inativas
+    const inactiveList = photos.filter((p) => !p.is_active)
+    const newPhotos = [...reorderedActive, ...inactiveList]
+
+    setPhotos(newPhotos)
+    setIsSavingPhotoAction(true)
+    setPhotoError(null)
+
+    try {
+      await updateCondominiumPhotosOrder(
+        condo.id,
+        reorderedActive.map((p) => p.id),
+      )
+    } catch (err: unknown) {
+      setPhotos(previousPhotos)
+      const msg = err instanceof Error ? err.message : 'Erro ao reordenar fotos.'
+      setPhotoError(msg)
+    } finally {
+      setIsSavingPhotoAction(false)
+    }
+  }
+
+  const handleDragStart = (e: React.DragEvent, photoId: string) => {
+    if (!canEdit || isSavingPhotoAction) return
+    setDraggedPhotoId(photoId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', photoId)
+  }
+
+  const handleDragOver = (e: React.DragEvent, photoId: string) => {
+    if (!canEdit || isSavingPhotoAction) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverPhotoId !== photoId) {
+      setDragOverPhotoId(photoId)
+    }
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetPhotoId: string) => {
+    e.preventDefault()
+    if (!condo || isSavingPhotoAction || !canEdit) {
+      setDraggedPhotoId(null)
+      setDragOverPhotoId(null)
+      return
+    }
+
+    const sourcePhotoId = draggedPhotoId || e.dataTransfer.getData('text/plain')
+    setDraggedPhotoId(null)
+    setDragOverPhotoId(null)
+
+    if (!sourcePhotoId || sourcePhotoId === targetPhotoId) return
+
+    const activePhotosList = photos.filter((p) => p.is_active)
+    const fromIndex = activePhotosList.findIndex((p) => p.id === sourcePhotoId)
+    const toIndex = activePhotosList.findIndex((p) => p.id === targetPhotoId)
+    if (fromIndex < 0 || toIndex < 0) return
+
+    const previousPhotos = [...photos]
+    const reorderedActive = [...activePhotosList]
+    const [moved] = reorderedActive.splice(fromIndex, 1)
+    reorderedActive.splice(toIndex, 0, moved)
+
+    const inactiveList = photos.filter((p) => !p.is_active)
+    const newPhotos = [...reorderedActive, ...inactiveList]
+
+    setPhotos(newPhotos)
+    setIsSavingPhotoAction(true)
+    setPhotoError(null)
+
+    try {
+      await updateCondominiumPhotosOrder(
+        condo.id,
+        reorderedActive.map((p) => p.id),
+      )
+    } catch (err: unknown) {
+      setPhotos(previousPhotos)
+      const msg = err instanceof Error ? err.message : 'Erro ao reordenar fotos.'
+      setPhotoError(msg)
+    } finally {
+      setIsSavingPhotoAction(false)
+    }
+  }
+
+  const handleSetCover = async (photoId: string) => {
+    if (!condo || isSavingPhotoAction || !canEdit) return
+    const prevCondo = { ...condo }
+
+    setCondo({ ...condo, cover_photo_id: photoId })
+    setIsSavingPhotoAction(true)
+    setPhotoError(null)
+
+    try {
+      await setCondominiumCoverPhoto(condo.id, photoId)
+    } catch (err: unknown) {
+      setCondo(prevCondo)
+      const msg = err instanceof Error ? err.message : 'Erro ao definir capa.'
+      setPhotoError(msg)
+    } finally {
+      setIsSavingPhotoAction(false)
     }
   }
 
@@ -496,7 +626,7 @@ export default function CondominioDetalhe() {
         </form>
       </div>
 
-      {/* SEÇÃO 2: Galeria de Fotos */}
+      {/* SEÇÃO 2: Galeria de Fotos com Upload, Reordenação e Capa (M28) */}
       <div className="border border-border rounded-lg p-5 sm:p-6 bg-card space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
           <div>
@@ -506,10 +636,28 @@ export default function CondominioDetalhe() {
               <span className="text-xs tabular text-muted-foreground">
                 ({activePhotos.length}/10 ativas)
               </span>
+              {isSavingPhotoAction && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Salvando...</span>
+                </span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Envio de até 10 fotos ativas. As fotos podem ser desativadas no lugar de apagadas.
+              Arraste para mudar a ordem, ou use as setas. A capa é a foto marcada; sem escolha, é a
+              primeira.
             </p>
+            {condo.cover_photo_id && canEdit && (
+              <button
+                type="button"
+                onClick={() => handleSetCover('')}
+                disabled={isSavingPhotoAction}
+                className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 mt-1 disabled:opacity-50"
+              >
+                <RotateCcw className="h-3 w-3" />
+                <span>Voltar ao padrão (primeira foto)</span>
+              </button>
+            )}
           </div>
 
           {canEdit && (
@@ -521,13 +669,13 @@ export default function CondominioDetalhe() {
                 onChange={handleUploadPhoto}
                 className="hidden"
                 id="condo-photo-upload"
-                disabled={uploadingPhoto || activePhotos.length >= 10}
+                disabled={uploadingPhoto || isSavingPhotoAction || activePhotos.length >= 10}
               />
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingPhoto || activePhotos.length >= 10}
+                disabled={uploadingPhoto || isSavingPhotoAction || activePhotos.length >= 10}
                 className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
               >
                 {uploadingPhoto ? (
@@ -571,68 +719,182 @@ export default function CondominioDetalhe() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {photos.map((photo) => {
-              const url = getCondoPhotoUrl(photo, '300x200')
-              const fullUrl = getCondoPhotoUrl(photo)
+          (() => {
+            const effectiveCoverId =
+              condo.cover_photo_id && activePhotos.some((p) => p.id === condo.cover_photo_id)
+                ? condo.cover_photo_id
+                : activePhotos[0]?.id
 
-              return (
-                <div
-                  key={photo.id}
-                  className={`group relative rounded-lg border border-border overflow-hidden bg-muted flex flex-col ${
-                    !photo.is_active ? 'opacity-50 grayscale' : ''
-                  }`}
-                >
-                  <a
-                    href={fullUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block aspect-[4/3] w-full overflow-hidden"
-                  >
-                    <img
-                      src={url}
-                      alt="Foto do condomínio"
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  </a>
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {photos.map((photo) => {
+                  const url = getCondoPhotoUrl(photo, '300x200')
+                  const fullUrl = getCondoPhotoUrl(photo)
+                  const isCover = photo.is_active && photo.id === effectiveCoverId
+                  const activeIndex = photo.is_active
+                    ? activePhotos.findIndex((p) => p.id === photo.id)
+                    : -1
+                  const isBeingDragged = draggedPhotoId === photo.id
+                  const isDropTarget = dragOverPhotoId === photo.id && draggedPhotoId !== photo.id
 
-                  <div className="p-2 bg-card border-t border-border flex items-center justify-between gap-1">
-                    <span className="text-[10px] tabular text-muted-foreground truncate">
-                      {photo.is_active ? (
-                        <span className="text-emerald-700 dark:text-emerald-400">Ativa</span>
-                      ) : (
-                        <span className="text-zinc-500">Desativada</span>
-                      )}
-                    </span>
+                  return (
+                    <div
+                      key={photo.id}
+                      draggable={canEdit && photo.is_active && !isSavingPhotoAction}
+                      onDragStart={(e) => handleDragStart(e, photo.id)}
+                      onDragOver={(e) => {
+                        if (photo.is_active) handleDragOver(e, photo.id)
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverPhotoId === photo.id) setDragOverPhotoId(null)
+                      }}
+                      onDrop={(e) => {
+                        if (photo.is_active) handleDrop(e, photo.id)
+                      }}
+                      className={`group relative rounded-lg border overflow-hidden bg-muted flex flex-col transition-all ${
+                        !photo.is_active ? 'opacity-50 grayscale border-border' : ''
+                      } ${
+                        isDropTarget
+                          ? 'border-primary ring-2 ring-primary/50 scale-[1.02]'
+                          : 'border-border'
+                      } ${isBeingDragged ? 'opacity-30 scale-95' : ''}`}
+                    >
+                      <div className="relative aspect-[4/3] w-full overflow-hidden">
+                        <a
+                          href={fullUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block w-full h-full"
+                        >
+                          <img
+                            src={url}
+                            alt="Foto do condomínio"
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105 pointer-events-none"
+                            loading="lazy"
+                          />
+                        </a>
 
-                    {canEdit && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleTogglePhotoActive(photo)}
-                        className="h-7 px-2 text-[11px] font-normal hover:bg-muted"
-                        title={photo.is_active ? 'Desativar foto' : 'Reativar foto'}
-                      >
-                        {photo.is_active ? (
-                          <span className="text-destructive flex items-center gap-1">
-                            <PowerOff className="h-3 w-3" />
-                            <span>Desativar</span>
-                          </span>
-                        ) : (
-                          <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                            <Power className="h-3 w-3" />
-                            <span>Reativar</span>
-                          </span>
+                        {/* Selo Capa */}
+                        {isCover && (
+                          <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-foreground bg-background/95 rounded-[4px] px-1.5 py-0.5 border border-border shadow-xs">
+                              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                              <span>Capa</span>
+                            </span>
+                          </div>
                         )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+
+                        {/* Posição discreta para foto ativa */}
+                        {photo.is_active && activeIndex >= 0 && (
+                          <div className="absolute bottom-1.5 left-1.5 z-10 pointer-events-none">
+                            <span className="text-[10px] tabular px-1.5 py-0.2 rounded bg-black/60 text-white font-mono">
+                              #{activeIndex + 1}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Controles para foto ativa */}
+                        {canEdit && photo.is_active && (
+                          <>
+                            {/* Botão Tornar Capa */}
+                            {!isCover && (
+                              <div className="absolute top-2 left-2 z-20 opacity-95 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    handleSetCover(photo.id)
+                                  }}
+                                  disabled={isSavingPhotoAction}
+                                  className="p-1 rounded-md bg-background/90 hover:bg-background text-foreground border border-border text-[10px] shadow-xs flex items-center gap-1 disabled:opacity-40"
+                                  title="Tornar capa"
+                                  aria-label="Tornar capa"
+                                >
+                                  <Star className="h-3 w-3 text-amber-500" />
+                                  <span className="hidden sm:inline">Capa</span>
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Setas Subir e Descer */}
+                            <div className="absolute bottom-1.5 right-1.5 z-20 flex items-center gap-0.5 opacity-95 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                              {activeIndex > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    handleMovePhoto(activeIndex, 'up')
+                                  }}
+                                  disabled={isSavingPhotoAction}
+                                  className="p-1 rounded bg-background/90 hover:bg-background text-foreground border border-border shadow-xs disabled:opacity-40"
+                                  title="Subir posição"
+                                  aria-label="Subir posição"
+                                >
+                                  <ChevronLeft className="h-3 w-3" />
+                                </button>
+                              )}
+                              {activeIndex < activePhotos.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    handleMovePhoto(activeIndex, 'down')
+                                  }}
+                                  disabled={isSavingPhotoAction}
+                                  className="p-1 rounded bg-background/90 hover:bg-background text-foreground border border-border shadow-xs disabled:opacity-40"
+                                  title="Descer posição"
+                                  aria-label="Descer posição"
+                                >
+                                  <ChevronRight className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="p-2 bg-card border-t border-border flex items-center justify-between gap-1">
+                        <span className="text-[10px] tabular text-muted-foreground truncate">
+                          {photo.is_active ? (
+                            <span className="text-emerald-700 dark:text-emerald-400">Ativa</span>
+                          ) : (
+                            <span className="text-zinc-500">Desativada</span>
+                          )}
+                        </span>
+
+                        {canEdit && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleTogglePhotoActive(photo)}
+                            disabled={isSavingPhotoAction}
+                            className="h-7 px-2 text-[11px] font-normal hover:bg-muted"
+                            title={photo.is_active ? 'Desativar foto' : 'Reativar foto'}
+                          >
+                            {photo.is_active ? (
+                              <span className="text-destructive flex items-center gap-1">
+                                <PowerOff className="h-3 w-3" />
+                                <span>Desativar</span>
+                              </span>
+                            ) : (
+                              <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                <Power className="h-3 w-3" />
+                                <span>Reativar</span>
+                              </span>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()
         )}
       </div>
 
