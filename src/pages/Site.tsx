@@ -49,18 +49,29 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024
+
+interface ProcessedImageResult {
+  file: File
+  blob: Blob
+  fileName: string
+  fallbackToJpeg: boolean
+}
+
 /**
- * Reencoda a imagem em canvas para WebP (ou JPEG) para remover EXIF/GPS.
- * Valida tipo e tamanho máximo (3 MB).
+ * Reencoda a imagem em canvas para WebP ou JPEG para remover EXIF/GPS e compatibilizar formato.
+ * - Safari não gera WebP pelo canvas (devolve PNG silenciosamente); faz fallback para JPEG com fundo branco.
+ * - Valida tipo retornado (somente image/webp ou image/jpeg).
+ * - Se passar de 3 MB, reduz qualidade em passos antes de falhar.
+ * - Retorna o File com nome e MIME type reais correspondentes ao blob exportado.
  */
-async function processAndSanitizeImage(
-  file: File,
-  preferredMimeType: 'image/webp' | 'image/jpeg' = 'image/webp',
-): Promise<{ blob: Blob; fileName: string }> {
+async function processAndSanitizeImage(file: File): Promise<ProcessedImageResult> {
   const allowed = ['image/jpeg', 'image/jpg', 'image/webp', 'image/png']
   if (!allowed.includes(file.type.toLowerCase())) {
     throw new Error('Formato inválido. Apenas imagens JPEG ou WebP são aceitas.')
   }
+
+  const cleanBase = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'imagem'
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -68,46 +79,125 @@ async function processAndSanitizeImage(
     reader.onload = () => {
       const img = new Image()
       img.onerror = () => reject(new Error('Falha ao carregar a imagem selecionada.'))
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = img.naturalWidth || img.width
-        canvas.height = img.naturalHeight || img.height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          reject(new Error('Não foi possível inicializar o processador de imagem.'))
-          return
+      img.onload = async () => {
+        const width = img.naturalWidth || img.width
+        const height = img.naturalHeight || img.height
+
+        const renderToCanvas = (withWhiteBackground: boolean): HTMLCanvasElement | null => {
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (!ctx) return null
+          if (withWhiteBackground) {
+            ctx.fillStyle = '#ffffff'
+            ctx.fillRect(0, 0, width, height)
+          }
+          ctx.drawImage(img, 0, 0, width, height)
+          return canvas
         }
 
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        const getCanvasBlob = (
+          canvas: HTMLCanvasElement,
+          type: string,
+          quality: number,
+        ): Promise<Blob | null> => {
+          return new Promise((res) => {
+            canvas.toBlob((b) => res(b), type, quality)
+          })
+        }
 
-        const targetMime = preferredMimeType === 'image/webp' ? 'image/webp' : 'image/jpeg'
-        const ext = targetMime === 'image/webp' ? 'webp' : 'jpg'
+        try {
+          // 1. Tentar inicialmente exportar como WebP mantendo transparência (sem fundo branco)
+          const transparentCanvas = renderToCanvas(false)
+          if (!transparentCanvas) {
+            reject(new Error('Não foi possível inicializar o processador de imagem.'))
+            return
+          }
 
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('Falha ao reencodar a imagem.'))
+          let initialBlob = await getCanvasBlob(transparentCanvas, 'image/webp', 0.92)
+
+          // 2. Se o navegador não devolveu image/webp (ex.: Safari que devolve image/png),
+          // faz fallback para JPEG com fundo branco
+          let finalBlob: Blob | null = null
+          let fallbackToJpeg = false
+
+          if (initialBlob && initialBlob.type === 'image/webp') {
+            // WebP suportado nativamente
+            finalBlob = initialBlob
+            // Se passar de 3 MB em WebP, tenta passos de compressão 0.85 e 0.75
+            if (finalBlob.size > MAX_IMAGE_SIZE_BYTES) {
+              const lower1 = await getCanvasBlob(transparentCanvas, 'image/webp', 0.85)
+              if (lower1 && lower1.type === 'image/webp' && lower1.size <= MAX_IMAGE_SIZE_BYTES) {
+                finalBlob = lower1
+              } else {
+                const lower2 = await getCanvasBlob(transparentCanvas, 'image/webp', 0.75)
+                if (lower2 && lower2.type === 'image/webp' && lower2.size <= MAX_IMAGE_SIZE_BYTES) {
+                  finalBlob = lower2
+                }
+              }
+            }
+          } else {
+            // Fallback para JPEG com fundo branco
+            fallbackToJpeg = true
+            const whiteCanvas = renderToCanvas(true)
+            if (!whiteCanvas) {
+              reject(new Error('Não foi possível inicializar o processador de imagem.'))
               return
             }
 
-            // Validação de 3 MB (3 * 1024 * 1024 bytes)
-            const MAX_SIZE = 3 * 1024 * 1024
-            if (blob.size > MAX_SIZE) {
-              reject(
-                new Error(
-                  `O arquivo tem ${(blob.size / (1024 * 1024)).toFixed(1)} MB. O limite máximo é de 3 MB após processamento.`,
-                ),
-              )
-              return
+            let jpegBlob = await getCanvasBlob(whiteCanvas, 'image/jpeg', 0.92)
+            if (jpegBlob && jpegBlob.size > MAX_IMAGE_SIZE_BYTES) {
+              const jpegLower1 = await getCanvasBlob(whiteCanvas, 'image/jpeg', 0.85)
+              if (jpegLower1 && jpegLower1.size <= MAX_IMAGE_SIZE_BYTES) {
+                jpegBlob = jpegLower1
+              } else {
+                const jpegLower2 = await getCanvasBlob(whiteCanvas, 'image/jpeg', 0.75)
+                if (jpegLower2 && jpegLower2.size <= MAX_IMAGE_SIZE_BYTES) {
+                  jpegBlob = jpegLower2
+                }
+              }
             }
+            finalBlob = jpegBlob
+          }
 
-            const cleanBase = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_')
-            const finalFileName = `${cleanBase || 'imagem'}.${ext}`
-            resolve({ blob, fileName: finalFileName })
-          },
-          targetMime,
-          0.92,
-        )
+          if (!finalBlob) {
+            reject(new Error('Falha ao reencodar a imagem.'))
+            return
+          }
+
+          // 3. Checagem do tipo real retornado pelo blob
+          if (finalBlob.type !== 'image/webp' && finalBlob.type !== 'image/jpeg') {
+            reject(
+              new Error('Não foi possível preparar a imagem neste navegador. Tente no Chrome.'),
+            )
+            return
+          }
+
+          // 4. Checagem final de tamanho (3 MB)
+          if (finalBlob.size > MAX_IMAGE_SIZE_BYTES) {
+            reject(
+              new Error(
+                `O arquivo tem ${(finalBlob.size / (1024 * 1024)).toFixed(1)} MB. O limite máximo é de 3 MB após processamento.`,
+              ),
+            )
+            return
+          }
+
+          // 5. Montar o File com extensão e tipo reais derivados de finalBlob.type
+          const ext = finalBlob.type === 'image/webp' ? '.webp' : '.jpg'
+          const finalFileName = `${cleanBase}${ext}`
+          const finalFile = new File([finalBlob], finalFileName, { type: finalBlob.type })
+
+          resolve({
+            file: finalFile,
+            blob: finalBlob,
+            fileName: finalFileName,
+            fallbackToJpeg,
+          })
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error('Falha ao processar a imagem.'))
+        }
       }
       img.src = reader.result as string
     }
@@ -164,6 +254,7 @@ export default function Site() {
   const [uploadingFavicon, setUploadingFavicon] = useState(false)
   const [savingMarca, setSavingMarca] = useState(false)
   const [marcaError, setMarcaError] = useState<string | null>(null)
+  const [marcaWarning, setMarcaWarning] = useState<string | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const faviconInputRef = useRef<HTMLInputElement>(null)
 
@@ -262,20 +353,34 @@ export default function Site() {
   // ═══════════════════════════════════════════════════════════════════════
   // HANDLERS: MARCA
   // ═══════════════════════════════════════════════════════════════════════
+  const JPEG_FALLBACK_NOTICE =
+    'Seu navegador não gera WebP; a imagem foi convertida para JPEG com fundo branco (sem transparência). Para manter o fundo transparente, envie pelo Chrome.'
+
   const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setMarcaError(null)
+    setMarcaWarning(null)
     setUploadingLogo(true)
 
     try {
-      const sanitized = await processAndSanitizeImage(file, 'image/webp')
-      const uploaded = await uploadSiteAsset(sanitized.blob, 'logo', sanitized.fileName)
+      const sanitized = await processAndSanitizeImage(file)
+
+      // Checar se o arquivo final é image/jpeg ou image/webp
+      if (sanitized.file.type !== 'image/jpeg' && sanitized.file.type !== 'image/webp') {
+        throw new Error('Não foi possível preparar a imagem neste navegador. Tente no Chrome.')
+      }
+
+      const uploaded = await uploadSiteAsset(sanitized.file, 'logo', sanitized.fileName)
       // Atualiza o rascunho com o novo logo_asset_id
       const res = await updateAdminSiteSettings({ logo_asset_id: uploaded.id })
       setSettings(res.settings)
       setLogoPreviewUrl(resolveAssetUrl(uploaded.url || res.settings.logo_url))
       showDraftSavedBadge('Logo atualizado no rascunho')
+
+      if (sanitized.fallbackToJpeg) {
+        setMarcaWarning(JPEG_FALLBACK_NOTICE)
+      }
     } catch (err) {
       setMarcaError(formatSiteErrorMessage(err, 'Erro ao enviar o logo.'))
     } finally {
@@ -288,16 +393,27 @@ export default function Site() {
     const file = e.target.files?.[0]
     if (!file) return
     setMarcaError(null)
+    setMarcaWarning(null)
     setUploadingFavicon(true)
 
     try {
-      const sanitized = await processAndSanitizeImage(file, 'image/webp')
-      const uploaded = await uploadSiteAsset(sanitized.blob, 'favicon', sanitized.fileName)
+      const sanitized = await processAndSanitizeImage(file)
+
+      // Checar se o arquivo final é image/jpeg ou image/webp
+      if (sanitized.file.type !== 'image/jpeg' && sanitized.file.type !== 'image/webp') {
+        throw new Error('Não foi possível preparar a imagem neste navegador. Tente no Chrome.')
+      }
+
+      const uploaded = await uploadSiteAsset(sanitized.file, 'favicon', sanitized.fileName)
       // Atualiza o rascunho com o novo favicon_asset_id
       const res = await updateAdminSiteSettings({ favicon_asset_id: uploaded.id })
       setSettings(res.settings)
       setFaviconPreviewUrl(resolveAssetUrl(uploaded.url || res.settings.favicon_url))
       showDraftSavedBadge('Favicon atualizado no rascunho')
+
+      if (sanitized.fallbackToJpeg) {
+        setMarcaWarning(JPEG_FALLBACK_NOTICE)
+      }
     } catch (err) {
       setMarcaError(formatSiteErrorMessage(err, 'Erro ao enviar o favicon.'))
     } finally {
@@ -659,6 +775,24 @@ export default function Site() {
                   {marcaError && (
                     <div className="p-3 bg-destructive/10 border border-destructive/30 text-destructive text-xs rounded-md font-sans">
                       {marcaError}
+                    </div>
+                  )}
+
+                  {marcaWarning && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs rounded-md font-sans flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                        <span>{marcaWarning}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setMarcaWarning(null)}
+                        className="h-6 px-2 text-xs font-sans text-amber-800 dark:text-amber-200 hover:bg-amber-500/20"
+                      >
+                        Fechar
+                      </Button>
                     </div>
                   )}
 
