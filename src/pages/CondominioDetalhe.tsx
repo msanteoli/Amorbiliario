@@ -87,6 +87,7 @@ export default function CondominioDetalhe() {
   const [neighborhood, setNeighborhood] = useState('')
   const [city, setCity] = useState('')
   const [amenities, setAmenities] = useState('')
+  const [infrastructure, setInfrastructure] = useState('')
   const [rules, setRules] = useState('')
   const [isActive, setIsActive] = useState(true)
 
@@ -126,6 +127,7 @@ export default function CondominioDetalhe() {
       setNeighborhood(condoData.neighborhood || '')
       setCity(condoData.city || '')
       setAmenities(condoData.amenities || '')
+      setInfrastructure(condoData.infrastructure || '')
       setRules(condoData.rules || '')
       setIsActive(condoData.is_active !== false)
     } catch (err) {
@@ -161,6 +163,7 @@ export default function CondominioDetalhe() {
         neighborhood: neighborhood.trim(),
         city: city.trim(),
         amenities: amenities.trim(),
+        infrastructure: infrastructure.trim(),
         rules: rules.trim(),
         is_active: isActive,
       })
@@ -424,7 +427,7 @@ export default function CondominioDetalhe() {
               <MapPin className="h-3.5 w-3.5 shrink-0" />
               <span>
                 {[condo.street, condo.neighborhood, condo.city].filter(Boolean).join(', ') ||
-                  'Endereço não cadastrado'}
+                  'Endereço ainda não divulgado'}
               </span>
             </div>
           </div>
@@ -513,6 +516,9 @@ export default function CondominioDetalhe() {
                 maxLength={160}
                 className="h-11 text-sm border-border"
               />
+              <p className="text-[11px] text-muted-foreground font-normal">
+                Pode ficar em branco em lançamentos sem endereço divulgado.
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -549,7 +555,7 @@ export default function CondominioDetalhe() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label
@@ -562,8 +568,31 @@ export default function CondominioDetalhe() {
               </div>
               <Textarea
                 id="condo-edit-amenities"
+                placeholder={'Piscina\nAcademia\nSalão de festas\nChurrasqueira'}
                 value={amenities}
                 onChange={(e) => setAmenities(e.target.value)}
+                disabled={!canEdit || savingForm}
+                rows={4}
+                maxLength={2000}
+                className="text-sm border-border resize-y font-normal"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="condo-edit-infrastructure"
+                  className="text-xs eyebrow text-muted-foreground"
+                >
+                  Itens de infraestrutura
+                </Label>
+                <span className="text-[11px] text-muted-foreground">um por linha</span>
+              </div>
+              <Textarea
+                id="condo-edit-infrastructure"
+                placeholder={'Portaria 24h\nGerador\nElevador'}
+                value={infrastructure}
+                onChange={(e) => setInfrastructure(e.target.value)}
                 disabled={!canEdit || savingForm}
                 rows={4}
                 maxLength={2000}
@@ -577,6 +606,7 @@ export default function CondominioDetalhe() {
               </Label>
               <Textarea
                 id="condo-edit-rules"
+                placeholder="Ex.: Pets até 10kg permitidos, portaria 24 horas, silêncio após às 22h..."
                 value={rules}
                 onChange={(e) => setRules(e.target.value)}
                 disabled={!canEdit || savingForm}
@@ -643,6 +673,9 @@ export default function CondominioDetalhe() {
                 </span>
               )}
             </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Estas fotos aparecem automaticamente em todos os imóveis ligados a este condomínio.
+            </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Arraste para mudar a ordem, ou use as setas. A capa é a foto marcada; sem escolha, é a
               primeira.

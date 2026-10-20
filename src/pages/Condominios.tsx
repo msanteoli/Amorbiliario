@@ -259,11 +259,9 @@ export default function Condominios() {
                           <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span>{condo.name}</span>
                         </div>
-                        {condo.street && (
-                          <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">
-                            {condo.street}
-                          </div>
-                        )}
+                        <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">
+                          {condo.street || 'Endereço ainda não divulgado'}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs text-foreground">
                         {condo.neighborhood || (
@@ -325,10 +323,10 @@ export default function Condominios() {
                         <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="truncate">{condo.name}</span>
                       </div>
-                      {condo.street && (
-                        <p className="text-xs text-muted-foreground truncate">{condo.street}</p>
-                      )}
-                    </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {condo.street || 'Endereço ainda não divulgado'}
+                      </p>
+                    </div>{' '}
                     {isInactive ? (
                       <Badge
                         variant="outline"
@@ -351,7 +349,7 @@ export default function Condominios() {
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">
                         {[condo.neighborhood, condo.city].filter(Boolean).join(', ') ||
-                          'Sem localização'}
+                          'Endereço ainda não divulgado'}
                       </span>
                     </div>
 

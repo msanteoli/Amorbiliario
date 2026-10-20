@@ -17,6 +17,7 @@ import {
   getPhotoFileUrl,
   formatErrorMessage,
 } from '@/services/properties'
+import { getEffectiveCondoCoverPhoto, getCondoPhotoUrl } from '@/services/condominiums'
 import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/clients'
 import { formatRoomsText, formatParkingText } from '@/lib/propertyCardUtils'
 import { maskCurrencyInput, parseCurrencyInput } from '@/lib/currencyUtils'
@@ -579,6 +580,10 @@ export default function Imoveis() {
             <div className="divide-y divide-border">
               {properties.map((property) => {
                 const coverPhoto = getFirstActivePhoto(property)
+                const condoCoverPhoto =
+                  !coverPhoto && property.in_condominium && property.expand?.condominium_id
+                    ? getEffectiveCondoCoverPhoto(property.expand.condominium_id as any)
+                    : null
                 const isOutdated = isPropertyPendingReview(property)
                 const statusLabel = PROPERTY_STATUS_LABELS[property.status] || property.status
                 const locationText =
@@ -592,7 +597,7 @@ export default function Imoveis() {
                   >
                     {/* Miniatura 56px (8px raio) */}
                     <div className="col-span-1">
-                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border shrink-0">
+                      <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border shrink-0">
                         {coverPhoto ? (
                           <img
                             src={getPhotoFileUrl(coverPhoto, '100x100')}
@@ -600,6 +605,18 @@ export default function Imoveis() {
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
+                        ) : condoCoverPhoto ? (
+                          <>
+                            <img
+                              src={getCondoPhotoUrl(condoCoverPhoto, '100x100')}
+                              alt={property.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                            <div className="absolute bottom-0 inset-x-0 bg-background/90 text-[8px] text-center text-muted-foreground py-0.2 border-t border-border/50 truncate leading-tight">
+                              do condomínio
+                            </div>
+                          </>
                         ) : (
                           <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
                         )}
@@ -737,6 +754,10 @@ export default function Imoveis() {
           <div className="lg:hidden rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
             {properties.map((property) => {
               const coverPhoto = getFirstActivePhoto(property)
+              const condoCoverPhoto =
+                !coverPhoto && property.in_condominium && property.expand?.condominium_id
+                  ? getEffectiveCondoCoverPhoto(property.expand.condominium_id as any)
+                  : null
               const isOutdated = isPropertyPendingReview(property)
               const statusLabel = PROPERTY_STATUS_LABELS[property.status] || property.status
               const locationText =
@@ -750,7 +771,7 @@ export default function Imoveis() {
                   className="p-3 flex items-center gap-3 min-h-[72px] hover:bg-muted/40 cursor-pointer active:bg-muted/60 transition-colors"
                 >
                   {/* Miniatura 56px (8px raio) */}
-                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border shrink-0">
+                  <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border shrink-0">
                     {coverPhoto ? (
                       <img
                         src={getPhotoFileUrl(coverPhoto, '100x100')}
@@ -758,6 +779,18 @@ export default function Imoveis() {
                         className="w-full h-full object-cover"
                         loading="lazy"
                       />
+                    ) : condoCoverPhoto ? (
+                      <>
+                        <img
+                          src={getCondoPhotoUrl(condoCoverPhoto, '100x100')}
+                          alt={property.title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        <div className="absolute bottom-0 inset-x-0 bg-background/90 text-[8px] text-center text-muted-foreground py-0.2 border-t border-border/50 truncate leading-tight">
+                          do condomínio
+                        </div>
+                      </>
                     ) : (
                       <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
                     )}

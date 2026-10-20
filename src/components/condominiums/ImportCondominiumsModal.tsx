@@ -27,7 +27,9 @@ import {
   Loader2,
   AlertCircle,
   FileText,
+  Download,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import {
   importCondominiumsEndpoint,
   ImportCondominiumRow,
@@ -83,12 +85,15 @@ export function ImportCondominiumsModal({
     try {
       const rows = await readSpreadsheetFile<ImportCondominiumRow>(selected, { maxRows: 500 })
       // Converte valores para string conforme interface ImportCondominiumRow (Nome, Endereço, etc)
-      const sanitizedRows = rows.map((r) => ({
+      const sanitizedRows: ImportCondominiumRow[] = rows.map((r) => ({
         Nome: String(r.Nome || (r as Record<string, unknown>).name || ''),
         Endereço: String(r.Endereço || (r as Record<string, unknown>).street || ''),
         Bairro: String(r.Bairro || (r as Record<string, unknown>).neighborhood || ''),
         Cidade: String(r.Cidade || (r as Record<string, unknown>).city || ''),
         Lazer: String(r.Lazer || (r as Record<string, unknown>).amenities || ''),
+        Infraestrutura: String(
+          r.Infraestrutura || (r as Record<string, unknown>).infrastructure || '',
+        ),
         Regras: String(r.Regras || (r as Record<string, unknown>).rules || ''),
       }))
 
@@ -134,6 +139,35 @@ export function ImportCondominiumsModal({
     }
   }
 
+  const handleDownloadTemplate = () => {
+    // Modelo com apenas "Nome" obrigatório e instrução clara nas observações
+    const templateData = [
+      {
+        Nome: 'Residencial Exemplo (Obrigatório)',
+        Endereço: 'Rua das Flores, 123 (opcional)',
+        Bairro: 'Centro (opcional)',
+        Cidade: 'Salvador (opcional)',
+        Lazer: 'Piscina\nAcademia (opcional)',
+        Infraestrutura: 'Portaria 24h\nGerador\nElevador (opcional)',
+        Regras: 'Pets permitidos (opcional)',
+      },
+      {
+        Nome: 'Lançamento Vista Mar',
+        Endereço: '',
+        Bairro: 'Ondina',
+        Cidade: 'Salvador',
+        Lazer: 'Piscina infinity',
+        Infraestrutura: 'Portaria inteligente\n2 Elevadores',
+        Regras: '',
+      },
+    ]
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Condomínios')
+    XLSX.writeFile(workbook, 'modelo_importacao_condominios.xlsx')
+  }
+
   const translateReason = (reason: string) => {
     switch (reason) {
       case 'sem_nome':
@@ -164,9 +198,10 @@ export function ImportCondominiumsModal({
           <DialogDescription className="text-xs text-muted-foreground">
             Selecione uma planilha (.xlsx ou .csv) contendo as colunas:{' '}
             <span className="font-mono text-[11px] text-foreground">
-              Nome, Endereço, Bairro, Cidade, Lazer, Regras
+              Nome, Endereço, Bairro, Cidade, Lazer, Infraestrutura, Regras
             </span>
-            .
+            . Somente <strong className="text-foreground">Nome</strong> é obrigatório; as demais
+            podem ficar vazias (inclusive o endereço).
           </DialogDescription>
         </DialogHeader>
 
@@ -184,6 +219,27 @@ export function ImportCondominiumsModal({
               <span>{successMessage}</span>
             </div>
           )}
+
+          {/* Botão para baixar modelo da planilha */}
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20">
+            <div className="space-y-0.5">
+              <span className="text-xs font-medium text-foreground">Planilha modelo</span>
+              <p className="text-[11px] text-muted-foreground">
+                Baixe o modelo com as colunas reconhecidas: Nome (obrigatória), Endereço, Bairro,
+                Cidade, Lazer, Infraestrutura e Regras.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadTemplate}
+              className="h-8 gap-1.5 text-xs border-border shrink-0"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Baixar modelo</span>
+            </Button>
+          </div>
 
           {/* Área de Seleção de Arquivo */}
           {!successMessage && (
@@ -287,8 +343,9 @@ export function ImportCondominiumsModal({
                     <TableHeader>
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="w-16 tabular">Linha</TableHead>
-                        <TableHead>Nome</TableHead>
-                        <TableHead className="w-32">Status</TableHead>
+                        <TableHead className="min-w-[120px]">Nome</TableHead>
+                        <TableHead className="w-28">Status</TableHead>
+                        <TableHead className="min-w-[130px]">Infraestrutura</TableHead>
                         <TableHead>Motivo / Observação</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -329,6 +386,9 @@ export function ImportCondominiumsModal({
                           )
                         }
 
+                        // Localiza na parsedRows correspondente para exibir infraestrutura na pré-visualização
+                        const parsedRow = parsedRows[item.row - 2] // cabeçalho é linha 1
+
                         return (
                           <TableRow key={item.row}>
                             <TableCell className="tabular text-muted-foreground">
@@ -338,6 +398,11 @@ export function ImportCondominiumsModal({
                               {item.name || <span className="text-muted-foreground italic">—</span>}
                             </TableCell>
                             <TableCell>{statusBadge}</TableCell>
+                            <TableCell className="text-muted-foreground max-w-[150px] truncate">
+                              {parsedRow?.Infraestrutura || (
+                                <span className="text-muted-foreground/50 italic">—</span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-muted-foreground">
                               {item.reasons.length > 0
                                 ? item.reasons.map(translateReason).join(', ')

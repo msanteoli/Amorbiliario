@@ -20,6 +20,7 @@ export interface CondominiumRecord extends RecordModel {
   neighborhood?: string
   city?: string
   amenities?: string
+  infrastructure?: string
   rules?: string
   is_active?: boolean
   created_batch_id?: string
@@ -41,6 +42,7 @@ export interface CreateCondominiumInput {
   neighborhood?: string
   city?: string
   amenities?: string
+  infrastructure?: string
   rules?: string
 }
 
@@ -50,6 +52,7 @@ export interface UpdateCondominiumInput {
   neighborhood?: string
   city?: string
   amenities?: string
+  infrastructure?: string
   rules?: string
   is_active?: boolean
 }
@@ -66,6 +69,8 @@ export interface ImportCondominiumRow {
   city?: string
   Lazer?: string
   amenities?: string
+  Infraestrutura?: string
+  infrastructure?: string
   Regras?: string
   rules?: string
   [key: string]: unknown
@@ -186,7 +191,8 @@ export async function createCondominium(
     street: input.street?.trim() || '',
     neighborhood: input.neighborhood?.trim() || '',
     city: input.city?.trim() || '',
-    amenities: input.amenities?.trim() || '',
+    amenities: input.amenities?.trim().slice(0, 2000) || '',
+    infrastructure: input.infrastructure?.trim().slice(0, 2000) || '',
     rules: input.rules?.trim() || '',
     is_active: true,
   }
@@ -206,7 +212,9 @@ export async function updateCondominium(
   if (input.street !== undefined) payload.street = input.street.trim()
   if (input.neighborhood !== undefined) payload.neighborhood = input.neighborhood.trim()
   if (input.city !== undefined) payload.city = input.city.trim()
-  if (input.amenities !== undefined) payload.amenities = input.amenities.trim()
+  if (input.amenities !== undefined) payload.amenities = input.amenities.trim().slice(0, 2000)
+  if (input.infrastructure !== undefined)
+    payload.infrastructure = input.infrastructure.trim().slice(0, 2000)
   if (input.rules !== undefined) payload.rules = input.rules.trim()
   if (input.is_active !== undefined) payload.is_active = input.is_active
 
@@ -400,6 +408,24 @@ export async function listPropertiesByCondominium(
  */
 export function getCondoPhotoUrl(photo: CondominiumPhotoRecord, thumb?: string): string {
   return pb.files.getURL(photo, photo.file, { thumb })
+}
+
+export interface ActiveCondoPhotoForProperty extends CondominiumPhotoRecord {
+  url: string
+}
+
+/**
+ * Devolve as fotos ATIVAS do condomínio, ordenadas por position, e a URL de cada uma. Só leitura.
+ */
+export async function listActiveCondominiumPhotosForProperty(
+  condominiumId: string,
+): Promise<ActiveCondoPhotoForProperty[]> {
+  if (!condominiumId) return []
+  const photos = await listCondominiumPhotos(condominiumId, true)
+  return photos.map((photo) => ({
+    ...photo,
+    url: getCondoPhotoUrl(photo),
+  }))
 }
 
 /**

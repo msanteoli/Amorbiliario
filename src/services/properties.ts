@@ -92,15 +92,19 @@ export interface PropertyHistoryItem {
 export interface PropertyCondominiumRecord extends RecordModel {
   name: string
   amenities?: string
+  infrastructure?: string
   rules?: string
   street?: string
   neighborhood?: string
   city?: string
+  cover_photo_id?: string
   expand?: {
     condominium_photos_via_condominium_id?: {
       id: string
       file: string
       is_active: boolean
+      position?: number
+      created?: string
     }[]
   }
 }
@@ -756,7 +760,8 @@ export async function listProperties(params: ListPropertiesParams = {}) {
   return await pb.collection('properties').getList<PropertyRecord>(page, perPage, {
     filter: filterParts.join(' && '),
     sort,
-    expand: 'property_photos_via_property_id,captured_by,owner_id,condominium_id',
+    expand:
+      'property_photos_via_property_id,captured_by,owner_id,condominium_id.condominium_photos_via_condominium_id',
   })
 }
 

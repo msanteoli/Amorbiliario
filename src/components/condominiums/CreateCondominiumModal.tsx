@@ -37,6 +37,7 @@ export function CreateCondominiumModal({
   const [neighborhood, setNeighborhood] = useState('')
   const [city, setCity] = useState('')
   const [amenities, setAmenities] = useState('')
+  const [infrastructure, setInfrastructure] = useState('')
   const [rules, setRules] = useState('')
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
@@ -48,6 +49,7 @@ export function CreateCondominiumModal({
     setNeighborhood('')
     setCity('')
     setAmenities('')
+    setInfrastructure('')
     setRules('')
     setNameError(null)
     setGeneralError(null)
@@ -72,6 +74,7 @@ export function CreateCondominiumModal({
         neighborhood: neighborhood.trim(),
         city: city.trim(),
         amenities: amenities.trim(),
+        infrastructure: infrastructure.trim(),
         rules: rules.trim(),
       }
 
@@ -158,6 +161,9 @@ export function CreateCondominiumModal({
                 maxLength={160}
                 className="h-11 text-sm border-border"
               />
+              <p className="text-[11px] text-muted-foreground font-normal">
+                Pode ficar em branco em lançamentos sem endereço divulgado.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label
@@ -206,6 +212,27 @@ export function CreateCondominiumModal({
               value={amenities}
               onChange={(e) => setAmenities(e.target.value)}
               rows={3}
+              maxLength={2000}
+              className="text-sm border-border resize-y font-normal"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="create-condo-infrastructure"
+                className="text-xs eyebrow text-muted-foreground"
+              >
+                Itens de infraestrutura
+              </Label>
+              <span className="text-[11px] text-muted-foreground">um por linha</span>
+            </div>
+            <Textarea
+              id="create-condo-infrastructure"
+              placeholder={'Portaria 24h\nGerador\nElevador'}
+              value={infrastructure}
+              onChange={(e) => setInfrastructure(e.target.value)}
+              rows={4}
               maxLength={2000}
               className="text-sm border-border resize-y font-normal"
             />

@@ -32,7 +32,12 @@ import {
 import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/clients'
 import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
 import { formatRoomsText, formatParkingText } from '@/lib/propertyCardUtils'
-import { getCondoPhotoUrl } from '@/services/condominiums'
+import {
+  getCondoPhotoUrl,
+  listActiveCondominiumPhotosForProperty,
+  getEffectiveCondoCoverPhoto,
+  ActiveCondoPhotoForProperty,
+} from '@/services/condominiums'
 import { formatPhoneNumber, formatDate } from '@/lib/clientUtils'
 import {
   Select,
@@ -147,6 +152,7 @@ export default function ImovelDetalhe() {
 
   const [property, setProperty] = useState<PropertyRecord | null>(null)
   const [photos, setPhotos] = useState<PropertyPhotoRecord[]>([])
+  const [condoPhotos, setCondoPhotos] = useState<ActiveCondoPhotoForProperty[]>([])
   const [historyItems, setHistoryItems] = useState<PropertyHistoryItem[]>([])
 
   // Tarefas vinculadas ao imóvel
@@ -231,6 +237,17 @@ export default function ImovelDetalhe() {
       setPhotos(photosData)
       setHistoryItems(histData)
       setTasks(tasksData)
+
+      if (propData.in_condominium && propData.condominium_id) {
+        try {
+          const cPhotos = await listActiveCondominiumPhotosForProperty(propData.condominium_id)
+          setCondoPhotos(cPhotos)
+        } catch {
+          setCondoPhotos([])
+        }
+      } else {
+        setCondoPhotos([])
+      }
     } catch (err) {
       setErrorMessage(formatErrorMessage(err))
     }
@@ -1040,14 +1057,49 @@ export default function ImovelDetalhe() {
         {/* Aviso com borda attention */}
         {photos.length < 5 && (
           <div className="p-3.5 rounded-lg border border-attention/40 bg-muted/20 text-xs text-foreground font-normal">
-            Para ficar Disponível o imóvel precisa de pelo menos 5 fotos.
+            Para ficar Disponível o imóvel precisa de pelo menos 5 fotos do imóvel (as do condomínio
+            não contam).
           </div>
         )}
 
         {/* Fileira rolante de miniaturas */}
         {photos.length === 0 ? (
-          <div className="text-center py-8 text-xs text-muted-foreground">
-            Nenhuma foto cadastrada.
+          <div className="py-6 space-y-4">
+            {property.in_condominium &&
+              condoRecord &&
+              (() => {
+                const condoCover = getEffectiveCondoCoverPhoto(
+                  condoRecord as any,
+                  condoPhotos.length > 0 ? (condoPhotos as any) : undefined,
+                )
+                if (!condoCover) return null
+                const condoCoverUrl = getCondoPhotoUrl(condoCover, '400x400')
+                return (
+                  <div className="flex flex-col items-center justify-center p-4 border border-dashed border-border rounded-lg bg-muted/10 space-y-2">
+                    <div className="relative w-44 h-44 sm:w-52 sm:h-52 rounded-lg overflow-hidden border border-border bg-muted">
+                      <img
+                        src={condoCoverUrl}
+                        alt="Capa do condomínio"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 left-2 z-10">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-normal border-border bg-background/95 shadow-xs"
+                        >
+                          do condomínio
+                        </Badge>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Capa provisória exibida a partir do condomínio.
+                    </p>
+                  </div>
+                )
+              })()}
+            <div className="text-center py-4 text-xs text-muted-foreground">
+              Nenhuma foto cadastrada para este imóvel.
+            </div>
           </div>
         ) : (
           (() => {
@@ -1206,6 +1258,62 @@ export default function ImovelDetalhe() {
         )}
       </div>
 
+      {/* Bloco Fotos do condomínio (somente leitura) */}
+      {property.in_condominium && property.condominium_id && condoPhotos.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-base font-medium text-foreground">Fotos do condomínio</h3>
+                <span className="text-xs text-muted-foreground tabular font-normal">
+                  ({condoPhotos.length} {condoPhotos.length === 1 ? 'foto' : 'fotos'})
+                </span>
+                <span className="text-[11px] eyebrow text-muted-foreground">Somente leitura</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Herdadas de {condoRecord?.name || 'Condomínio'}. Para mudar,{' '}
+                <Link
+                  to={`/condominios/${property.condominium_id}`}
+                  className="text-primary underline hover:opacity-80"
+                >
+                  edite o condomínio
+                </Link>
+                .
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-2">
+            {condoPhotos.map((photo, index) => (
+              <div
+                key={photo.id}
+                className="group relative rounded-lg overflow-hidden border border-border bg-muted shrink-0 w-36 aspect-[4/3]"
+              >
+                <a
+                  href={photo.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-full h-full"
+                >
+                  <img
+                    src={getCondoPhotoUrl(photo, '300x200')}
+                    alt={`Condomínio foto ${index + 1}`}
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    loading="lazy"
+                  />
+                </a>
+                <div className="absolute bottom-1.5 left-1.5 z-10 pointer-events-none">
+                  <span className="text-[10px] tabular px-1.5 py-0.2 rounded bg-black/60 text-white font-mono">
+                    #{index + 1}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 2. SEÇÃO: DADOS DO IMÓVEL (linhas rótulo/valor com rótulo em .eyebrow) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Identificação e Localização */}
@@ -1355,6 +1463,17 @@ export default function ImovelDetalhe() {
                       </span>
                       <p className="text-foreground whitespace-pre-line leading-relaxed">
                         {condoRecord.amenities}
+                      </p>
+                    </div>
+                  )}
+
+                  {condoRecord.infrastructure && (
+                    <div className="space-y-0.5">
+                      <span className="eyebrow text-muted-foreground block text-[10px]">
+                        Infraestrutura
+                      </span>
+                      <p className="text-foreground whitespace-pre-line leading-relaxed">
+                        {condoRecord.infrastructure}
                       </p>
                     </div>
                   )}
