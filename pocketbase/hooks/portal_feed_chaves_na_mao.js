@@ -141,14 +141,29 @@ routerAdd('GET', '/backend/v1/public/feeds/{token}/chavesnamao.xml', (e) => {
           (!hlUntil || new Date(hlUntil.replace(' ', 'T')).getTime() >= now)
         const zip = p.getString('zip_code').replace(/\D/g, '')
         const nro = p.getString('street_number').trim()
-        const fotos = photos
+        // fotos do imóvel primeiro; as do condomínio (ordem do condomínio, mesmas extensões válidas) completam até 30
+        const fotoList = photos.map((ph) => ({ ph: ph, coll: 'property_photos' }))
+        if (p.get('in_condominium') === true && p.getString('condominium_id')) {
+          $app
+            .findRecordsByFilter(
+              'condominium_photos',
+              'condominium_id = {:c} && is_active = true',
+              'position,created',
+              10,
+              0,
+              { c: p.getString('condominium_id') },
+            )
+            .filter((cp) => /\.(jpg|jpeg|webp)$/.test(cp.getString('file').toLowerCase()))
+            .forEach((cp) => fotoList.push({ ph: cp, coll: 'condominium_photos' }))
+        }
+        const fotos = fotoList
           .slice(0, 30)
           .map(
-            (ph) =>
+            (it) =>
               '<foto><url>' +
-              esc(base + '/api/files/property_photos/' + ph.id + '/' + ph.getString('file')) +
+              esc(base + '/api/files/' + it.coll + '/' + it.ph.id + '/' + it.ph.getString('file')) +
               '</url><data_atualizacao>' +
-              esc(when(ph.getString('updated'))) +
+              esc(when(it.ph.getString('updated'))) +
               '</data_atualizacao></foto>',
           )
           .join('')

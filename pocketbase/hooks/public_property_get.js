@@ -52,6 +52,7 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
   const photos = photoRecs.map(
     (ph) => '/api/files/property_photos/' + ph.id + '/' + ph.getString('file'),
   )
+  const ownPhotosCount = photos.length
   const coverIdx = photoRecs.map((ph) => ph.id).indexOf(p.getString('cover_photo_id'))
 
   const pu = p.getString('purpose')
@@ -70,7 +71,21 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
         name: condo.getString('name'),
         amenities: condo.getString('amenities'),
         rules: condo.getString('rules'),
+        infrastructure: condo.getString('infrastructure'),
       }
+      // fotos herdadas: as do condomínio entram DEPOIS das do imóvel (nada é copiado; a capa segue sendo do imóvel)
+      $app
+        .findRecordsByFilter(
+          'condominium_photos',
+          'condominium_id = {:c} && is_active = true',
+          'position,created',
+          10,
+          0,
+          { c: condo.id },
+        )
+        .forEach((cp) =>
+          photos.push('/api/files/condominium_photos/' + cp.id + '/' + cp.getString('file')),
+        )
     } catch (_) {}
   }
 
@@ -97,6 +112,7 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
     condominium: condominium,
     highlight: highlight,
     photos: photos,
+    own_photos_count: ownPhotosCount,
     cover: photos.length ? photos[coverIdx >= 0 ? coverIdx : 0] : null,
   })
 })

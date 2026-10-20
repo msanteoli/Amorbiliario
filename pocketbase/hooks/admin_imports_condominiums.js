@@ -74,6 +74,7 @@ routerAdd(
         neighborhood: pick(r, 'Bairro', 'neighborhood'),
         city: pick(r, 'Cidade', 'city'),
         amenities: pick(r, 'Lazer', 'amenities'),
+        infrastructure: pick(r, 'Infraestrutura', 'infrastructure'),
         rules: pick(r, 'Regras', 'rules'),
       })
     })
@@ -102,6 +103,7 @@ routerAdd(
           rec.set('neighborhood', c.neighborhood)
           rec.set('city', c.city)
           rec.set('amenities', c.amenities)
+          rec.set('infrastructure', c.infrastructure)
           rec.set('rules', c.rules)
           rec.set('is_active', true)
           rec.set('created_batch_id', batch.id)

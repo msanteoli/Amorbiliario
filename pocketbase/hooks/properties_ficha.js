@@ -86,6 +86,11 @@ routerAdd(
         const condo = $app.findRecordById('condominiums', p.getString('condominium_id'))
         lines.push('Condomínio: ' + condo.getString('name'))
         if (condo.getString('amenities')) lines.push('Lazer: ' + condo.getString('amenities'))
+        if (condo.getString('infrastructure')) {
+          lines.push(
+            'Infraestrutura: ' + condo.getString('infrastructure').replace(/\r?\n+/g, ', '),
+          )
+        }
         if (condo.getString('rules')) lines.push('Regras: ' + condo.getString('rules'))
       } catch (_) {}
     }

@@ -47,6 +47,8 @@ routerAdd(
         facts.push('Condomínio: ' + condo.getString('name'))
         if (condo.getString('amenities'))
           facts.push('Lazer do condomínio: ' + condo.getString('amenities'))
+        if (condo.getString('infrastructure'))
+          facts.push('Infraestrutura do condomínio: ' + condo.getString('infrastructure'))
       } catch (_) {}
     }
     if (p.getString('description'))
