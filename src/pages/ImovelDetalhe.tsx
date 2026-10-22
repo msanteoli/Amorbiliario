@@ -214,6 +214,11 @@ export default function ImovelDetalhe() {
   const [isSavingPhotoAction, setIsSavingPhotoAction] = useState(false)
   const [photoActionError, setPhotoActionError] = useState<string | null>(null)
   const [archivedCount, setArchivedCount] = useState(0)
+  // Seletor rápido de nível: Catálogo ('comum'), Destaque e Super-destaque
+  const [pendingLevel, setPendingLevel] = useState<'comum' | 'destaque' | 'super_destaque' | null>(
+    null,
+  )
+  const [savingLevel, setSavingLevel] = useState(false)
 
   const role = user?.role || ''
   const isSdr = role === 'sdr'
@@ -583,6 +588,46 @@ export default function ImovelDetalhe() {
     } finally {
       setIsSavingPhotoAction(false)
     }
+  }
+
+  // Muda o nível de destaque (Catálogo, Destaque ou Super-destaque) sem abrir a edição completa
+  const applyLevel = async (level: 'comum' | 'destaque' | 'super_destaque') => {
+    if (!property || !canManage || savingLevel) return
+    setSavingLevel(true)
+    setPhotoActionError(null)
+    try {
+      await updateProperty(property.id, { highlight_level: level, highlight_until: '' } as any)
+      await loadData(property.id)
+      toast({
+        title:
+          level === 'comum'
+            ? 'Imóvel no Catálogo.'
+            : level === 'destaque'
+              ? 'Imóvel em Destaque.'
+              : 'Imóvel em Super-destaque.',
+      })
+    } catch (err) {
+      toast({
+        title: 'Erro ao mudar o nível',
+        description: formatErrorMessage(err),
+        variant: 'destructive',
+      })
+    } finally {
+      setSavingLevel(false)
+      setPendingLevel(null)
+    }
+  }
+
+  const handlePickLevel = (level: 'comum' | 'destaque' | 'super_destaque') => {
+    if (!property || !canManage || savingLevel) return
+    const current = property.highlight_level || 'comum'
+    if (level === current) return
+    // sair do super-destaque com mais de 20 fotos: o servidor arquiva o excedente, então avisa antes
+    if (current === 'super_destaque' && level !== 'super_destaque' && photos.length > 20) {
+      setPendingLevel(level)
+      return
+    }
+    applyLevel(level)
   }
 
   // Estrela de "manter": as fotos com estrela ficam ativas (até 20) se o imóvel sair do super-destaque
@@ -1034,6 +1079,119 @@ export default function ImovelDetalhe() {
           )}
         </div>
       </div>
+
+      {/* PENDÊNCIAS DO CADASTRO: cada dado em branco virou uma tarefa para o captador */}
+      {(() => {
+        const pendencias = tasks.filter(
+          (t) => t.status === 'aberta' && String(t.description || '').startsWith('pend:'),
+        )
+        if (pendencias.length === 0) return null
+        return (
+          <div className="rounded-lg border border-attention/40 bg-muted/20 p-4 space-y-2">
+            <h3 className="text-sm font-medium text-foreground">
+              Pendências do cadastro ({pendencias.length})
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Cada dado em branco virou uma tarefa para o captador. Ela some sozinha quando o dado é
+              preenchido.
+            </p>
+            <ul className="space-y-1">
+              {pendencias.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between gap-3 text-xs text-foreground"
+                >
+                  <span>{t.title}</span>
+                  <span className={isTaskOverdue(t) ? 'text-destructive' : 'text-muted-foreground'}>
+                    {isTaskOverdue(t) && 'Atrasada: '}
+                    {t.due_at ? formatTaskDateTimeBahia(t.due_at) : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })()}
+
+      {/* NÍVEL DE DESTAQUE: seletor rápido (Catálogo, Destaque, Super-destaque) */}
+      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+        <div>
+          <h3 className="text-sm font-medium text-foreground">Nível no site</h3>
+          <p className="text-xs text-muted-foreground">
+            O imóvel só aparece no site quando está Disponível. Catálogo é anunciado, mas fora das
+            caixas de Destaque e Super-destaque. O Super-destaque aceita até 100 fotos.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { v: 'comum', label: 'Catálogo' },
+              { v: 'destaque', label: 'Destaque' },
+              { v: 'super_destaque', label: 'Super-destaque' },
+            ] as const
+          ).map((opt) => {
+            const active = (property.highlight_level || 'comum') === opt.v
+            return (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => handlePickLevel(opt.v)}
+                disabled={!canManage || savingLevel}
+                aria-pressed={active}
+                className={`h-9 rounded-full px-4 text-xs border transition-colors disabled:opacity-60 ${
+                  active
+                    ? 'border-primary bg-primary/10 text-foreground font-medium'
+                    : 'border-border bg-card text-muted-foreground hover:bg-muted/40'
+                }`}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+          {savingLevel && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground self-center" />
+          )}
+        </div>
+      </div>
+
+      <Dialog
+        open={pendingLevel !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingLevel(null)
+        }}
+      >
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-base font-semibold text-foreground">
+              {Math.max(photos.length - 20, 0)} fotos serão arquivadas
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Ficam a capa, as fotos com estrela e as primeiras da ordem, até 20. Nada é apagado, e
+              as arquivadas voltam sozinhas se o imóvel voltar ao super-destaque.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingLevel(null)}
+              className="h-9 rounded-[4px] px-4 text-xs font-normal border-border"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (pendingLevel) applyLevel(pendingLevel)
+              }}
+              disabled={savingLevel}
+              className="h-9 rounded-[4px] px-4 text-xs font-normal"
+            >
+              Mudar mesmo assim
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 1. SEÇÃO: GALERIA DE FOTOS (ordem das fotos e capa - M28) */}
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">

@@ -55,15 +55,7 @@ export default function NovoImovel() {
   const handleCreate = async (formData: PropertyFormData) => {
     setErrorMessage(null)
 
-    if (!formData.code.trim()) {
-      setErrorMessage('Informe o código do imóvel.')
-      return
-    }
-
-    if (!formData.title.trim()) {
-      setErrorMessage('Informe o título do imóvel.')
-      return
-    }
+    // Cadastro livre: código e título em branco são gerados pelo servidor; o que faltar vira tarefa do captador
 
     // Processa números de cômodos e área
     const bedrooms = formData.bedrooms ? parseInt(formData.bedrooms, 10) : undefined
@@ -123,7 +115,8 @@ export default function NovoImovel() {
 
       toast({
         title: 'Imóvel salvo como Rascunho.',
-        description: 'O cadastro inicial foi realizado com sucesso.',
+        description:
+          'O cadastro foi realizado. Os dados em branco viraram tarefas para o captador preencher.',
       })
 
       navigate(`/imoveis/${created.id}`)

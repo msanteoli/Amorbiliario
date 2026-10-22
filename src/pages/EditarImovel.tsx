@@ -178,15 +178,7 @@ export default function EditarImovel() {
     setErrorMessage(null)
     setWarningMessage(null)
 
-    if (!formData.code.trim()) {
-      setErrorMessage('Informe o código do imóvel.')
-      return
-    }
-
-    if (!formData.title.trim()) {
-      setErrorMessage('Informe o título do imóvel.')
-      return
-    }
+    // Cadastro livre: código e título em branco não travam a edição (o servidor mantém o código e põe um título provisório)
 
     // Processa cômodos e área
     const bedrooms = formData.bedrooms ? parseInt(formData.bedrooms, 10) : 0

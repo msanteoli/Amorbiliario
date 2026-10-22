@@ -476,14 +476,8 @@ export function PropertyForm({
 
     // Super-destaque efetivo = nível super_destaque E situação Disponível. Ao perder o efeito, o servidor
     // arquiva o excedente de 20 fotos (fica a capa, depois as estreladas, depois as primeiras da ordem).
-    const wasSuperActive =
-      isEditing &&
-      initialData?.highlight_level === 'super_destaque' &&
-      initialData?.status === 'disponivel'
-    const willBeSuperActive =
-      isHighlighted &&
-      highlightLevel === 'super_destaque' &&
-      (isEditing ? status : undefined) === 'disponivel'
+    const wasSuperActive = isEditing && initialData?.highlight_level === 'super_destaque'
+    const willBeSuperActive = isHighlighted && highlightLevel === 'super_destaque'
     const activePhotoCount = formPhotos.filter((p) => p.is_active !== false).length
     if (
       wasSuperActive &&
@@ -564,6 +558,12 @@ export function PropertyForm({
         </p>
       )}
 
+      {/* Cadastro livre: nenhum dado trava o salvamento */}
+      <div className="p-3.5 rounded-lg border border-border bg-muted/20 text-xs text-muted-foreground font-normal">
+        Nenhum dado é obrigatório para salvar. O que ficar em branco vira uma tarefa para o captador
+        preencher (prazo de 3 dias). Para ficar Disponível no site, o imóvel precisa estar completo.
+      </div>
+
       {/* 1. SEÇÃO: IDENTIFICAÇÃO */}
       <section className="space-y-4">
         <div>
@@ -577,19 +577,18 @@ export function PropertyForm({
           {/* Código do imóvel */}
           <div className="space-y-1.5">
             <label htmlFor="prop-code" className="text-[13px] font-normal text-foreground block">
-              Código do imóvel <span className="text-destructive">*</span>
+              Código do imóvel
             </label>
             <Input
               id="prop-code"
-              placeholder="Ex.: AP-001, CA-12"
+              placeholder="Ex.: AP-001, CA-12 (em branco, o sistema gera)"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               maxLength={40}
-              required
               className="h-12 text-sm border-border"
             />
             <p className="text-xs text-muted-foreground">
-              Código de referência único dentro da sua imobiliária.
+              Código de referência único dentro da sua imobiliária. Em branco, o sistema gera um.
             </p>
           </div>
 
@@ -704,7 +703,7 @@ export function PropertyForm({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
             <label htmlFor="prop-title" className="text-[13px] font-normal text-foreground block">
-              Título do anúncio <span className="text-destructive">*</span>
+              Título do anúncio
             </label>
             <Button
               type="button"
@@ -722,11 +721,11 @@ export function PropertyForm({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={160}
-            required
             className="h-12 text-sm border-border"
           />
           <p className="text-xs text-muted-foreground">
-            Título chamativo para o catálogo (máximo 160 caracteres).
+            Título chamativo para o catálogo (máximo 160 caracteres). Em branco, vira um título
+            provisório e uma tarefa para o captador.
           </p>
         </div>
       </section>
@@ -1333,7 +1332,9 @@ export function PropertyForm({
               <h2 className="text-[20px] font-normal text-foreground">Destaque no site</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Escolha se e como este imóvel será promovido nas vitrines e páginas de busca do
-                site.
+                site. Sem destaque, o imóvel fica no Catálogo: é anunciado no site, mas fora das
+                caixas de Destaque e Super-destaque. O destaque vale em qualquer situação, mas o
+                imóvel só aparece no site quando está Disponível.
               </p>
             </div>
 
