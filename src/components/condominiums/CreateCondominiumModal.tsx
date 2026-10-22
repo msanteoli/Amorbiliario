@@ -18,6 +18,7 @@ import {
   CreateCondominiumInput,
 } from '@/services/condominiums'
 import { formatErrorMessage } from '@/services/properties'
+import { BookReaderButton } from '@/components/condominiums/BookReaderButton'
 
 interface CreateCondominiumModalProps {
   open: boolean
@@ -118,6 +119,20 @@ export function CreateCondominiumModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <BookReaderButton
+            disabled={saving}
+            current={{ name, street, neighborhood, city, amenities, infrastructure, rules }}
+            onApply={(v) => {
+              if (v.name !== undefined) setName(v.name)
+              if (v.street !== undefined) setStreet(v.street)
+              if (v.neighborhood !== undefined) setNeighborhood(v.neighborhood)
+              if (v.city !== undefined) setCity(v.city)
+              if (v.amenities !== undefined) setAmenities(v.amenities)
+              if (v.infrastructure !== undefined) setInfrastructure(v.infrastructure)
+              if (v.rules !== undefined) setRules(v.rules)
+              setNameError(null)
+            }}
+          />
           {generalError && (
             <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal">
               {generalError}

@@ -59,6 +59,7 @@ import {
 } from 'lucide-react'
 import { deleteCondominium } from '@/services/adminDeletion'
 import { DeleteRecordDialog } from '@/components/admin/DeleteRecordDialog'
+import { BookReaderButton } from '@/components/condominiums/BookReaderButton'
 
 export default function CondominioDetalhe() {
   const { id } = useParams<{ id: string }>()
@@ -462,6 +463,24 @@ export default function CondominioDetalhe() {
           </div>
           {!canEdit && (
             <span className="text-[11px] eyebrow text-muted-foreground">Somente leitura</span>
+          )}
+          {canEdit && (
+            <BookReaderButton
+              condominiumId={condo.id}
+              disabled={savingForm}
+              current={{ name, street, neighborhood, city, amenities, infrastructure, rules }}
+              onApply={(v) => {
+                if (v.name !== undefined) setName(v.name)
+                if (v.street !== undefined) setStreet(v.street)
+                if (v.neighborhood !== undefined) setNeighborhood(v.neighborhood)
+                if (v.city !== undefined) setCity(v.city)
+                if (v.amenities !== undefined) setAmenities(v.amenities)
+                if (v.infrastructure !== undefined) setInfrastructure(v.infrastructure)
+                if (v.rules !== undefined) setRules(v.rules)
+                setNameError(null)
+                setFormSuccess(null)
+              }}
+            />
           )}
         </div>
 

@@ -336,6 +336,43 @@ export async function setCondominiumCoverPhoto(
   }
 }
 
+export interface BookProposal {
+  name: string
+  street: string
+  neighborhood: string
+  city: string
+  amenities: string
+  infrastructure: string
+  rules: string
+}
+
+export interface BookReadResult {
+  proposal: BookProposal
+  current: BookProposal | null
+  truncated: boolean
+}
+
+/**
+ * Lê o book (PDF) do condomínio com IA e devolve uma PROPOSTA de dados. Nada é gravado.
+ * POST /backend/v1/condominiums/book/read (multipart: file e, opcional, condominium_id)
+ */
+export async function readCondominiumBook(
+  file: File,
+  condominiumId?: string,
+): Promise<BookReadResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (condominiumId) formData.append('condominium_id', condominiumId)
+  try {
+    return await pb.send<BookReadResult>('/backend/v1/condominiums/book/read', {
+      method: 'POST',
+      body: formData,
+    })
+  } catch (err: unknown) {
+    throw new Error(extractServerErrorMessage(err))
+  }
+}
+
 function extractServerErrorMessage(error: unknown): string {
   if (error && typeof error === 'object') {
     const errObj = error as {
