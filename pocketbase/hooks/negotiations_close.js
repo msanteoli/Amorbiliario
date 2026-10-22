@@ -70,6 +70,67 @@ routerAdd(
       l.set('stage', 'ganho')
       tx.save(l)
     })
+    // super-destaque (spec 2026-10-21): o imóvel deixou de ser Disponível, então o excedente de 20 fotos é arquivado
+    // (fica a capa, depois as estreladas, depois as primeiras da ordem). Mesma regra de properties_write_update.js.
+    try {
+      const prop = $app.findRecordById('properties', neg.getString('property_id'))
+      if (prop.getString('highlight_level') === 'super_destaque') {
+        const act = $app.findRecordsByFilter(
+          'property_photos',
+          'property_id = {:p} && is_active = true',
+          'position,created',
+          500,
+          0,
+          { p: prop.id },
+        )
+        if (act.length > 20) {
+          const coverId = prop.getString('cover_photo_id')
+          const keep = []
+          act.forEach((r) => {
+            if (r.id === coverId && keep.length < 20) keep.push(r.id)
+          })
+          act.forEach((r) => {
+            if (r.get('is_starred') === true && keep.indexOf(r.id) < 0 && keep.length < 20)
+              keep.push(r.id)
+          })
+          act.forEach((r) => {
+            if (keep.indexOf(r.id) < 0 && keep.length < 20) keep.push(r.id)
+          })
+          let archived = 0
+          let n = 0
+          act.forEach((r) => {
+            if (keep.indexOf(r.id) >= 0) {
+              n++
+              if (r.getInt('position') !== n) {
+                r.set('position', n)
+                $app.save(r)
+              }
+            } else {
+              r.set('archived_position', r.getInt('position'))
+              r.set('position', 0)
+              r.set('is_active', false)
+              r.set('auto_archived', true)
+              $app.save(r)
+              archived++
+            }
+          })
+          if (archived) {
+            const pa = new Record($app.findCollectionByNameOrId('audit_log'))
+            pa.set('organization_id', orgId)
+            pa.set('actor_id', actor.id)
+            pa.set('actor_role', role)
+            pa.set('action', 'fotos_arquivadas')
+            pa.set('collection_name', 'properties')
+            pa.set('record_id', prop.id)
+            pa.set('reason', 'n=' + archived)
+            pa.set('occurred_at', new Date().toISOString())
+            $app.save(pa)
+          }
+        }
+      }
+    } catch (err) {
+      $app.logger().error('super_destaque_fotos_failed', 'err', String((err && err.message) || err))
+    }
     try {
       const a = new Record($app.findCollectionByNameOrId('audit_log'))
       a.set('organization_id', orgId)

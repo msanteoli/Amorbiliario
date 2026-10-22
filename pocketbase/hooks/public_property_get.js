@@ -39,11 +39,13 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
   if (!rows.length) throw new NotFoundError('Imóvel não encontrado.')
   const p = rows[0]
 
+  // super-destaque mostra todas as fotos (até 100); fora dele, no máximo 20 (mesmo antes de o arquivamento rodar)
+  const photoCap = p.getString('highlight_level') === 'super_destaque' ? 100 : 20
   const photoRecs = $app.findRecordsByFilter(
     'property_photos',
     'property_id = {:p} && is_active = true',
     'position,created',
-    50,
+    photoCap,
     0,
     {
       p: p.id,

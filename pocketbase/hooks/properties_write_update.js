@@ -87,8 +87,8 @@ onRecordUpdateRequest((e) => {
   const hlOld = orig.getString('highlight_level') || 'comum'
   const untilNew = rec.getString('highlight_until')
   if (hlNew !== hlOld || untilNew !== orig.getString('highlight_until')) {
-    if (hlNew === 'comum') {
-      rec.set('highlight_until', '')
+    if (hlNew === 'comum' || hlNew === 'super_destaque') {
+      rec.set('highlight_until', '') // super-destaque não tem fim por data (spec 2026-10-21)
     } else if (untilNew) {
       const until = new Date(untilNew.replace(' ', 'T'))
       if (isNaN(until.getTime()) || until.getTime() <= Date.now()) {
@@ -227,6 +227,96 @@ onRecordUpdateRequest((e) => {
   )
 
   const res = e.next()
+  // Super-destaque (spec 2026-10-21): o efeito é nível super_destaque E situação Disponível. Ao perder o efeito, o excedente de 20 fotos
+  // é arquivado (fica a capa, depois as estreladas, depois as primeiras da ordem); ao recuperar, só as arquivadas pelo sistema reativam.
+  // A mesma regra de arquivar existe em negotiations_close.js (o fechamento grava a situação sem passar por este hook).
+  try {
+    const wasSuper =
+      orig.getString('highlight_level') === 'super_destaque' &&
+      orig.getString('status') === 'disponivel'
+    const isSuper =
+      rec.getString('highlight_level') === 'super_destaque' &&
+      rec.getString('status') === 'disponivel'
+    if (wasSuper !== isSuper) {
+      const photoAudit = (action, reason) => {
+        const a = new Record($app.findCollectionByNameOrId('audit_log'))
+        a.set('organization_id', rec.get('organization_id'))
+        a.set('actor_id', e.auth.id)
+        a.set('actor_role', role)
+        a.set('action', action)
+        a.set('collection_name', 'properties')
+        a.set('record_id', rec.id)
+        a.set('reason', reason)
+        a.set('occurred_at', new Date().toISOString())
+        $app.save(a)
+      }
+      const act = $app.findRecordsByFilter(
+        'property_photos',
+        'property_id = {:p} && is_active = true',
+        'position,created',
+        500,
+        0,
+        { p: rec.id },
+      )
+      if (!isSuper && act.length > 20) {
+        const coverId = rec.getString('cover_photo_id')
+        const keep = []
+        act.forEach((r) => {
+          if (r.id === coverId && keep.length < 20) keep.push(r.id)
+        })
+        act.forEach((r) => {
+          if (r.get('is_starred') === true && keep.indexOf(r.id) < 0 && keep.length < 20)
+            keep.push(r.id)
+        })
+        act.forEach((r) => {
+          if (keep.indexOf(r.id) < 0 && keep.length < 20) keep.push(r.id)
+        })
+        let archived = 0
+        let n = 0
+        act.forEach((r) => {
+          if (keep.indexOf(r.id) >= 0) {
+            n++
+            if (r.getInt('position') !== n) {
+              r.set('position', n)
+              $app.save(r)
+            }
+          } else {
+            r.set('archived_position', r.getInt('position'))
+            r.set('position', 0)
+            r.set('is_active', false)
+            r.set('auto_archived', true)
+            $app.save(r)
+            archived++
+          }
+        })
+        if (archived) photoAudit('fotos_arquivadas', 'n=' + archived)
+      } else if (isSuper) {
+        const arch = $app.findRecordsByFilter(
+          'property_photos',
+          'property_id = {:p} && auto_archived = true && is_active = false',
+          'archived_position,created',
+          500,
+          0,
+          { p: rec.id },
+        )
+        let pos = act.length ? act[act.length - 1].getInt('position') : 0
+        let back = 0
+        arch.forEach((r) => {
+          if (act.length + back >= 100) return
+          pos++
+          back++
+          r.set('is_active', true)
+          r.set('auto_archived', false)
+          r.set('position', pos)
+          r.set('archived_position', 0)
+          $app.save(r)
+        })
+        if (back) photoAudit('fotos_reativadas', 'n=' + back)
+      }
+    }
+  } catch (err) {
+    $app.logger().error('super_destaque_fotos_failed', 'err', String((err && err.message) || err))
+  }
   try {
     // troca de captador fecha a tarefa "Confirmar captador" aberta para este imóvel
     if (capId !== orig.getString('captured_by')) {
