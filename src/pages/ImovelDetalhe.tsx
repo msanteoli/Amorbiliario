@@ -28,6 +28,10 @@ import {
   updatePropertyPhotosOrder,
   setPropertyCoverPhoto,
   sortPropertyPhotos,
+  setPropertyPhotoStars,
+  isSuperActive,
+  photoLimit,
+  countAutoArchivedPhotos,
 } from '@/services/properties'
 import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/clients'
 import { LinkOwnerModal } from '@/components/properties/LinkOwnerModal'
@@ -99,6 +103,7 @@ import {
   X,
   Check,
   Star,
+  Tag,
   ChevronUp,
   ChevronDown,
   GripVertical,
@@ -208,12 +213,17 @@ export default function ImovelDetalhe() {
   const [dragOverPhotoId, setDragOverPhotoId] = useState<string | null>(null)
   const [isSavingPhotoAction, setIsSavingPhotoAction] = useState(false)
   const [photoActionError, setPhotoActionError] = useState<string | null>(null)
+  const [archivedCount, setArchivedCount] = useState(0)
 
   const role = user?.role || ''
   const isSdr = role === 'sdr'
   const isAdmin = role === 'admin'
   const isCaptador = Boolean(property && property.captured_by === user?.id)
   const canManage = !isSdr && (isAdmin || isCaptador)
+  // Super-destaque: até 100 fotos e estrelas de "manter"; nos demais imóveis, até 20 fotos
+  const superOn = isSuperActive(property)
+  const photoMax = photoLimit(property)
+  const starredCount = photos.filter((p) => p.is_starred === true).length
 
   // Carrega lista de corretores/admins quando admin
   useEffect(() => {
@@ -237,6 +247,7 @@ export default function ImovelDetalhe() {
       setPhotos(photosData)
       setHistoryItems(histData)
       setTasks(tasksData)
+      countAutoArchivedPhotos(imovelId).then(setArchivedCount)
 
       if (propData.in_condominium && propData.condominium_id) {
         try {
@@ -350,19 +361,20 @@ export default function ImovelDetalhe() {
 
     // Validações antes de enviar
     const currentActiveCount = photos.length
-    if (currentActiveCount >= 20) {
+    const limitHint = photoMax === 20 ? ' Só imóvel em super-destaque aceita mais.' : ''
+    if (currentActiveCount >= photoMax) {
       toast({
         title: 'Limite atingido',
-        description: 'Limite de 20 fotos por imóvel.',
+        description: `Limite de ${photoMax} fotos por imóvel.${limitHint}`,
         variant: 'destructive',
       })
       return
     }
 
-    if (currentActiveCount + fileList.length > 20) {
+    if (currentActiveCount + fileList.length > photoMax) {
       toast({
-        title: 'Limite de 20 fotos por imóvel.',
-        description: `Você já tem ${currentActiveCount} foto(s) e tentou adicionar ${fileList.length}. O total não pode passar de 20.`,
+        title: `Limite de ${photoMax} fotos por imóvel.`,
+        description: `Você já tem ${currentActiveCount} foto(s) e tentou adicionar ${fileList.length}. O total não pode passar de ${photoMax}.${limitHint}`,
         variant: 'destructive',
       })
       return
@@ -424,7 +436,7 @@ export default function ImovelDetalhe() {
         )
       } catch (err) {
         const errorMsg = formatErrorMessage(err)
-        if (errorMsg.includes('Limite de 20 fotos')) {
+        if (errorMsg.includes('Limite de ')) {
           serverLimitReached = true
         }
         setUploadList((prev) =>
@@ -565,6 +577,44 @@ export default function ImovelDetalhe() {
       setPhotoActionError(msg)
       toast({
         title: 'Erro ao definir capa',
+        description: msg,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSavingPhotoAction(false)
+    }
+  }
+
+  // Estrela de "manter": as fotos com estrela ficam ativas (até 20) se o imóvel sair do super-destaque
+  const handleToggleStar = async (photo: PropertyPhotoRecord) => {
+    if (!property || isSavingPhotoAction || !canManage) return
+    const currentStarred = photos.filter((p) => p.is_starred === true).map((p) => p.id)
+    const willStar = photo.is_starred !== true
+    if (willStar && currentStarred.length >= 20) {
+      setPhotoActionError('No máximo 20 fotos com estrela.')
+      return
+    }
+    const nextIds = willStar
+      ? [...currentStarred, photo.id]
+      : currentStarred.filter((x) => x !== photo.id)
+
+    const previousPhotos = [...photos]
+    setPhotos(
+      photos.map((p) =>
+        p.id === photo.id ? ({ ...p, is_starred: willStar } as PropertyPhotoRecord) : p,
+      ),
+    )
+    setIsSavingPhotoAction(true)
+    setPhotoActionError(null)
+
+    try {
+      await setPropertyPhotoStars(property.id, nextIds)
+    } catch (err: unknown) {
+      setPhotos(previousPhotos)
+      const msg = err instanceof Error ? err.message : 'Erro ao marcar a estrela.'
+      setPhotoActionError(msg)
+      toast({
+        title: 'Erro ao marcar a estrela',
         description: msg,
         variant: 'destructive',
       })
@@ -992,7 +1042,10 @@ export default function ImovelDetalhe() {
             <div className="flex items-center gap-2">
               <h2 className="text-[20px] font-normal text-foreground">Galeria de fotos</h2>
               <span className="text-xs text-muted-foreground tabular font-normal">
-                {photos.length} de 20 fotos
+                {photos.length} de {photoMax} fotos
+              </span>
+              <span className="text-xs text-muted-foreground tabular font-normal">
+                {starredCount}/20 com estrela
               </span>
               {isSavingPhotoAction && (
                 <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -1005,6 +1058,13 @@ export default function ImovelDetalhe() {
               Arraste para mudar a ordem, ou use as setas. A capa é a foto marcada; sem escolha, é a
               primeira.
             </p>
+            {superOn && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Em super-destaque o imóvel aceita até 100 fotos. Se sair do super-destaque, ficam a
+                capa, as fotos com estrela e as primeiras da ordem (até 20); as outras são
+                arquivadas e voltam sozinhas se o imóvel voltar ao super-destaque.
+              </p>
+            )}
             {property.cover_photo_id && canManage && (
               <button
                 type="button"
@@ -1027,14 +1087,14 @@ export default function ImovelDetalhe() {
                 multiple
                 accept=".jpg,.jpeg,.webp,image/jpeg,image/webp"
                 className="hidden"
-                disabled={isUploading || isSavingPhotoAction || photos.length >= 20}
+                disabled={isUploading || isSavingPhotoAction || photos.length >= photoMax}
               />
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || isSavingPhotoAction || photos.length >= 20}
+                disabled={isUploading || isSavingPhotoAction || photos.length >= photoMax}
                 className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
               >
                 {isUploading ? (
@@ -1059,6 +1119,13 @@ export default function ImovelDetalhe() {
           <div className="p-3.5 rounded-lg border border-attention/40 bg-muted/20 text-xs text-foreground font-normal">
             Para ficar Disponível o imóvel precisa de pelo menos 5 fotos do imóvel (as do condomínio
             não contam).
+          </div>
+        )}
+
+        {archivedCount > 0 && (
+          <div className="p-3 rounded-lg border border-border bg-muted/20 text-xs text-muted-foreground font-normal">
+            {archivedCount} {archivedCount === 1 ? 'foto arquivada' : 'fotos arquivadas'} ao sair do
+            super-destaque. Voltam sozinhas se o imóvel voltar ao super-destaque.
           </div>
         )}
 
@@ -1151,7 +1218,7 @@ export default function ImovelDetalhe() {
                       {isCover && (
                         <div className="absolute top-2 left-2 z-10 pointer-events-none">
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-foreground bg-background/95 rounded-[4px] px-2 py-0.5 border border-border shadow-xs">
-                            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                            <Tag className="h-3 w-3 text-foreground" />
                             <span>Capa</span>
                           </span>
                         </div>
@@ -1162,6 +1229,9 @@ export default function ImovelDetalhe() {
                         <span className="text-[10px] tabular px-1.5 py-0.2 rounded bg-black/60 text-white font-mono">
                           #{index + 1}
                         </span>
+                        {photo.is_starred === true && (
+                          <Star className="inline-block ml-1 h-3 w-3 fill-amber-400 text-amber-400 align-middle" />
+                        )}
                       </div>
 
                       {/* Selo para fotos PNG existentes */}
@@ -1208,10 +1278,29 @@ export default function ImovelDetalhe() {
                                 title="Tornar capa"
                                 aria-label="Tornar capa"
                               >
-                                <Star className="h-3 w-3 text-amber-500" />
+                                <Tag className="h-3 w-3 text-foreground" />
                                 <span className="hidden sm:inline text-[10px]">Capa</span>
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleToggleStar(photo)
+                              }}
+                              disabled={isSavingPhotoAction}
+                              className="p-1 rounded-md bg-background/90 hover:bg-background border border-border shadow-xs flex items-center gap-1 disabled:opacity-40"
+                              title="Manter esta foto ao sair do super-destaque"
+                              aria-label="Manter esta foto ao sair do super-destaque"
+                            >
+                              <Star
+                                className={`h-3 w-3 ${
+                                  photo.is_starred === true
+                                    ? 'fill-amber-500 text-amber-500'
+                                    : 'text-muted-foreground'
+                                }`}
+                              />
+                            </button>
                           </div>
 
                           {/* Setas Subir e Descer (no rodapé direito) */}

@@ -977,6 +977,21 @@ export function photoLimit(
 }
 
 /**
+ * Conta as fotos arquivadas pelo sistema na saída do super-destaque (voltam sozinhas se o imóvel voltar)
+ */
+export async function countAutoArchivedPhotos(propertyId: string): Promise<number> {
+  try {
+    const res = await pb.collection('property_photos').getList<PropertyPhotoRecord>(1, 1, {
+      filter: `property_id = "${propertyId}" && auto_archived = true && is_active = false`,
+      requestKey: null,
+    })
+    return res.totalItems
+  } catch {
+    return 0
+  }
+}
+
+/**
  * Define a capa do imóvel (photoId vazio volta ao padrão)
  * PUT /backend/v1/properties/{id}/cover com { photo_id: string }
  */
