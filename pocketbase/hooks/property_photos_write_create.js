@@ -1,5 +1,5 @@
 // Valida o ENVIO de foto: o imóvel precisa ser da mesma organização e, para o corretor,
-// ele precisa ser o captador; no máximo 20 fotos ativas por imóvel (100 se o imóvel está em super-destaque e Disponível). A foto nasce ativa.
+// ele precisa ser o captador; no máximo 20 fotos ativas por imóvel (100 se o imóvel está em super-destaque, em qualquer situação). A foto nasce ativa.
 // O tipo e o tamanho do arquivo são validados pelo próprio campo (JPEG e WebP; até 3 MB, desde o M12).
 onRecordCreateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
@@ -27,9 +27,7 @@ onRecordCreateRequest((e) => {
     0,
     { p: property.id },
   ).length
-  const superEff =
-    property.getString('highlight_level') === 'super_destaque' &&
-    property.getString('status') === 'disponivel'
+  const superEff = property.getString('highlight_level') === 'super_destaque'
   if (superEff && active >= 100)
     throw new BadRequestError('Limite de 100 fotos por imóvel em super-destaque.')
   if (!superEff && active >= 20)

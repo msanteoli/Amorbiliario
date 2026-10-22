@@ -25,10 +25,7 @@ onRecordUpdateRequest((e) => {
     try {
       owner = $app.findRecordById('properties', pid)
     } catch (_) {}
-    const superEff =
-      !!owner &&
-      owner.getString('highlight_level') === 'super_destaque' &&
-      owner.getString('status') === 'disponivel'
+    const superEff = !!owner && owner.getString('highlight_level') === 'super_destaque'
     if (superEff && active.length >= 100)
       throw new BadRequestError('Limite de 100 fotos por imóvel em super-destaque.')
     if (!superEff && active.length >= 20)

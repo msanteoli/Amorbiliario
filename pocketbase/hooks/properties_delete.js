@@ -49,7 +49,14 @@ routerAdd(
     }
     add('negociacao', count('negotiations', 'property_id = {:i}'))
     add('visita', count('visits', 'property_id = {:i}'))
-    add('tarefa', count('tasks', "property_id = {:i} && status = 'aberta'"))
+    // as pendências automáticas do cadastro (description "pend:...") não bloqueiam a exclusão: saem junto com o imóvel
+    add(
+      'tarefa',
+      count(
+        'tasks',
+        "property_id = {:i} && status = 'aberta' && (description = '' || description !~ 'pend:')",
+      ),
+    )
     add('lead', count('leads', 'property_id = {:i}'))
     add('anuncio', rec.getStringSlice('publish_to').length > 0 ? 1 : 0)
     if (bloqueios.length) {
@@ -71,7 +78,10 @@ routerAdd(
         tx.delete(r)
         removidos++
       })
-      filhos('tasks', "property_id = {:i} && status != 'aberta'").forEach((r) => {
+      filhos(
+        'tasks',
+        "property_id = {:i} && (status != 'aberta' || description ~ 'pend:')",
+      ).forEach((r) => {
         tx.delete(r)
         removidos++
       })

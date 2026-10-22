@@ -1,4 +1,4 @@
-// Valida o imóvel na CRIAÇÃO: código, dinheiro (zero e negativo recusados), proprietário e
+// Valida o imóvel na CRIAÇÃO: dinheiro (zero e negativo recusados), proprietário e
 // captador válidos. O imóvel sempre nasce em Rascunho e a data de revisão é do servidor.
 // Grava o histórico no audit_log (só nomes de campos, nunca valores).
 onRecordCreateRequest((e) => {
@@ -22,8 +22,50 @@ onRecordCreateRequest((e) => {
     }
   })
 
+  // Cadastro livre (spec 2026-10-21): nenhum dado é obrigatório. Sem código, o servidor gera um pela sequência da organização
+  // (mesmo formato da importação da ficha: prefixo do tipo + 4 dígitos); sem título, usa um provisório. O que falta vira pendência.
   rec.set('code', String(rec.get('code') || '').trim())
-  if (!rec.getString('code')) throw new BadRequestError('Informe o código do imóvel.')
+  if (!rec.getString('code')) {
+    const prefixes = {
+      casa: 'CA',
+      apartamento: 'AP',
+      terreno: 'TE',
+      comercial: 'CO',
+      galpao: 'GA',
+      chacara: 'CH',
+      outro: 'OU',
+    }
+    const pre = prefixes[rec.getString('property_type')] || 'OU'
+    let gen = ''
+    $app.runInTransaction((tx) => {
+      const orgRec = tx.findRecordById('organizations', rec.getString('organization_id'))
+      let seq = orgRec.getInt('property_code_seq')
+      for (let tries = 0; tries < 200; tries++) {
+        seq++
+        const cand = pre + '-' + String(seq).padStart(4, '0')
+        const taken = tx.findRecordsByFilter(
+          'properties',
+          'organization_id = {:o} && code = {:c}',
+          '',
+          1,
+          0,
+          {
+            o: rec.getString('organization_id'),
+            c: cand,
+          },
+        )
+        if (!taken.length) {
+          gen = cand
+          break
+        }
+      }
+      orgRec.set('property_code_seq', seq)
+      tx.save(orgRec)
+    })
+    rec.set('code', gen)
+  }
+  if (!String(rec.get('title') || '').trim())
+    rec.set('title', 'Imóvel sem título ' + rec.getString('code'))
   const sameCode = $app.findRecordsByFilter(
     'properties',
     'organization_id = {:o} && code = {:c}',
@@ -134,6 +176,101 @@ onRecordCreateRequest((e) => {
   rec.set('last_reviewed_at', new Date().toISOString())
 
   const res = e.next()
+  // Pendências (spec 2026-10-21-cadastro-livre): cada dado ausente vira uma tarefa para o captador (prazo de 3 dias; description
+  // "pend:<chave>"); preencher o dado fecha a tarefa. A MESMA lógica existe em properties_write_create.js, properties_write_update.js e
+  // properties_pending_cron.js (o Skip não compartilha funções entre arquivos): mexeu aqui, mexa nos outros dois.
+  try {
+    const p = rec
+    const live = ['rascunho', 'disponivel', 'reservado'].indexOf(p.getString('status')) >= 0
+    const labels = {
+      titulo: 'o título',
+      preco_venda: 'o preço de venda',
+      preco_locacao: 'o preço de locação',
+      bairro: 'o bairro',
+      cidade: 'a cidade',
+      rua: 'a rua',
+      numero: 'o número',
+      area: 'a área',
+      quartos: 'os quartos',
+      banheiros: 'os banheiros',
+      descricao: 'a descrição',
+      proprietario: 'o proprietário',
+      condominio: 'o condomínio',
+      fotos: 'as fotos (pelo menos 5)',
+    }
+    const missing = {}
+    if (live) {
+      const num = (k) => Number(p.get(k) || 0)
+      const pu = p.getString('purpose')
+      const consult = p.get('price_on_request') === true
+      const t = p.getString('title')
+      if (!t || t.indexOf('Imóvel sem título') === 0) missing.titulo = true
+      if ((pu === 'venda' || pu === 'ambos') && !(num('sale_price') > 0 || consult))
+        missing.preco_venda = true
+      if ((pu === 'locacao' || pu === 'ambos') && !(num('rent_price') > 0 || consult))
+        missing.preco_locacao = true
+      if (!p.getString('neighborhood')) missing.bairro = true
+      if (!p.getString('city')) missing.cidade = true
+      if (!p.getString('street')) missing.rua = true
+      if (!p.getString('street_number')) missing.numero = true
+      if (!(num('area') > 0)) missing.area = true
+      const residential =
+        ['casa', 'apartamento', 'chacara'].indexOf(p.getString('property_type')) >= 0
+      if (residential && !(num('bedrooms') >= 1)) missing.quartos = true
+      if (residential && !(num('bathrooms') >= 1)) missing.banheiros = true
+      if (!p.getString('description')) missing.descricao = true
+      if (!p.getString('owner_id')) missing.proprietario = true
+      if (p.get('in_condominium') === true && !p.getString('condominium_id'))
+        missing.condominio = true
+      const nPhotos = $app.findRecordsByFilter(
+        'property_photos',
+        'property_id = {:p} && is_active = true',
+        '',
+        100,
+        0,
+        { p: p.id },
+      ).length
+      if (nPhotos < 5) missing.fotos = true
+    }
+    const open = $app.findRecordsByFilter(
+      'tasks',
+      "property_id = {:p} && status = 'aberta' && description ~ 'pend:'",
+      '',
+      300,
+      0,
+      { p: p.id },
+    )
+    const byKey = {}
+    const agora = new Date().toISOString()
+    open.forEach((t) => {
+      const m = /^pend:([a-z_]+)/.exec(t.getString('description'))
+      if (!m) return
+      const dup = !!byKey[m[1]]
+      if (dup || !missing[m[1]]) {
+        t.set('status', dup || !live ? 'cancelada' : 'concluida')
+        t.set('closed_at', agora)
+        t.set('closed_by', e.auth.id)
+        $app.save(t)
+      } else {
+        byKey[m[1]] = t
+      }
+    })
+    Object.keys(missing).forEach((k) => {
+      if (byKey[k]) return
+      const nt = new Record($app.findCollectionByNameOrId('tasks'))
+      nt.set('organization_id', p.getString('organization_id'))
+      nt.set('title', 'Preencher ' + labels[k] + ' do imóvel ' + p.getString('code'))
+      nt.set('description', 'pend:' + k)
+      nt.set('assigned_to', p.getString('captured_by'))
+      nt.set('status', 'aberta')
+      nt.set('property_id', p.id)
+      nt.set('created_by', e.auth.id)
+      nt.set('due_at', new Date(Date.now() + 3 * 86400000).toISOString())
+      $app.save(nt)
+    })
+  } catch (err) {
+    $app.logger().error('pendencias_failed', 'err', String((err && err.message) || err))
+  }
   try {
     const col = $app.findCollectionByNameOrId('audit_log')
     const audit = new Record(col)

@@ -50,6 +50,14 @@ routerAdd(
       })
     }
     const nowIso = new Date().toISOString()
+    // super-destaque (spec 2026-10-21): fechar a negociação devolve o nível para Catálogo ('comum'); guarda se era super para arquivar as fotos
+    let wasSuper = false
+    try {
+      wasSuper =
+        $app
+          .findRecordById('properties', neg.getString('property_id'))
+          .getString('highlight_level') === 'super_destaque'
+    } catch (_) {}
     $app.runInTransaction((tx) => {
       const n = tx.findRecordById('negotiations', neg.id)
       if (['em_analise', 'aprovada'].indexOf(n.getString('status')) < 0) {
@@ -66,15 +74,17 @@ routerAdd(
       n.set('closed_at', nowIso)
       tx.save(n)
       p.set('status', n.getString('purpose') === 'venda' ? 'vendido' : 'alugado')
+      p.set('highlight_level', 'comum')
+      p.set('highlight_until', '')
       tx.save(p)
       l.set('stage', 'ganho')
       tx.save(l)
     })
-    // super-destaque (spec 2026-10-21): o imóvel deixou de ser Disponível, então o excedente de 20 fotos é arquivado
+    // super-destaque (spec 2026-10-21): o nível voltou para Catálogo, então o excedente de 20 fotos é arquivado
     // (fica a capa, depois as estreladas, depois as primeiras da ordem). Mesma regra de properties_write_update.js.
     try {
       const prop = $app.findRecordById('properties', neg.getString('property_id'))
-      if (prop.getString('highlight_level') === 'super_destaque') {
+      if (wasSuper) {
         const act = $app.findRecordsByFilter(
           'property_photos',
           'property_id = {:p} && is_active = true',
