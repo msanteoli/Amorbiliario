@@ -187,6 +187,8 @@ export interface CreatePropertyInput {
   description?: string
   owner_id?: string
   captured_by: string
+  highlight_level?: 'comum' | 'destaque' | 'super_destaque'
+  highlight_until?: string
 }
 
 export interface UpdatePropertyInput {
@@ -219,6 +221,8 @@ export interface UpdatePropertyInput {
   description?: string
   owner_id?: string
   captured_by?: string
+  highlight_level?: 'comum' | 'destaque' | 'super_destaque'
+  highlight_until?: string
 }
 
 /**
@@ -837,6 +841,12 @@ export async function createProperty(
 
   if (input.description?.trim()) payload.description = input.description.trim()
   if (input.owner_id?.trim()) payload.owner_id = input.owner_id.trim()
+  if (input.highlight_level && input.highlight_level !== 'comum') {
+    payload.highlight_level = input.highlight_level
+    if (input.highlight_level !== 'super_destaque' && input.highlight_until) {
+      payload.highlight_until = input.highlight_until
+    }
+  }
 
   return await pb.collection('properties').create<PropertyRecord>(payload, {
     expand: 'captured_by,owner_id',
@@ -896,6 +906,8 @@ export async function updateProperty(
   if (input.description !== undefined) payload.description = input.description.trim()
   if (input.owner_id !== undefined) payload.owner_id = input.owner_id.trim()
   if (input.captured_by !== undefined) payload.captured_by = input.captured_by
+  if (input.highlight_level !== undefined) payload.highlight_level = input.highlight_level
+  if (input.highlight_until !== undefined) payload.highlight_until = input.highlight_until
 
   return await pb.collection('properties').update<PropertyRecord>(id, payload, {
     expand: 'captured_by,owner_id',
