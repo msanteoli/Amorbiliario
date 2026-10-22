@@ -190,6 +190,10 @@ export function PropertyForm({
   // Fotos para cálculo do indicador no formulário (quando em edição)
   const [formPhotos, setFormPhotos] = useState<Array<{ file: string; is_active?: boolean }>>([])
 
+  // Aviso de arquivamento ao sair do super-destaque (mais de 20 fotos ativas)
+  const [archiveWarnCount, setArchiveWarnCount] = useState<number | null>(null)
+  const skipArchiveWarnRef = useRef(false)
+
   // Características
   const [bedrooms, setBedrooms] = useState(initialData?.bedrooms || '')
   const [suites, setSuites] = useState(initialData?.suites || '')
@@ -470,6 +474,28 @@ export function PropertyForm({
     if (checkZero(condoFee, 'Condomínio')) return
     if (checkZero(iptu, 'IPTU')) return
 
+    // Super-destaque efetivo = nível super_destaque E situação Disponível. Ao perder o efeito, o servidor
+    // arquiva o excedente de 20 fotos (fica a capa, depois as estreladas, depois as primeiras da ordem).
+    const wasSuperActive =
+      isEditing &&
+      initialData?.highlight_level === 'super_destaque' &&
+      initialData?.status === 'disponivel'
+    const willBeSuperActive =
+      isHighlighted &&
+      highlightLevel === 'super_destaque' &&
+      (isEditing ? status : undefined) === 'disponivel'
+    const activePhotoCount = formPhotos.filter((p) => p.is_active !== false).length
+    if (
+      wasSuperActive &&
+      !willBeSuperActive &&
+      activePhotoCount > 20 &&
+      !skipArchiveWarnRef.current
+    ) {
+      setArchiveWarnCount(activePhotoCount - 20)
+      return
+    }
+    skipArchiveWarnRef.current = false
+
     const finalStreetNumber = isSN ? 'S/N' : streetNumber.trim()
 
     // Monta lista publish_to mantendo valores ocultos existentes
@@ -511,7 +537,10 @@ export function PropertyForm({
       owner_id: selectedOwner?.id || '',
       captured_by: isCorretor ? currentUser.id : capturedBy,
       highlight_level: isHighlighted ? highlightLevel : 'comum',
-      highlight_until: isHighlighted && highlightUntil ? highlightUntil : '',
+      highlight_until:
+        isHighlighted && highlightLevel !== 'super_destaque' && highlightUntil
+          ? highlightUntil
+          : '',
     })
   }
 
@@ -1408,26 +1437,33 @@ export function PropertyForm({
                     </div>
                   </div>
 
-                  {/* Campo opcional: Destacar até */}
-                  <div className="space-y-1.5 max-w-sm">
-                    <label
-                      htmlFor="prop-highlight-until"
-                      className="text-[13px] font-normal text-foreground block"
-                    >
-                      Destacar até (opcional)
-                    </label>
-                    <Input
-                      id="prop-highlight-until"
-                      type="date"
-                      value={highlightUntil}
-                      onChange={(e) => setHighlightUntil(e.target.value)}
-                      className="h-12 text-sm border-border tabular"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Deixe em branco para destaque por tempo indeterminado. Se informado, precisa
-                      ser uma data futura.
+                  {/* Campo opcional: Destacar até (não existe no super-destaque) */}
+                  {highlightLevel === 'super_destaque' ? (
+                    <p className="text-xs text-muted-foreground max-w-xl">
+                      O super-destaque não tem data de fim: sai quando você tirar a marca ou quando
+                      a negociação mudar a situação do imóvel.
                     </p>
-                  </div>
+                  ) : (
+                    <div className="space-y-1.5 max-w-sm">
+                      <label
+                        htmlFor="prop-highlight-until"
+                        className="text-[13px] font-normal text-foreground block"
+                      >
+                        Destacar até (opcional)
+                      </label>
+                      <Input
+                        id="prop-highlight-until"
+                        type="date"
+                        value={highlightUntil}
+                        onChange={(e) => setHighlightUntil(e.target.value)}
+                        className="h-12 text-sm border-border tabular"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Deixe em branco para destaque por tempo indeterminado. Se informado, precisa
+                        ser uma data futura.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1731,6 +1767,48 @@ export function PropertyForm({
               className="h-9 rounded-[4px] px-4 text-xs font-normal border-border"
             >
               Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Aviso: fotos que serão arquivadas ao sair do super-destaque */}
+      <Dialog
+        open={archiveWarnCount !== null}
+        onOpenChange={(open) => {
+          if (!open) setArchiveWarnCount(null)
+        }}
+      >
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-base font-semibold text-foreground">
+              {archiveWarnCount}{' '}
+              {archiveWarnCount === 1 ? 'foto será arquivada' : 'fotos serão arquivadas'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Ficam a capa, as fotos com estrela e as primeiras da ordem, até 20. Nada é apagado, e
+              as arquivadas voltam sozinhas se o imóvel voltar ao super-destaque.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setArchiveWarnCount(null)}
+              className="h-9 rounded-[4px] px-4 text-xs font-normal border-border"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                skipArchiveWarnRef.current = true
+                setArchiveWarnCount(null)
+                handleSubmit({ preventDefault: () => {} } as React.FormEvent)
+              }}
+              className="h-9 rounded-[4px] px-4 text-xs font-normal"
+            >
+              Salvar mesmo assim
             </Button>
           </DialogFooter>
         </DialogContent>
