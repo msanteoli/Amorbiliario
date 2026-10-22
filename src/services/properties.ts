@@ -970,13 +970,14 @@ export async function setPropertyPhotoStars(
 }
 
 /**
- * Verifica se o imóvel está em super-destaque efetivo
+ * Verifica se o imóvel está em super-destaque efetivo. Vale pelo nível, em qualquer situação
+ * (Rascunho, Disponível, Reservado...); o site só mostra o imóvel quando ele está Disponível.
  */
 export function isSuperActive(
   property?: { highlight_level?: string; status?: string } | null,
 ): boolean {
   if (!property) return false
-  return property.highlight_level === 'super_destaque' && property.status === 'disponivel'
+  return property.highlight_level === 'super_destaque'
 }
 
 /**
