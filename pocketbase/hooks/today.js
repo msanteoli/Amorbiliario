@@ -590,7 +590,7 @@ routerAdd(
       }
     } catch (err) {
       $app.logger().error('painel_indicators_failed', 'err', String((err && err.message) || err))
-      indicators = { debug_error: String((err && err.message) || err) }
+      indicators = null
     }
 
     return e.json(200, {
