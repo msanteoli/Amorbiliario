@@ -473,6 +473,7 @@ routerAdd(
           'negotiations',
           'responsible_id = {:u} && (status = "em_analise" || status = "aprovada")',
           '-created',
+          { u: actor.id },
         ).length
         const opened = between(
           'negotiations',
