@@ -52,7 +52,7 @@ import {
   Sparkles,
   ShieldAlert,
   Trash2,
-  Star,
+  Tag,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
@@ -811,7 +811,7 @@ export default function CondominioDetalhe() {
                         {isCover && (
                           <div className="absolute top-2 left-2 z-10 pointer-events-none">
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-foreground bg-background/95 rounded-[4px] px-1.5 py-0.5 border border-border shadow-xs">
-                              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                              <Tag className="h-3 w-3 text-foreground" />
                               <span>Capa</span>
                             </span>
                           </div>
@@ -844,7 +844,7 @@ export default function CondominioDetalhe() {
                                   title="Tornar capa"
                                   aria-label="Tornar capa"
                                 >
-                                  <Star className="h-3 w-3 text-amber-500" />
+                                  <Tag className="h-3 w-3 text-foreground" />
                                   <span className="hidden sm:inline">Capa</span>
                                 </button>
                               </div>

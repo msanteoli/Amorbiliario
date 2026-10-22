@@ -61,6 +61,8 @@ export interface PropertyPhotoRecord extends RecordModel {
   property_id: string
   file: string
   is_active: boolean
+  is_starred?: boolean
+  auto_archived?: boolean
   position?: number
   created?: string
   updated?: string
@@ -124,6 +126,8 @@ export interface PropertyRecord extends RecordModel {
   import_batch_id?: string
   status: PropertyStatus
   cover_photo_id?: string
+  highlight_level?: string
+  highlight_until?: string
   street?: string
   street_number?: string
   complement?: string
@@ -929,6 +933,47 @@ export async function updatePropertyPhotosOrder(
     const serverMsg = extractServerErrorMessage(err)
     throw new Error(serverMsg)
   }
+}
+
+/**
+ * Define as fotos com estrela para manter ao sair do super-destaque
+ * PUT /backend/v1/properties/{id}/photos/stars com { photo_ids: string[] }
+ */
+export async function setPropertyPhotoStars(
+  propertyId: string,
+  photoIds: string[],
+): Promise<{ ok: boolean; photo_ids: string[] }> {
+  try {
+    return await pb.send<{ ok: boolean; photo_ids: string[] }>(
+      `/backend/v1/properties/${propertyId}/photos/stars`,
+      {
+        method: 'PUT',
+        body: { photo_ids: photoIds },
+      },
+    )
+  } catch (err: unknown) {
+    const serverMsg = extractServerErrorMessage(err)
+    throw new Error(serverMsg)
+  }
+}
+
+/**
+ * Verifica se o imóvel está em super-destaque efetivo
+ */
+export function isSuperActive(
+  property?: { highlight_level?: string; status?: string } | null,
+): boolean {
+  if (!property) return false
+  return property.highlight_level === 'super_destaque' && property.status === 'disponivel'
+}
+
+/**
+ * Retorna o limite de fotos ativas do imóvel (100 se super-destaque efetivo, senão 20)
+ */
+export function photoLimit(
+  property?: { highlight_level?: string; status?: string } | null,
+): number {
+  return isSuperActive(property) ? 100 : 20
 }
 
 /**
