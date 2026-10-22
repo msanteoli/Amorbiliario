@@ -1,6 +1,6 @@
 // Valida o ENVIO de foto: o imóvel precisa ser da mesma organização e, para o corretor,
 // ele precisa ser o captador; no máximo 20 fotos ativas por imóvel (100 se o imóvel está em super-destaque, em qualquer situação). A foto nasce ativa.
-// O tipo e o tamanho do arquivo são validados pelo próprio campo (JPEG e WebP; até 3 MB, desde o M12).
+// (Versão de 22/10: limite pelo nível.) O tipo e o tamanho do arquivo são validados pelo próprio campo (JPEG e WebP; até 3 MB, desde o M12).
 onRecordCreateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record

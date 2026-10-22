@@ -1,4 +1,4 @@
-// Fecha a negociação: o imóvel vira Vendido (venda) ou Alugado (locação) e o lead vira Ganho,
+// Fecha a negociação (e devolve o nível de destaque para Catálogo, 22/10): o imóvel vira Vendido (venda) ou Alugado (locação) e o lead vira Ganho,
 
 // tudo ou nada. Só o admin e o corretor responsável. Com documento pendente no checklist, devolve 409
 // com a lista do que falta; só o admin fecha assim mesmo, com {force:true, reason}.

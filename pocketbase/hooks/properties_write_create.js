@@ -1,6 +1,7 @@
 // Valida o imóvel na CRIAÇÃO: dinheiro (zero e negativo recusados), proprietário e
 // captador válidos. O imóvel sempre nasce em Rascunho e a data de revisão é do servidor.
 // Grava o histórico no audit_log (só nomes de campos, nunca valores).
+// Cadastro livre e pendências: versão de 22/10.
 onRecordCreateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record

@@ -1,6 +1,6 @@
 // Desativar ou reativar uma foto. Reativar respeita o limite (20, ou 100 em super-destaque). Desativar até sobrarem
 // menos de 5 fotos ativas devolve um imóvel Disponível a Rascunho (com histórico); reativar
-// NÃO promove o imóvel de volta: quem decide é uma edição do imóvel.
+// NÃO promove o imóvel de volta: quem decide é uma edição do imóvel. (Versão de 22/10: limite pelo nível.)
 onRecordUpdateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record

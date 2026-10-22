@@ -1,4 +1,4 @@
-// Rotina das pendências do cadastro (spec 2026-10-21-cadastro-livre): a cada 2 minutos confere os imóveis vivos (Rascunho, Disponível,
+// Rotina das pendências do cadastro (spec 2026-10-21-cadastro-livre, versão de 22/10): a cada 2 minutos confere os imóveis vivos (Rascunho, Disponível,
 // Reservado) e cria/fecha as tarefas "Preencher ..." do captador. Cobre os caminhos que gravam sem passar pelos hooks de edição (fotos,
 // vínculo do proprietário, importações, MCP, fechamento de negociação). Também cancela as pendências de imóvel vendido, alugado ou inativo.
 // A lógica de cada imóvel é a MESMA de properties_write_create.js e properties_write_update.js (o Skip não compartilha funções).

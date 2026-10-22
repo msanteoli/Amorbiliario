@@ -1,4 +1,4 @@
-// Valida o imóvel na EDIÇÃO e aplica a regra de Rascunho e imóvel completo:
+// Valida o imóvel na EDIÇÃO e aplica a regra de Rascunho e imóvel completo (cadastro livre e pendências, 22/10):
 //  - pedir Disponível com o imóvel incompleto é recusado, com a lista do que falta;
 //  - um imóvel Disponível que perde um item volta para Rascunho;
 //  - a data de revisão é sempre do servidor (o valor enviado é ignorado).

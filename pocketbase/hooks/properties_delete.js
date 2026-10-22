@@ -1,4 +1,4 @@
-// M15b (spec docs/superpowers/specs/2026-10-16-exclusao-admin-design.md): exclusão de imóvel pelo admin.
+// M15b (spec docs/superpowers/specs/2026-10-16-exclusao-admin-design.md): exclusão de imóvel pelo admin. (22/10: pendências automáticas não bloqueiam.)
 // Só o admin ativo da mesma organização exclui. Se houver vínculos que bloqueiam, responde 409 com
 // { bloqueios: [{ tipo, quantidade }] } e NADA é apagado (auditoria 'exclusao_bloqueada', só com contagens).
 // Sem bloqueio: numa transação só, apaga os filhos e o registro e grava 'registro_excluido' (sem valores).
