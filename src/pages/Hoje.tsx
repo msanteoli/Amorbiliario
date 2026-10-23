@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getTodayData,
@@ -10,8 +10,16 @@ import {
   TodayPropertyItem,
   TodayStageCountItem,
   AgendaItem,
+  PainelPeriod,
   formatTodayErrorMessage,
 } from '@/services/today'
+import {
+  PeriodSelector,
+  IndicatorCard,
+  MiniBarChart,
+  StatCard,
+  StageBars,
+} from '@/components/painel/PainelBlocks'
 import {
   formatDateBahia,
   formatTimeBahia,
@@ -113,6 +121,10 @@ export default function Hoje() {
     }
   }, [])
 
+  // Período dos indicadores (semana ou mês): lembrado por usuário no navegador
+  const [period, setPeriod] = useState<PainelPeriod>('semana')
+  const periodRef = useRef<PainelPeriod>('semana')
+
   const loadData = useCallback(
     async (isRefresh = false) => {
       if (isRefresh) {
@@ -123,7 +135,7 @@ export default function Hoje() {
       setErrorMessage(null)
 
       try {
-        const resp = await getTodayData()
+        const resp = await getTodayData(periodRef.current)
         setData(resp)
         if (resp.role === 'admin') {
           loadOwnersWarning()
@@ -156,6 +168,35 @@ export default function Hoje() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Volta ao período que a pessoa escolheu da última vez
+  useEffect(() => {
+    if (!user?.id) return
+    try {
+      const saved = localStorage.getItem(`painel-periodo:${user.id}`)
+      if ((saved === 'semana' || saved === 'mes') && saved !== periodRef.current) {
+        periodRef.current = saved
+        setPeriod(saved)
+        loadData(true)
+      }
+    } catch {
+      // localStorage bloqueado: segue com a semana
+    }
+  }, [user?.id, loadData])
+
+  const handlePeriodChange = (p: PainelPeriod) => {
+    if (p === periodRef.current) return
+    periodRef.current = p
+    setPeriod(p)
+    if (user?.id) {
+      try {
+        localStorage.setItem(`painel-periodo:${user.id}`, p)
+      } catch {
+        // sem persistência: vale só nesta visita
+      }
+    }
+    loadData(true)
+  }
 
   const handleReschedulePendingItem = async (pendingItem: { id: string }) => {
     try {
@@ -703,28 +744,96 @@ export default function Hoje() {
     )
   }
 
-  // Indicadores da função (versão simples: os cartões e o gráfico entram na parte 2 da tela)
-  const renderIndicatorsBasic = () => (
-    <section className="rounded-xl border border-border bg-card p-5 space-y-3">
-      <Cota title="Meus indicadores" />
-      {!data?.indicators ? (
-        <p className="text-sm text-muted-foreground">Indicadores indisponíveis agora.</p>
-      ) : (
-        <div className="divide-y divide-border">
-          {data.indicators.items.map((it) => (
-            <div key={it.key} className="py-3 flex items-center justify-between gap-3">
-              <span className="text-sm text-foreground">{it.label}</span>
-              <span className="dado text-sm text-foreground">
-                {it.unit === 'R$'
-                  ? `R$ ${Number(it.value).toLocaleString('pt-BR')}`
-                  : `${it.value}${it.unit === '%' ? '%' : ''}`}
-              </span>
-            </div>
-          ))}
+  // Indicadores da função: 3 cartões (o primeiro em destaque) e o gráfico do período
+  const renderIndicators = () => {
+    const ind = data?.indicators
+    if (!ind) {
+      return (
+        <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+          Indicadores indisponíveis agora. Tente atualizar.
         </div>
-      )}
-    </section>
-  )
+      )
+    }
+    const chartTitle =
+      (data?.role === 'sdr'
+        ? 'Leads recebidos'
+        : data?.role === 'corretor'
+          ? 'Visitas'
+          : 'Negociações fechadas') + (ind.period === 'semana' ? ' por dia' : ' por semana')
+    return (
+      <div className="space-y-4">
+        {ind.items.map((it, idx) => (
+          <IndicatorCard key={it.key} item={it} highlight={idx === 0} />
+        ))}
+        <MiniBarChart title={chartTitle} labels={ind.chart.labels} values={ind.chart.values} />
+      </div>
+    )
+  }
+
+  // Painéis de apoio por função: só números e gráficos (nada de listas)
+  const renderSupportPanels = () => {
+    if (!data) return null
+    const cnt = (s?: TodaySection<unknown>) => (s ? (s.more ? '500+' : s.count) : 0)
+    if (data.role === 'sdr') {
+      const unassigned = data.sections.new_unassigned_leads
+      const late = unassigned ? unassigned.items.filter((i) => i.overdue).length : 0
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard
+            title="Leads novos sem dono"
+            value={cnt(unassigned)}
+            attention={late > 0}
+            hint={late > 0 ? `${late} passaram de 1 hora sem corretor` : undefined}
+            onClick={() => navigate('/leads?stage=novo')}
+          />
+          <StatCard
+            title="Pendências de duplicidade"
+            value={cnt(data.sections.dedupe_pending)}
+            onClick={() => navigate('/leads?tab=pendencias')}
+          />
+          <StatCard
+            title="Visitas pendentes de agenda"
+            value={cnt(data.sections.pending_visits)}
+            onClick={() => navigate('/agenda')}
+          />
+        </div>
+      )
+    }
+    if (data.role === 'admin') {
+      const stages = data.sections.leads_by_stage?.items || []
+      return (
+        <div className="space-y-4">
+          <StageBars
+            title="Leads por etapa"
+            items={stages}
+            labelOf={(s) => LEAD_STAGE_LABELS[s as LeadStage] || s}
+            onPick={(s) => navigate(`/leads?stage=${encodeURIComponent(s)}`)}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <StatCard
+              title="Leads parados sem dono"
+              value={cnt(data.sections.stalled_leads)}
+              attention={(data.sections.stalled_leads?.count || 0) > 0}
+              hint="Novos, sem corretor, há mais de 24 horas"
+              onClick={() => navigate('/leads?stage=novo')}
+            />
+            <StatCard
+              title="Imóveis pendentes de revisão"
+              value={cnt(data.sections.properties_pending_review)}
+              attention={(data.sections.properties_pending_review?.count || 0) > 0}
+              onClick={() => navigate('/imoveis')}
+            />
+            <StatCard
+              title="Visitas da semana"
+              value={cnt(data.sections.visits_week)}
+              onClick={() => navigate('/agenda')}
+            />
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -745,16 +854,23 @@ export default function Hoje() {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => loadData(true)}
-          disabled={loading || refreshing}
-          className="rounded-full font-normal gap-2 self-start sm:self-auto shrink-0"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          <span>Atualizar</span>
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <PeriodSelector
+            value={period}
+            onChange={handlePeriodChange}
+            disabled={loading || refreshing}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadData(true)}
+            disabled={loading || refreshing}
+            className="rounded-full font-normal gap-2 self-start sm:self-auto shrink-0"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>Atualizar</span>
+          </Button>
+        </div>
       </div>
 
       {/* Faixa de atenção da Google Agenda (visível só para corretor e admin se nao_conectado ou reconectar) */}
@@ -857,7 +973,7 @@ export default function Hoje() {
             />
             {renderAgendaSection()}
           </div>
-          <div className="space-y-6">{renderIndicatorsBasic()}</div>
+          <div className="space-y-6">{renderIndicators()}</div>
         </div>
       )}
 
@@ -865,25 +981,7 @@ export default function Hoje() {
       {!loading && data && (
         <div className="space-y-8">
           {/* SDR */}
-          {data.role === 'sdr' && (
-            <>
-              {renderLeadSection(
-                'Leads novos sem dono',
-                data.sections.new_unassigned_leads,
-                (lead) => navigate(`/leads/${lead.id}`),
-                { isNewUnassigned: true },
-              )}
-
-              {renderLeadSection(
-                'Pendências de duplicidade',
-                data.sections.dedupe_pending,
-                () => navigate('/leads?tab=pendencias'),
-                { isDedupe: true },
-              )}
-
-              {renderVisitSection('Visitas pendentes de agenda', data.sections.pending_visits)}
-            </>
-          )}
+          {data.role === 'sdr' && <>{renderSupportPanels()}</>}
 
           {/* CORRETOR (no celular e desktop: "Visitas para confirmar" no topo via PendingVisitsConfirmationBlock) */}
           {data.role === 'corretor' && (
@@ -939,24 +1037,7 @@ export default function Hoje() {
                   </div>
                 )}
 
-              {renderLeadsByStageSection(data.sections.leads_by_stage)}
-
-              {renderVisitSection('Visitas da semana', data.sections.visits_week, {
-                showDate: true,
-              })}
-
-              {renderLeadSection(
-                'Leads parados sem dono',
-                data.sections.stalled_leads,
-                (lead) => navigate(`/leads/${lead.id}`),
-                { helpText: 'Novos, sem corretor, há mais de 24 horas' },
-              )}
-
-              {renderPropertiesPendingSection(data.sections.properties_pending_review)}
-
-              {renderTaskSection('Tarefas atrasadas da equipe', data.sections.overdue_tasks, {
-                showAssigned: true,
-              })}
+              {renderSupportPanels()}
             </>
           )}
         </div>
