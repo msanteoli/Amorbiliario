@@ -16,6 +16,7 @@ onRecordViewRequest(
       site_settings: ['admin'],
       site_publications: ['admin'],
       site_preview_tokens: ['admin'],
+      panel_layouts: ['admin'],
     }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
@@ -70,4 +71,5 @@ onRecordViewRequest(
   'site_settings',
   'site_publications',
   'site_preview_tokens',
+  'panel_layouts',
 )
