@@ -31,7 +31,13 @@ import { LEAD_STAGE_LABELS, LeadStage } from '@/services/leads'
 import { listOwnersWithoutProperty, OwnerWithoutPropertyItem } from '@/services/properties'
 import { Cota } from '@/components/Cota'
 import { cn } from '@/lib/utils'
-import { getPanelLayout, savePanelLayout, PanelBlock, PanelLayout } from '@/services/panelLayout'
+import {
+  getPanelLayout,
+  savePanelLayout,
+  resetPanelLayout,
+  PanelBlock,
+  PanelLayout,
+} from '@/services/panelLayout'
 import {
   PANEL_BLOCK_TITLES,
   PANEL_CATALOG,
@@ -55,6 +61,8 @@ import {
   LayoutGrid,
   GripVertical,
   Plus,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react'
 import { getRoleLabel } from '@/lib/roles'
 import { useAuth } from '@/contexts/AuthContext'
@@ -91,6 +99,7 @@ export default function Hoje() {
   const [layoutError, setLayoutError] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [addOpen, setAddOpen] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -1023,7 +1032,15 @@ export default function Hoje() {
     )
   }
 
+  // Voltar ao padrão: troca o rascunho pelo padrão da função; só vale (e apaga o arranjo salvo) no Concluir
+  const resetDraftToDefault = () => {
+    setDraft(getDefaultBlocks(data?.role || ''))
+    setConfirmReset(false)
+    setAddOpen(false)
+  }
+
   const cancelEditing = () => {
+    setConfirmReset(false)
     setAddOpen(false)
     setDragId(null)
     setEditing(false)
@@ -1034,8 +1051,15 @@ export default function Hoje() {
     setSavingLayout(true)
     setLayoutError(null)
     try {
-      await savePanelLayout(draft)
-      setSavedLayout({ version: 1, blocks: draft })
+      const isDefault = JSON.stringify(draft) === JSON.stringify(getDefaultBlocks(data?.role || ''))
+      if (isDefault) {
+        await resetPanelLayout()
+        setSavedLayout(null)
+      } else {
+        await savePanelLayout(draft)
+        setSavedLayout({ version: 1, blocks: draft })
+      }
+      setConfirmReset(false)
       setAddOpen(false)
       setEditing(false)
     } catch (err) {
@@ -1071,6 +1095,43 @@ export default function Hoje() {
           </Button>
           {draft.length >= 20 && (
             <span className="text-xs text-muted-foreground">Limite de 20 quadros.</span>
+          )}
+          {!confirmReset ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmReset(true)}
+              className="rounded-full font-normal"
+            >
+              Voltar ao padrão
+            </Button>
+          ) : (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center gap-2 rounded-full border border-border bg-card px-3 py-1"
+            >
+              <span className="text-xs text-foreground">
+                Descartar seu arranjo e voltar ao padrão?
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                onClick={resetDraftToDefault}
+                className="rounded-full font-normal h-7"
+              >
+                Sim, voltar
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmReset(false)}
+                className="rounded-full font-normal h-7"
+              >
+                Não
+              </Button>
+            </div>
           )}
         </div>
         {addOpen && (
@@ -1156,13 +1217,35 @@ export default function Hoje() {
                         moveBlock(b.id, index + 1)
                       }
                     }}
-                    className="cursor-grab p-1 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="hidden lg:block cursor-grab p-1 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     <GripVertical className="h-4 w-4" />
                   </button>
                   <p className="flex-1 min-w-0 truncate text-xs font-medium text-muted-foreground">
                     {PANEL_BLOCK_TITLES[b.id] || b.id}
                   </p>
+                  <div className="inline-flex lg:hidden gap-1">
+                    <button
+                      type="button"
+                      aria-label={`Subir ${PANEL_BLOCK_TITLES[b.id] || b.id}`}
+                      title="Subir"
+                      disabled={index === 0}
+                      onClick={() => moveBlock(b.id, index - 1)}
+                      className="p-1.5 rounded border border-border text-muted-foreground disabled:opacity-40"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Descer ${PANEL_BLOCK_TITLES[b.id] || b.id}`}
+                      title="Descer"
+                      disabled={index === blocks.length - 1}
+                      onClick={() => moveBlock(b.id, index + 1)}
+                      className="p-1.5 rounded border border-border text-muted-foreground disabled:opacity-40"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </div>
                   <div className="hidden lg:inline-flex rounded-full border border-border p-0.5">
                     {sizes.map((s) => (
                       <button
