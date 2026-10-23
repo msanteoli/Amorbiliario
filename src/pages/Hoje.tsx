@@ -9,6 +9,7 @@ import {
   TodayTaskItem,
   TodayPropertyItem,
   TodayStageCountItem,
+  AgendaItem,
   formatTodayErrorMessage,
 } from '@/services/today'
 import {
@@ -24,7 +25,17 @@ import { Cota } from '@/components/Cota'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { RefreshCw, ChevronRight, AlertCircle, AlertTriangle, X } from 'lucide-react'
+import {
+  RefreshCw,
+  ChevronRight,
+  AlertCircle,
+  AlertTriangle,
+  X,
+  CheckSquare,
+  MapPin,
+  Lock,
+  Phone,
+} from 'lucide-react'
 import { getRoleLabel } from '@/lib/roles'
 import { useAuth } from '@/contexts/AuthContext'
 import {
@@ -604,12 +615,123 @@ export default function Hoje() {
     )
   }
 
+  // Saudação pela hora de Feira de Santana (UTC-3)
+  const greetingText = (() => {
+    const h = new Date(Date.now() - 3 * 3600000).getUTCHours()
+    const base = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
+    const first = String(user?.name || '')
+      .trim()
+      .split(' ')[0]
+    return first ? `${base}, ${first}` : base
+  })()
+
+  // Agenda do dia: tarefas, visitas, bloqueios e atendimentos (próximos passos de leads) numa linha do tempo só
+  const openAgendaItem = (it: AgendaItem) => {
+    if (it.kind === 'atendimento') navigate(`/leads/${it.lead_id || it.id}`)
+    else if (it.kind === 'tarefa') navigate('/agenda?tab=tarefas')
+    else navigate('/agenda')
+  }
+
+  const renderAgendaSection = () => {
+    const items = data?.agenda || []
+    const kindLabel: Record<string, string> = {
+      tarefa: 'Tarefa',
+      visita: 'Visita',
+      bloqueio: 'Bloqueio',
+      atendimento: 'Atendimento',
+    }
+    const kindIcon = (kind: string) =>
+      kind === 'visita' ? (
+        <MapPin className="h-4 w-4" />
+      ) : kind === 'bloqueio' ? (
+        <Lock className="h-4 w-4" />
+      ) : kind === 'atendimento' ? (
+        <Phone className="h-4 w-4" />
+      ) : (
+        <CheckSquare className="h-4 w-4" />
+      )
+    return (
+      <section className="rounded-xl border border-border bg-card p-5 space-y-3">
+        <Cota
+          title="Minha agenda de hoje"
+          count={items.length}
+          isAttention={items.some((i) => i.overdue)}
+        />
+        {items.length === 0 ? (
+          <div className="py-6 text-sm text-muted-foreground">Nada na agenda de hoje.</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {items.map((it) => (
+              <div
+                key={`${it.kind}:${it.id}`}
+                onClick={() => openAgendaItem(it)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    openAgendaItem(it)
+                  }
+                }}
+                className="min-h-[56px] py-3 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <span className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-muted-foreground">
+                  {kindIcon(it.kind)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-normal text-foreground truncate">{it.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {kindLabel[it.kind] || it.kind}
+                    {it.at && (
+                      <span className="dado text-xs">
+                        {' · '}
+                        {it.overdue ? formatDateTimeBahia(it.at) : formatTimeBahia(it.at)}
+                      </span>
+                    )}
+                    {it.pendencia && ' · pendência do cadastro'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {it.overdue && <Badge variant="attention">Atrasada</Badge>}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    )
+  }
+
+  // Indicadores da função (versão simples: os cartões e o gráfico entram na parte 2 da tela)
+  const renderIndicatorsBasic = () => (
+    <section className="rounded-xl border border-border bg-card p-5 space-y-3">
+      <Cota title="Meus indicadores" />
+      {!data?.indicators ? (
+        <p className="text-sm text-muted-foreground">Indicadores indisponíveis agora.</p>
+      ) : (
+        <div className="divide-y divide-border">
+          {data.indicators.items.map((it) => (
+            <div key={it.key} className="py-3 flex items-center justify-between gap-3">
+              <span className="text-sm text-foreground">{it.label}</span>
+              <span className="dado text-sm text-foreground">
+                {it.unit === 'R$'
+                  ? `R$ ${Number(it.value).toLocaleString('pt-BR')}`
+                  : `${it.value}${it.unit === '%' ? '%' : ''}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8">
       {/* Top Header: Título .display-sm ("Hoje"), papel e horário de atualização abaixo, botão Atualizar em pílula de contorno */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-2 border-b border-border">
         <div>
-          <h1 className="display-sm text-foreground">Hoje</h1>
+          <h1 className="display-sm text-foreground">{greetingText}</h1>
           <p className="text-xs text-muted-foreground mt-1">
             {data?.role ? `${getRoleLabel(data.role)} • ` : ''}
             {data?.generated_at ? (
@@ -725,18 +847,26 @@ export default function Hoje() {
         </div>
       )}
 
-      {/* Seções por papel */}
+      {/* Novo Painel: agenda do dia (esquerda) e indicadores da função (direita) */}
+      {!loading && data && (
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-6 items-start">
+          <div className="space-y-6">
+            <PendingVisitsConfirmationBlock
+              onRescheduleClick={data.role === 'corretor' ? undefined : handleReschedulePendingItem}
+              onGoogleStatusChange={(status) => setGoogleStatus(status)}
+            />
+            {renderAgendaSection()}
+          </div>
+          <div className="space-y-6">{renderIndicatorsBasic()}</div>
+        </div>
+      )}
+
+      {/* Listas de apoio por papel (o que já está na agenda do dia não se repete aqui) */}
       {!loading && data && (
         <div className="space-y-8">
           {/* SDR */}
           {data.role === 'sdr' && (
             <>
-              {/* Bloco "Aguardando confirmação" para SDR */}
-              <PendingVisitsConfirmationBlock
-                onRescheduleClick={handleReschedulePendingItem}
-                onGoogleStatusChange={(status) => setGoogleStatus(status)}
-              />
-
               {renderLeadSection(
                 'Leads novos sem dono',
                 data.sections.new_unassigned_leads,
@@ -751,53 +881,20 @@ export default function Hoje() {
                 { isDedupe: true },
               )}
 
-              {renderLeadSection(
-                'Próximos passos vencidos',
-                data.sections.overdue_next_steps,
-                (lead) => navigate(`/leads/${lead.id}`),
-                { isNextStepOverdueHighlight: true },
-              )}
-
               {renderVisitSection('Visitas pendentes de agenda', data.sections.pending_visits)}
-
-              {renderTaskSection('Minhas tarefas atrasadas e de hoje', data.sections.my_tasks_due)}
-
-              {renderVisitSection('Visitas de hoje', data.sections.visits_today)}
             </>
           )}
 
           {/* CORRETOR (no celular e desktop: "Visitas para confirmar" no topo via PendingVisitsConfirmationBlock) */}
           {data.role === 'corretor' && (
             <>
-              {/* Bloco 1: Corretor: "Visitas para confirmar" no topo */}
-              <PendingVisitsConfirmationBlock
-                onGoogleStatusChange={(status) => setGoogleStatus(status)}
-              />
-
-              {renderVisitSection('Visitas de hoje', data.sections.visits_today, {
-                isCorretorVisitsToday: true,
-              })}
-
-              {renderTaskSection('Minhas tarefas atrasadas e de hoje', data.sections.my_tasks_due)}
-
-              {renderLeadSection(
-                'Leads com próximo passo vencido',
-                data.sections.overdue_next_steps,
-                (lead) => navigate(`/leads/${lead.id}`),
-                { isNextStepOverdueHighlight: true },
-              )}
+              {/* A agenda do dia (acima) já traz as visitas, as tarefas e os próximos passos do corretor */}
             </>
           )}
 
           {/* ADMIN */}
           {data.role === 'admin' && (
             <>
-              {/* Bloco "Aguardando confirmação" para Admin */}
-              <PendingVisitsConfirmationBlock
-                onRescheduleClick={handleReschedulePendingItem}
-                onGoogleStatusChange={(status) => setGoogleStatus(status)}
-              />
-
               {/* Aviso de proprietários sem imóvel (M7) */}
               {ownersWithoutProp.length > 0 &&
                 (dismissedCount === null || ownersWithoutProp.length > dismissedCount) && (

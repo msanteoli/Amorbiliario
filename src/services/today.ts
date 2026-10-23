@@ -76,10 +76,55 @@ export interface TodaySections {
   overdue_tasks?: TodaySection<TodayTaskItem>
 }
 
+// Novo Painel: agenda do dia e indicadores por função (spec 2026-10-22-painel-agenda-e-indicadores)
+export interface AgendaItem {
+  kind: 'tarefa' | 'visita' | 'bloqueio' | 'atendimento'
+  id: string
+  title: string
+  at: string
+  overdue: boolean
+  lead_id?: string
+  property_id?: string
+  property_code?: string
+  pendencia?: boolean
+  status?: string
+  end_at?: string
+}
+
+export interface IndicatorSecondary {
+  label: string
+  value: number
+  unit: string
+  no_data?: boolean
+}
+
+export interface IndicatorItem {
+  key: string
+  label: string
+  value: number
+  unit: string
+  previous?: number | null
+  no_data?: boolean
+  secondary?: IndicatorSecondary
+  parts?: Array<{ label: string; value: number }>
+}
+
+export interface TodayIndicators {
+  period: 'semana' | 'mes'
+  from: string
+  to: string
+  items: IndicatorItem[]
+  chart: { labels: string[]; values: number[] }
+}
+
+export type PainelPeriod = 'semana' | 'mes'
+
 export interface TodayResponse {
   role: 'admin' | 'sdr' | 'corretor' | string
   generated_at: string
   sections: TodaySections
+  agenda?: AgendaItem[]
+  indicators?: TodayIndicators | null
 }
 
 export function formatTodayErrorMessage(
@@ -119,9 +164,10 @@ export function formatTodayErrorMessage(
 /**
  * GET /backend/v1/today
  */
-export async function getTodayData(): Promise<TodayResponse> {
+export async function getTodayData(period: PainelPeriod = 'semana'): Promise<TodayResponse> {
   return await pb.send<TodayResponse>('/backend/v1/today', {
     method: 'GET',
+    query: { period },
     requestKey: null,
   })
 }
