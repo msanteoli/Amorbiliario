@@ -32,7 +32,13 @@ import { listOwnersWithoutProperty, OwnerWithoutPropertyItem } from '@/services/
 import { Cota } from '@/components/Cota'
 import { cn } from '@/lib/utils'
 import { getPanelLayout, savePanelLayout, PanelBlock, PanelLayout } from '@/services/panelLayout'
-import { PANEL_BLOCK_TITLES, colSpanClass, resolveBlocks } from '@/components/painel/painelRegistry'
+import {
+  PANEL_BLOCK_TITLES,
+  PANEL_CATALOG,
+  colSpanClass,
+  getDefaultBlocks,
+  resolveBlocks,
+} from '@/components/painel/painelRegistry'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -47,6 +53,8 @@ import {
   Lock,
   Phone,
   LayoutGrid,
+  GripVertical,
+  Plus,
 } from 'lucide-react'
 import { getRoleLabel } from '@/lib/roles'
 import { useAuth } from '@/contexts/AuthContext'
@@ -81,6 +89,8 @@ export default function Hoje() {
   const [draft, setDraft] = useState<PanelBlock[]>([])
   const [savingLayout, setSavingLayout] = useState(false)
   const [layoutError, setLayoutError] = useState<string | null>(null)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -983,7 +993,39 @@ export default function Hoje() {
     setEditing(true)
   }
 
+  // Edição do rascunho (parte 3): mover, tamanho, remover e adicionar
+  const moveBlock = (id: string, toIndex: number) => {
+    setDraft((cur) => {
+      const from = cur.findIndex((b) => b.id === id)
+      if (from < 0) return cur
+      const to = Math.max(0, Math.min(cur.length - 1, toIndex))
+      if (to === from) return cur
+      const next = [...cur]
+      const [item] = next.splice(from, 1)
+      next.splice(to, 0, item)
+      return next
+    })
+  }
+
+  const setBlockWidth = (id: string, w: PanelBlockWidth) => {
+    setDraft((cur) => cur.map((b) => (b.id === id ? { ...b, w } : b)))
+  }
+
+  const removeBlock = (id: string) => {
+    setDraft((cur) => cur.filter((b) => b.id !== id))
+  }
+
+  const addBlock = (id: string) => {
+    const role = data?.role || ''
+    const def = getDefaultBlocks(role).find((b) => b.id === id)
+    setDraft((cur) =>
+      cur.length >= 20 || cur.some((b) => b.id === id) ? cur : [...cur, { id, w: def ? def.w : 4 }],
+    )
+  }
+
   const cancelEditing = () => {
+    setAddOpen(false)
+    setDragId(null)
     setEditing(false)
     setLayoutError(null)
   }
@@ -994,6 +1036,7 @@ export default function Hoje() {
     try {
       await savePanelLayout(draft)
       setSavedLayout({ version: 1, blocks: draft })
+      setAddOpen(false)
       setEditing(false)
     } catch (err) {
       setLayoutError(formatTodayErrorMessage(err, 'Não foi possível gravar o arranjo do painel.'))
@@ -1005,34 +1048,159 @@ export default function Hoje() {
   const renderPainelGrid = () => {
     if (!data) return null
     const blocks = editing ? draft : resolveBlocks(data.role, savedLayout)
+    const missing = (PANEL_CATALOG[data.role] || []).filter((id) => !draft.some((b) => b.id === id))
+    const sizes: Array<{ w: PanelBlockWidth; label: string; title: string }> = [
+      { w: 4, label: 'P', title: 'Pequeno' },
+      { w: 6, label: 'M', title: 'Médio' },
+      { w: 8, label: 'G', title: 'Grande' },
+      { w: 12, label: 'Total', title: 'Largura total' },
+    ]
+    const addBar = editing ? (
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setAddOpen((v) => !v)}
+            disabled={draft.length >= 20}
+            className="rounded-full font-normal gap-2"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Adicionar quadro</span>
+          </Button>
+          {draft.length >= 20 && (
+            <span className="text-xs text-muted-foreground">Limite de 20 quadros.</span>
+          )}
+        </div>
+        {addOpen && (
+          <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            {missing.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Todos os quadros já estão na tela.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {missing.map((id) => (
+                  <Button
+                    key={id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addBlock(id)}
+                    className="rounded-full font-normal"
+                  >
+                    {PANEL_BLOCK_TITLES[id] || id}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    ) : null
+
     if (blocks.length === 0) {
       return (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          Seu painel está vazio. Use Personalizar para adicionar quadros.
+        <div className="space-y-4">
+          {addBar}
+          <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            Seu painel está vazio. Use Personalizar para adicionar quadros.
+          </div>
         </div>
       )
     }
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-flow-dense gap-6 items-start">
-        {blocks.map((b) => (
-          <div
-            key={b.id}
-            data-bloco={b.id}
-            className={cn(
-              'min-w-0 empty:hidden',
-              colSpanClass(b.w),
-              b.id === 'agenda' && b.w === 8 && 'lg:row-span-4',
-              editing && 'rounded-xl border-2 border-dashed border-border p-2 space-y-2',
-            )}
-          >
-            {editing && (
-              <p className="text-xs font-medium text-muted-foreground">
-                {PANEL_BLOCK_TITLES[b.id] || b.id}
-              </p>
-            )}
-            {renderBlock(b.id)}
-          </div>
-        ))}
+      <div className="space-y-4">
+        {addBar}
+        <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-flow-dense gap-6 items-start">
+          {blocks.map((b, index) => (
+            <div
+              key={b.id}
+              data-bloco={b.id}
+              draggable={editing}
+              onDragStart={(e) => {
+                if (!editing) return
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', b.id)
+                setDragId(b.id)
+              }}
+              onDragOver={(e) => {
+                if (editing && dragId) e.preventDefault()
+              }}
+              onDrop={(e) => {
+                if (!editing || !dragId) return
+                e.preventDefault()
+                moveBlock(dragId, index)
+                setDragId(null)
+              }}
+              onDragEnd={() => setDragId(null)}
+              className={cn(
+                'min-w-0 empty:hidden',
+                colSpanClass(b.w),
+                b.id === 'agenda' && b.w === 8 && 'lg:row-span-4',
+                editing && 'rounded-xl border-2 border-dashed border-border p-2 space-y-2',
+                editing && dragId === b.id && 'opacity-50',
+              )}
+            >
+              {editing && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label={`Mover ${PANEL_BLOCK_TITLES[b.id] || b.id} (setas do teclado)`}
+                    title="Arraste, ou use as setas do teclado"
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        e.preventDefault()
+                        moveBlock(b.id, index - 1)
+                      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                        e.preventDefault()
+                        moveBlock(b.id, index + 1)
+                      }
+                    }}
+                    className="cursor-grab p-1 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </button>
+                  <p className="flex-1 min-w-0 truncate text-xs font-medium text-muted-foreground">
+                    {PANEL_BLOCK_TITLES[b.id] || b.id}
+                  </p>
+                  <div className="hidden lg:inline-flex rounded-full border border-border p-0.5">
+                    {sizes.map((s) => (
+                      <button
+                        key={s.w}
+                        type="button"
+                        title={s.title}
+                        aria-pressed={b.w === s.w}
+                        onClick={() => setBlockWidth(b.id, s.w)}
+                        className={cn(
+                          'h-6 rounded-full px-2 text-[11px] transition-colors',
+                          b.w === s.w
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Remover ${PANEL_BLOCK_TITLES[b.id] || b.id}`}
+                    title="Remover quadro"
+                    onClick={() => removeBlock(b.id)}
+                    className="p-1 rounded text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {editing ? (
+                <div className="pointer-events-none select-none">{renderBlock(b.id)}</div>
+              ) : (
+                renderBlock(b.id)
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
