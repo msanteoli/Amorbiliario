@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getTodayData,
@@ -30,6 +30,9 @@ import {
 import { LEAD_STAGE_LABELS, LeadStage } from '@/services/leads'
 import { listOwnersWithoutProperty, OwnerWithoutPropertyItem } from '@/services/properties'
 import { Cota } from '@/components/Cota'
+import { cn } from '@/lib/utils'
+import { getPanelLayout, savePanelLayout, PanelBlock, PanelLayout } from '@/services/panelLayout'
+import { PANEL_BLOCK_TITLES, colSpanClass, resolveBlocks } from '@/components/painel/painelRegistry'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -43,6 +46,7 @@ import {
   MapPin,
   Lock,
   Phone,
+  LayoutGrid,
 } from 'lucide-react'
 import { getRoleLabel } from '@/lib/roles'
 import { useAuth } from '@/contexts/AuthContext'
@@ -69,6 +73,32 @@ export default function Hoje() {
   const [googleStatus, setGoogleStatus] = useState<GoogleConnectionStatus | null>(null)
   const [googleConnecting, setGoogleConnecting] = useState(false)
   const [googleConfigError, setGoogleConfigError] = useState<string | null>(null)
+
+  // Arranjo dos quadros (spec 2026-10-23): salvo na conta; sem arranjo vale o padrão da função
+  const [savedLayout, setSavedLayout] = useState<PanelLayout | null>(null)
+  const [layoutReady, setLayoutReady] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<PanelBlock[]>([])
+  const [savingLayout, setSavingLayout] = useState(false)
+  const [layoutError, setLayoutError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    getPanelLayout()
+      .then((l) => {
+        if (alive) setSavedLayout(l)
+      })
+      .catch(() => {
+        // Sem arranjo salvo (ou falha ao ler): vale o padrão
+        if (alive) setSavedLayout(null)
+      })
+      .finally(() => {
+        if (alive) setLayoutReady(true)
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   // Estado para modal de remarcar visita quando acionado pela Hoje
   const [rescheduleVisitModalOpen, setRescheduleVisitModalOpen] = useState(false)
@@ -835,6 +865,178 @@ export default function Hoje() {
     return null
   }
 
+  // Quadros do Painel: cada id do registro (painelRegistry) vira um pedaço da tela, com o conteúdo que já existia
+  const unavailableCard = (
+    <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+      Indicador indisponível agora. Tente atualizar.
+    </div>
+  )
+
+  const renderBlock = (id: string): ReactNode => {
+    if (!data) return null
+    const ind = data.indicators
+    const cnt = (s?: TodaySection<unknown>) => (s ? (s.more ? '500+' : s.count) : 0)
+
+    if (id === 'agenda') return renderAgendaSection()
+    if (id === 'visitas_confirmar') {
+      return (
+        <PendingVisitsConfirmationBlock
+          onRescheduleClick={data.role === 'corretor' ? undefined : handleReschedulePendingItem}
+          onGoogleStatusChange={(status) => setGoogleStatus(status)}
+        />
+      )
+    }
+    if (id === 'grafico') {
+      if (!ind) return unavailableCard
+      const chartTitle =
+        (data.role === 'sdr'
+          ? 'Leads recebidos'
+          : data.role === 'corretor'
+            ? 'Visitas'
+            : 'Negociações fechadas') + (ind.period === 'semana' ? ' por dia' : ' por semana')
+      return <MiniBarChart title={chartTitle} labels={ind.chart.labels} values={ind.chart.values} />
+    }
+    if (id.startsWith('ind:')) {
+      const idx = ind ? ind.items.findIndex((i) => i.key === id.slice(4)) : -1
+      if (!ind || idx < 0) return unavailableCard
+      return <IndicatorCard item={ind.items[idx]} highlight={idx === 0} />
+    }
+    if (id === 'apoio:leads_sem_dono') {
+      const unassigned = data.sections.new_unassigned_leads
+      const late = unassigned ? unassigned.items.filter((i) => i.overdue).length : 0
+      return (
+        <StatCard
+          title="Leads novos sem dono"
+          value={cnt(unassigned)}
+          attention={late > 0}
+          hint={late > 0 ? `${late} passaram de 1 hora sem corretor` : undefined}
+          onClick={() => navigate('/leads?stage=novo')}
+        />
+      )
+    }
+    if (id === 'apoio:duplicidade') {
+      return (
+        <StatCard
+          title="Pendências de duplicidade"
+          value={cnt(data.sections.dedupe_pending)}
+          onClick={() => navigate('/leads?tab=pendencias')}
+        />
+      )
+    }
+    if (id === 'apoio:visitas_pendentes') {
+      return (
+        <StatCard
+          title="Visitas pendentes de agenda"
+          value={cnt(data.sections.pending_visits)}
+          onClick={() => navigate('/agenda')}
+        />
+      )
+    }
+    if (id === 'apoio:etapas') {
+      return (
+        <StageBars
+          title="Leads por etapa"
+          items={data.sections.leads_by_stage?.items || []}
+          labelOf={(s) => LEAD_STAGE_LABELS[s as LeadStage] || s}
+          onPick={(s) => navigate(`/leads?stage=${encodeURIComponent(s)}`)}
+        />
+      )
+    }
+    if (id === 'apoio:parados') {
+      return (
+        <StatCard
+          title="Leads parados sem dono"
+          value={cnt(data.sections.stalled_leads)}
+          attention={(data.sections.stalled_leads?.count || 0) > 0}
+          hint="Novos, sem corretor, há mais de 24 horas"
+          onClick={() => navigate('/leads?stage=novo')}
+        />
+      )
+    }
+    if (id === 'apoio:revisao') {
+      return (
+        <StatCard
+          title="Imóveis pendentes de revisão"
+          value={cnt(data.sections.properties_pending_review)}
+          attention={(data.sections.properties_pending_review?.count || 0) > 0}
+          onClick={() => navigate('/imoveis')}
+        />
+      )
+    }
+    if (id === 'apoio:visitas_semana') {
+      return (
+        <StatCard
+          title="Visitas da semana"
+          value={cnt(data.sections.visits_week)}
+          onClick={() => navigate('/agenda')}
+        />
+      )
+    }
+    return null
+  }
+
+  // Modo Personalizar: nada vai ao servidor até o "Concluir"
+  const startEditing = () => {
+    if (!data) return
+    setDraft(resolveBlocks(data.role, savedLayout))
+    setLayoutError(null)
+    setEditing(true)
+  }
+
+  const cancelEditing = () => {
+    setEditing(false)
+    setLayoutError(null)
+  }
+
+  const finishEditing = async () => {
+    setSavingLayout(true)
+    setLayoutError(null)
+    try {
+      await savePanelLayout(draft)
+      setSavedLayout({ version: 1, blocks: draft })
+      setEditing(false)
+    } catch (err) {
+      setLayoutError(formatTodayErrorMessage(err, 'Não foi possível gravar o arranjo do painel.'))
+    } finally {
+      setSavingLayout(false)
+    }
+  }
+
+  const renderPainelGrid = () => {
+    if (!data) return null
+    const blocks = editing ? draft : resolveBlocks(data.role, savedLayout)
+    if (blocks.length === 0) {
+      return (
+        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+          Seu painel está vazio. Use Personalizar para adicionar quadros.
+        </div>
+      )
+    }
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-flow-dense gap-6 items-start">
+        {blocks.map((b) => (
+          <div
+            key={b.id}
+            data-bloco={b.id}
+            className={cn(
+              'min-w-0 empty:hidden',
+              colSpanClass(b.w),
+              b.id === 'agenda' && b.w === 8 && 'lg:row-span-4',
+              editing && 'rounded-xl border-2 border-dashed border-border p-2 space-y-2',
+            )}
+          >
+            {editing && (
+              <p className="text-xs font-medium text-muted-foreground">
+                {PANEL_BLOCK_TITLES[b.id] || b.id}
+              </p>
+            )}
+            {renderBlock(b.id)}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Top Header: Título .display-sm ("Hoje"), papel e horário de atualização abaixo, botão Atualizar em pílula de contorno */}
@@ -870,6 +1072,38 @@ export default function Hoje() {
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             <span>Atualizar</span>
           </Button>
+          {!editing ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={startEditing}
+              disabled={loading || !data || !layoutReady}
+              className="rounded-full font-normal gap-2 shrink-0"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span>Personalizar</span>
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={cancelEditing}
+                disabled={savingLayout}
+                className="rounded-full font-normal shrink-0"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={finishEditing}
+                disabled={savingLayout}
+                className="rounded-full font-normal shrink-0"
+              >
+                {savingLayout ? 'Gravando...' : 'Concluir'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -939,7 +1173,7 @@ export default function Hoje() {
       )}
 
       {/* Esqueletos enquanto carrega primeira vez: esqueletos de linhas com divisores */}
-      {loading && (
+      {(loading || !layoutReady) && (
         <div className="space-y-6">
           {[1, 2, 3].map((sectionIndex) => (
             <div key={sectionIndex} className="space-y-3">
@@ -963,31 +1197,16 @@ export default function Hoje() {
         </div>
       )}
 
-      {/* Novo Painel: agenda do dia (esquerda) e indicadores da função (direita) */}
-      {!loading && data && (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-6 items-start">
-          <div className="space-y-6">
-            <PendingVisitsConfirmationBlock
-              onRescheduleClick={data.role === 'corretor' ? undefined : handleReschedulePendingItem}
-              onGoogleStatusChange={(status) => setGoogleStatus(status)}
-            />
-            {renderAgendaSection()}
-          </div>
-          <div className="space-y-6">{renderIndicators()}</div>
-        </div>
-      )}
-
-      {/* Listas de apoio por papel (o que já está na agenda do dia não se repete aqui) */}
-      {!loading && data && (
+      {/* Painel: aviso fixo (admin) no topo e, abaixo, a grade de quadros (arranjo da pessoa ou padrão da função) */}
+      {!loading && data && layoutReady && (
         <div className="space-y-8">
-          {/* SDR */}
-          {data.role === 'sdr' && <>{renderSupportPanels()}</>}
-
-          {/* CORRETOR (no celular e desktop: "Visitas para confirmar" no topo via PendingVisitsConfirmationBlock) */}
-          {data.role === 'corretor' && (
-            <>
-              {/* A agenda do dia (acima) já traz as visitas, as tarefas e os próximos passos do corretor */}
-            </>
+          {layoutError && editing && (
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive p-3 text-sm text-destructive"
+            >
+              {layoutError}
+            </div>
           )}
 
           {/* ADMIN */}
@@ -1036,10 +1255,10 @@ export default function Hoje() {
                     </Button>
                   </div>
                 )}
-
-              {renderSupportPanels()}
             </>
           )}
+
+          {renderPainelGrid()}
         </div>
       )}
 
