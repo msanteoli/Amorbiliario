@@ -3,6 +3,9 @@
 // existente não é duplicado, telefone ou e-mail de cliente liga o lead ao cliente, conflito
 // ambíguo vira pendência para o SDR. A resposta ao visitante é sempre a mesma, para ele nunca
 // descobrir se já existia cadastro. Origem, etapa, dono e data do consentimento são do servidor.
+// Captação (spec 2026-10-25-lead-captacao-design): intent 'captacao' + owner_address + owner_property_type.
+// O proprietário que quer anunciar não precisa de e-mail; o endereço fica só no campo do lead
+// (nunca em evento, auditoria, log nem resposta).
 routerAdd('POST', '/backend/v1/public/leads', (e) => {
   // limite de requisições por IP
   // admin logado (testes automatizados) não é limitado; visitantes anônimos são
@@ -39,6 +42,9 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
   const org = orgs[0]
   const orgId = org.id
 
+  // interesse de captação: proprietário que quer anunciar (qualquer outro valor vale como compra/aluguel)
+  const isCaptacao = clean(body.intent, 20) === 'captacao'
+
   const name = clean(body.name, 160)
   if (name.length < 2) throw new BadRequestError('Informe o seu nome.')
   // tira também os zeros à esquerda (prefixo de DDD, ex.: 075 99999-0001)
@@ -51,13 +57,40 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
     throw new BadRequestError('WhatsApp inválido. Informe DDD e número.')
   }
   const email = clean(body.email, 160).toLowerCase()
-  if (!email) throw new BadRequestError('Informe o seu e-mail.')
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestError('E-mail inválido.')
+  // a captação não pede e-mail; para os demais interesses ele segue obrigatório
+  if (!email && !isCaptacao) throw new BadRequestError('Informe o seu e-mail.')
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    throw new BadRequestError('E-mail inválido.')
   if (body.consent !== true)
     throw new BadRequestError('Para enviar, marque a autorização de contato.')
   const submission = clean(body.submission_id, 70)
   if (submission.length < 8) throw new BadRequestError('Envio inválido. Recarregue a página.')
   const intentKey = 'site:' + submission
+
+  // dados do imóvel do proprietário (só na captação). O site envia o rótulo; o servidor guarda o valor interno
+  let ownerAddress = ''
+  let ownerType = ''
+  if (isCaptacao) {
+    ownerAddress = clean(body.owner_address, 300)
+    const typeIn = clean(body.owner_property_type, 40)
+    if (typeIn) {
+      const typeLabels = {
+        casa: 'casa',
+        apartamento: 'apartamento',
+        terreno: 'terreno',
+        'sala ou loja comercial': 'comercial',
+        comercial: 'comercial',
+        galpão: 'galpao',
+        galpao: 'galpao',
+        'chácara ou sítio': 'chacara',
+        chacara: 'chacara',
+        outro: 'outro',
+      }
+      ownerType = typeLabels[typeIn.toLowerCase()] || ''
+      if (!ownerType) throw new BadRequestError('Tipo de imóvel inválido.')
+    }
+  }
+  const captacaoText = 'Quer anunciar um imóvel' + (ownerType ? ' (tipo: ' + ownerType + ')' : '')
 
   // imóvel de interesse: só vale se existir e estiver Disponível; senão o lead nasce sem imóvel
   const propertyCode = clean(body.property_code, 40)
@@ -82,6 +115,7 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
   const makeWa = (visitInfo) => {
     if (!waNumber) return null
     let msg = 'Olá! Fiz uma busca no site e gostaria de ajuda.'
+    if (isCaptacao) msg = 'Olá! Quero anunciar o meu imóvel com vocês.'
     if (property) {
       msg =
         'Olá! Vi o imóvel ' +
@@ -345,17 +379,27 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
     addEvent(
       consistent.id,
       'interesse_site',
-      (
-        'Novo interesse pelo site' +
-        (property ? ' no imóvel ' + property.getString('code') : '') +
-        '. ' +
-        searchText +
-        ' ' +
-        campaignText
-      ).trim(),
+      isCaptacao
+        ? (captacaoText + '. ' + campaignText).trim()
+        : (
+            'Novo interesse pelo site' +
+            (property ? ' no imóvel ' + property.getString('code') : '') +
+            '. ' +
+            searchText +
+            ' ' +
+            campaignText
+          ).trim(),
       intentKey,
     )
     consistent.set('last_site_interest_at', nowIso)
+    if (isCaptacao) {
+      // vira captação só se ainda não tinha tipo de interesse; guarda o primeiro endereço e o primeiro tipo
+      if (!consistent.getString('interest_kind')) consistent.set('interest_kind', 'captacao')
+      if (ownerAddress && !consistent.getString('owner_address'))
+        consistent.set('owner_address', ownerAddress)
+      if (ownerType && !consistent.getString('owner_property_type'))
+        consistent.set('owner_property_type', ownerType)
+    }
     const cs = consistent.getString('consent_status')
     if (cs === '' || cs === 'unknown') {
       consistent.set('consent_status', 'opt_in')
@@ -397,12 +441,17 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
   lead.set('phone', phone)
   lead.set('email', email)
   lead.set('origin', 'site')
-  lead.set('origin_detail', 'Site')
+  lead.set('origin_detail', isCaptacao ? 'Anuncie seu imóvel' : 'Site')
   lead.set('stage', 'novo')
   lead.set('consent_status', 'opt_in')
   lead.set('consent_at', nowIso)
   lead.set('consent_channel', 'site')
   lead.set('last_site_interest_at', nowIso)
+  if (isCaptacao) {
+    lead.set('interest_kind', 'captacao')
+    if (ownerAddress) lead.set('owner_address', ownerAddress)
+    if (ownerType) lead.set('owner_property_type', ownerType)
+  }
   if (property) lead.set('property_id', property.id)
   if (sNeighborhood) lead.set('search_neighborhood', sNeighborhood)
   if (sType) lead.set('search_type', sType)
@@ -444,8 +493,10 @@ routerAdd('POST', '/backend/v1/public/leads', (e) => {
   addEvent(
     lead.id,
     'criado',
-    'Lead criado pelo site' +
-      (property ? ' (imóvel ' + property.getString('code') + ')' : '') +
+    (isCaptacao
+      ? 'Lead criado pelo site: ' + captacaoText.charAt(0).toLowerCase() + captacaoText.slice(1)
+      : 'Lead criado pelo site' +
+        (property ? ' (imóvel ' + property.getString('code') + ')' : '')) +
       (client ? '. Já é cliente.' : '') +
       (campaignText ? ' ' + campaignText : ''),
     intentKey,

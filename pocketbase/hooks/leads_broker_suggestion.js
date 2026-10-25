@@ -2,6 +2,7 @@
 // Ordem: 1) corretor ativo com o tipo ou a finalidade do imóvel na lista intake_types;
 // 2) corretor ativo da fila, pelo último lead recebido (last_intake_at mais antigo primeiro).
 // Corretor com bloqueio de agenda agora nunca é sugerido. Sem ninguém elegível: reason "fila_vazia".
+// Lead de captação (interest_kind = captacao): considera só a etiqueta "captacao" em intake_types.
 routerAdd(
   'GET',
   '/backend/v1/leads/{id}/broker-suggestion',
@@ -53,12 +54,15 @@ routerAdd(
       })
     })
 
+    // lead de captação (spec 2026-10-25): só quem tem a etiqueta "captacao"; sem ninguém, cai na fila geral
+    const isCaptacao = lead.getString('interest_kind') === 'captacao'
     const aceitaTipo = (u) => {
       const tipos = u
         .getString('intake_types')
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean)
+      if (isCaptacao) return tipos.indexOf('captacao') >= 0
       return (
         (type !== '' && tipos.indexOf(type) >= 0) || (purpose !== '' && tipos.indexOf(purpose) >= 0)
       )

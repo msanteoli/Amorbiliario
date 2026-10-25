@@ -4,6 +4,7 @@
 // e grava a linha do tempo (estágio, atribuição e próximo passo). Quem pode editar qual linha
 // já é decidido pela updateRule (corretor só os atribuídos a ele); origem, ligação com o cliente,
 // pendência de duplicidade e datas de contato nunca mudam por aqui.
+// Captação (spec 2026-10-25): interest_kind e os dados do proprietário também são travados para o corretor.
 onRecordUpdateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record
@@ -70,6 +71,9 @@ onRecordUpdateRequest((e) => {
     'notes',
     'consent_status',
     'assigned_to',
+    'interest_kind',
+    'owner_address',
+    'owner_property_type',
   ]
   if (role === 'corretor') {
     const touched = locked.filter((f) => String(rec.get(f)) !== String(orig.get(f)))
