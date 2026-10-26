@@ -161,9 +161,42 @@ export async function getUserOpenItems(userId: string): Promise<OpenItemsRespons
  */
 export async function updateAdminUser(
   userId: string,
-  changes: { name?: string; role?: string; active?: boolean },
+  changes: { name?: string; role?: string; active?: boolean; intake_types?: string },
 ): Promise<RecordModel> {
   return await pb.collection('users').update(userId, changes)
+}
+
+// Especialidades do corretor (users.intake_types, texto separado por vírgula): usadas na sugestão de corretor do lead.
+// Valores: finalidades (venda, locacao, captacao) e tipos de imóvel (casa, apartamento, ...).
+export const BROKER_SPECIALTY_OPTIONS: Array<{
+  group: string
+  items: Array<{ value: string; label: string }>
+}> = [
+  {
+    group: 'Atendimento',
+    items: [
+      { value: 'venda', label: 'Venda' },
+      { value: 'locacao', label: 'Locação' },
+      { value: 'captacao', label: 'Captação (proprietários que querem anunciar)' },
+    ],
+  },
+  {
+    group: 'Tipo de imóvel',
+    items: [
+      { value: 'casa', label: 'Casa' },
+      { value: 'apartamento', label: 'Apartamento' },
+      { value: 'terreno', label: 'Terreno' },
+      { value: 'comercial', label: 'Sala ou loja comercial' },
+      { value: 'galpao', label: 'Galpão' },
+      { value: 'chacara', label: 'Chácara ou sítio' },
+      { value: 'outro', label: 'Outro' },
+    ],
+  },
+]
+
+export async function getUserIntakeTypes(userId: string): Promise<string> {
+  const rec = await pb.collection('users').getOne(userId, { requestKey: null })
+  return String(rec.intake_types || '')
 }
 
 /**

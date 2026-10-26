@@ -9,6 +9,8 @@ import {
   reinviteAdminUser,
   getUserOpenItems,
   updateAdminUser,
+  getUserIntakeTypes,
+  BROKER_SPECIALTY_OPTIONS,
   getOrganization,
   updateOrganization,
   OrganizationRecord,
@@ -128,6 +130,10 @@ export default function Admin() {
   const [editRole, setEditRole] = useState<'admin' | 'sdr' | 'corretor'>('corretor')
   const [submittingEdit, setSubmittingEdit] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  // Especialidades do corretor (spec 2026-10-25): lista de valores marcados e o texto original (para só gravar se mudou)
+  const [editSpecialties, setEditSpecialties] = useState<string[]>([])
+  const [editSpecialtiesOrig, setEditSpecialtiesOrig] = useState('')
+  const [editSpecialtiesReady, setEditSpecialtiesReady] = useState(false)
 
   // Reenviar convite
   const [reinvitingId, setReinvitingId] = useState<string | null>(null)
@@ -216,7 +222,25 @@ export default function Admin() {
     setEditName(user.name || '')
     setEditRole((user.role as 'admin' | 'sdr' | 'corretor') || 'corretor')
     setEditError(null)
+    setEditSpecialties([])
+    setEditSpecialtiesOrig('')
+    setEditSpecialtiesReady(false)
     setEditModalOpen(true)
+    getUserIntakeTypes(user.id)
+      .then((txt) => {
+        setEditSpecialtiesOrig(txt)
+        setEditSpecialties(
+          txt
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+        )
+      })
+      .catch(() => {
+        setEditSpecialtiesOrig('')
+        setEditSpecialties([])
+      })
+      .finally(() => setEditSpecialtiesReady(true))
   }
 
   // Ação Salvar Edição
@@ -232,13 +256,26 @@ export default function Admin() {
     }
 
     const isSelf = editingUser.id === currentUser?.id
-    const changes: { name?: string; role?: string } = {}
+    const changes: { name?: string; role?: string; intake_types?: string } = {}
 
     if (trimmedName !== (editingUser.name || '')) {
       changes.name = trimmedName
     }
     if (!isSelf && editRole !== editingUser.role) {
       changes.role = editRole
+    }
+    // Especialidades: só para corretor, e só se a leitura terminou e algo mudou (valores que a tela não conhece são mantidos)
+    if (editRole === 'corretor' && editSpecialtiesReady) {
+      const known: string[] = BROKER_SPECIALTY_OPTIONS.flatMap((g) => g.items.map((i) => i.value))
+      const kept = editSpecialties.filter((v) => known.indexOf(v) < 0)
+      const marked = known.filter((v) => editSpecialties.indexOf(v) >= 0)
+      const next = [...marked, ...kept].join(',')
+      const prev = editSpecialtiesOrig
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(',')
+      if (next !== prev && next.length <= 300) changes.intake_types = next
     }
 
     if (Object.keys(changes).length === 0) {
@@ -1847,6 +1884,53 @@ export default function Admin() {
                 </Select>
               )}
             </div>
+
+            {editRole === 'corretor' && (
+              <div className="space-y-3 rounded-lg border border-border p-3">
+                <div>
+                  <p className="text-[13px] font-normal text-foreground">Especialidades</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    O sistema usa estas marcas para sugerir o corretor de cada lead. Lead de
+                    captação só é sugerido a quem tem "Captação".
+                  </p>
+                </div>
+                {!editSpecialtiesReady ? (
+                  <p className="text-xs text-muted-foreground">Carregando...</p>
+                ) : (
+                  BROKER_SPECIALTY_OPTIONS.map((g) => (
+                    <div key={g.group} className="space-y-1.5">
+                      <p className="eyebrow text-muted-foreground">{g.group}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                        {g.items.map((it) => (
+                          <div key={it.value} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`edit-spec-${it.value}`}
+                              checked={editSpecialties.indexOf(it.value) >= 0}
+                              onCheckedChange={(checked) =>
+                                setEditSpecialties((cur) =>
+                                  checked === true
+                                    ? cur.indexOf(it.value) >= 0
+                                      ? cur
+                                      : [...cur, it.value]
+                                    : cur.filter((v) => v !== it.value),
+                                )
+                              }
+                              disabled={submittingEdit}
+                            />
+                            <label
+                              htmlFor={`edit-spec-${it.value}`}
+                              className="text-xs font-normal text-foreground leading-none cursor-pointer"
+                            >
+                              {it.label}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
 
             <DialogFooter className="pt-3 gap-2 sm:gap-0">
               <Button
