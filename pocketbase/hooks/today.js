@@ -71,6 +71,8 @@ routerAdd(
       next_step: r.getString('next_step'),
       next_step_due: r.getString('next_step_due'),
       created: r.getString('created'),
+      // lead de captação (proprietário que quer anunciar, vindo da página /vender do site)
+      captacao: r.getString('interest_kind') === 'captacao',
       // lead do site sem corretor há mais de 1 hora (prazo de atendimento do fluxo M14)
       overdue:
         r.getString('origin') === 'site' &&

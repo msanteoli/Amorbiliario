@@ -923,12 +923,16 @@ export default function Hoje() {
     if (id === 'apoio:leads_sem_dono') {
       const unassigned = data.sections.new_unassigned_leads
       const late = unassigned ? unassigned.items.filter((i) => i.overdue).length : 0
+      const capt = unassigned ? unassigned.items.filter((i) => i.captacao).length : 0
+      const hintParts: string[] = []
+      if (capt > 0) hintParts.push(`${capt} de captação`)
+      if (late > 0) hintParts.push(`${late} passaram de 1 hora sem corretor`)
       return (
         <StatCard
           title="Leads novos sem dono"
           value={cnt(unassigned)}
           attention={late > 0}
-          hint={late > 0 ? `${late} passaram de 1 hora sem corretor` : undefined}
+          hint={hintParts.length > 0 ? hintParts.join(' · ') : undefined}
           onClick={() => navigate('/leads?stage=novo')}
         />
       )
