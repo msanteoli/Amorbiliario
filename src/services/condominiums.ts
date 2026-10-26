@@ -2,6 +2,30 @@ import pb from '@/lib/pocketbase/client'
 import { RecordModel } from 'pocketbase'
 import { PropertyRecord } from '@/services/properties'
 
+export const CONDO_PHOTO_LIMIT = 30
+export const CONDO_PHOTO_MAX_BYTES = 10 * 1024 * 1024 // 10 MB
+export const CONDO_PHOTO_MAX_MB = 10
+
+export const ALLOWED_CONDO_PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+
+/**
+ * Valida o arquivo de foto de condomínio.
+ * Devolve null se estiver tudo certo ou a mensagem de erro em português.
+ */
+export function validateCondoPhotoFile(file: File): string | null {
+  const allowed = ALLOWED_CONDO_PHOTO_MIME_TYPES as readonly string[]
+  if (!file.type || !allowed.includes(file.type.toLowerCase())) {
+    return 'Use uma foto JPEG, PNG ou WebP.'
+  }
+
+  if (file.size > CONDO_PHOTO_MAX_BYTES) {
+    const sizeMb = (file.size / (1024 * 1024)).toFixed(1).replace('.', ',')
+    return `Esta foto tem ${sizeMb} MB. O limite é de ${CONDO_PHOTO_MAX_MB} MB.`
+  }
+
+  return null
+}
+
 export interface CondominiumPhotoRecord extends RecordModel {
   organization_id: string
   condominium_id: string

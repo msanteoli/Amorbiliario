@@ -13,6 +13,9 @@ import {
   getCondoPhotoUrl,
   CondominiumRecord,
   CondominiumPhotoRecord,
+  CONDO_PHOTO_LIMIT,
+  CONDO_PHOTO_MAX_MB,
+  validateCondoPhotoFile,
 } from '@/services/condominiums'
 import {
   PropertyRecord,
@@ -99,6 +102,7 @@ export default function CondominioDetalhe() {
 
   // Upload de fotos
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [uploadProgressText, setUploadProgressText] = useState<string | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -189,27 +193,89 @@ export default function CondominioDetalhe() {
   }
 
   const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !id || !user) return
+    const rawFiles = e.target.files
+    if (!rawFiles || rawFiles.length === 0 || !id || !user) return
 
     setPhotoError(null)
-    const activeCount = photos.filter((p) => p.is_active).length
-    if (activeCount >= 10) {
-      setPhotoError('Limite de 10 fotos ativas por condomínio atingido.')
-      if (fileInputRef.current) fileInputRef.current.value = ''
+    const fileList = Array.from(rawFiles)
+
+    // Limpa o input imediatamente para permitir nova seleção se necessário
+    if (fileInputRef.current) fileInputRef.current.value = ''
+
+    const currentActiveCount = photos.filter((p) => p.is_active).length
+    const availableSlots = CONDO_PHOTO_LIMIT - currentActiveCount
+
+    if (availableSlots <= 0) {
+      setPhotoError(`Limite de ${CONDO_PHOTO_LIMIT} fotos ativas por condomínio atingido.`)
       return
     }
 
+    let filesToProcess = fileList
+    let limitNotice: string | null = null
+
+    if (fileList.length > availableSlots) {
+      filesToProcess = fileList.slice(0, availableSlots)
+      limitNotice = `Só couberam ${availableSlots} fotos; o limite é de ${CONDO_PHOTO_LIMIT} ativas.`
+    }
+
+    // Se for arquivo único, valida antes de iniciar estado de upload
+    if (fileList.length === 1) {
+      const singleValidation = validateCondoPhotoFile(filesToProcess[0])
+      if (singleValidation) {
+        setPhotoError(singleValidation)
+        return
+      }
+    }
+
     setUploadingPhoto(true)
+    let uploadedCount = 0
+    let rejectedCount = fileList.length - filesToProcess.length
+    const errorDetails: string[] = []
+
+    if (limitNotice) {
+      errorDetails.push(limitNotice)
+    }
+
     try {
-      await uploadCondominiumPhoto(id, file, user)
+      for (let i = 0; i < filesToProcess.length; i++) {
+        const file = filesToProcess[i]
+        setUploadProgressText(`Enviando ${i + 1} de ${filesToProcess.length}...`)
+
+        const validationError = validateCondoPhotoFile(file)
+        if (validationError) {
+          rejectedCount++
+          errorDetails.push(`${file.name}: ${validationError}`)
+          continue
+        }
+
+        try {
+          await uploadCondominiumPhoto(id, file, user)
+          uploadedCount++
+        } catch (uploadErr) {
+          rejectedCount++
+          const reason = formatErrorMessage(uploadErr)
+          errorDetails.push(`${file.name}: ${reason}`)
+        }
+      }
+
+      // Atualiza a lista completa de fotos após a sequência
       const refreshed = await listCondominiumPhotos(id, false)
       setPhotos(refreshed)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    } catch (err) {
-      setPhotoError(formatErrorMessage(err))
+
+      // Monta mensagens de resumo se houve múltiplos arquivos ou erros
+      if (fileList.length > 1) {
+        const summary = `${uploadedCount} ${uploadedCount === 1 ? 'foto enviada' : 'fotos enviadas'}, ${rejectedCount} ${rejectedCount === 1 ? 'recusada' : 'recusadas'}.`
+        if (errorDetails.length > 0) {
+          setPhotoError(`${summary}\n${errorDetails.join('\n')}`)
+        } else {
+          setPhotoError(null)
+        }
+      } else if (errorDetails.length > 0) {
+        setPhotoError(errorDetails.join('\n'))
+      }
     } finally {
       setUploadingPhoto(false)
+      setUploadProgressText(null)
     }
   }
 
@@ -219,11 +285,11 @@ export default function CondominioDetalhe() {
 
     const newStatus = !photo.is_active
 
-    // Se estiver reativando, verificar se já tem 10 ativas
+    // Se estiver reativando, verificar se já tem CONDO_PHOTO_LIMIT ativas
     if (newStatus) {
       const activeCount = photos.filter((p) => p.is_active).length
-      if (activeCount >= 10) {
-        setPhotoError('Limite de 10 fotos ativas por condomínio atingido.')
+      if (activeCount >= CONDO_PHOTO_LIMIT) {
+        setPhotoError(`Limite de ${CONDO_PHOTO_LIMIT} fotos ativas por condomínio atingido.`)
         return
       }
     }
@@ -683,7 +749,7 @@ export default function CondominioDetalhe() {
               <ImageIcon className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-sm font-medium text-foreground">Galeria de fotos</h2>
               <span className="text-xs tabular text-muted-foreground">
-                ({activePhotos.length}/10 ativas)
+                ({activePhotos.length}/{CONDO_PHOTO_LIMIT} ativas)
               </span>
               {isSavingPhotoAction && (
                 <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -692,6 +758,10 @@ export default function CondominioDetalhe() {
                 </span>
               )}
             </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              JPEG, PNG ou WebP, até {CONDO_PHOTO_MAX_MB} MB cada. Até {CONDO_PHOTO_LIMIT} fotos
+              ativas.
+            </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Estas fotos aparecem automaticamente em todos os imóveis ligados a este condomínio.
             </p>
@@ -717,23 +787,28 @@ export default function CondominioDetalhe() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleUploadPhoto}
                 className="hidden"
                 id="condo-photo-upload"
-                disabled={uploadingPhoto || isSavingPhotoAction || activePhotos.length >= 10}
+                disabled={
+                  uploadingPhoto || isSavingPhotoAction || activePhotos.length >= CONDO_PHOTO_LIMIT
+                }
               />
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingPhoto || isSavingPhotoAction || activePhotos.length >= 10}
+                disabled={
+                  uploadingPhoto || isSavingPhotoAction || activePhotos.length >= CONDO_PHOTO_LIMIT
+                }
                 className="h-9 rounded-full px-4 text-xs font-normal border-border gap-1.5"
               >
                 {uploadingPhoto ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Enviando foto...</span>
+                    <span>{uploadProgressText || 'Enviando foto...'}</span>
                   </>
                 ) : (
                   <>
@@ -747,7 +822,7 @@ export default function CondominioDetalhe() {
         </div>
 
         {photoError && (
-          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal">
+          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs border border-destructive/20 font-normal whitespace-pre-line">
             {photoError}
           </div>
         )}

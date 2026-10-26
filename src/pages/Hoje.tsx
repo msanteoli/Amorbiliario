@@ -36,6 +36,7 @@ import {
   savePanelLayout,
   resetPanelLayout,
   PanelBlock,
+  PanelBlockWidth,
   PanelLayout,
 } from '@/services/panelLayout'
 import {
