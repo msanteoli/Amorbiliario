@@ -18,6 +18,8 @@ import {
   LOST_REASON_LABELS,
   LEAD_EVENT_TYPE_LABELS,
   formatLeadErrorMessage,
+  isCaptacaoLead,
+  OWNER_PROPERTY_TYPE_LABELS,
 } from '@/services/leads'
 import { formatDateTimeBR, isLeadNextStepOverdue } from '@/pages/Leads'
 import { formatPhoneNumber, CONSENT_STATUS_LABELS } from '@/lib/clientUtils'
@@ -616,6 +618,11 @@ export default function LeadDetalhe() {
               <Badge variant={getLeadStageBadgeVariant(lead.stage)} className="text-xs">
                 {LEAD_STAGE_LABELS[lead.stage] || lead.stage}
               </Badge>
+              {isCaptacaoLead(lead) && (
+                <Badge variant="attention" className="text-xs">
+                  Captação
+                </Badge>
+              )}
               {lead.client_id && (
                 <Badge variant="default" className="text-xs">
                   Já é cliente
@@ -817,6 +824,32 @@ export default function LeadDetalhe() {
 
         {/* ABA 1: VISÃO GERAL */}
         <TabsContent value="geral" className="space-y-6 m-0">
+          {/* IMÓVEL DO PROPRIETÁRIO (lead de captação, vindo da página /vender do site) */}
+          {isCaptacaoLead(lead) && (
+            <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+              <div className="eyebrow text-muted-foreground flex items-center gap-2">
+                <Building className="h-3.5 w-3.5" />
+                <span>Imóvel do proprietário</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span className="eyebrow text-muted-foreground block">Tipo do imóvel</span>
+                  <span className="text-foreground font-normal">
+                    {(lead.owner_property_type &&
+                      OWNER_PROPERTY_TYPE_LABELS[lead.owner_property_type]) ||
+                      'Não informado'}
+                  </span>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="eyebrow text-muted-foreground block">Endereço</span>
+                  <span className="text-foreground font-normal">
+                    {lead.owner_address || 'Não informado'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* PERFIL DE BUSCA (quando preenchido) */}
           {(lead.search_neighborhood ||
             lead.search_neighborhoods ||

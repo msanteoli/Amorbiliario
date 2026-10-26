@@ -16,6 +16,7 @@ import {
   LEAD_ORIGIN_LABELS,
   formatLeadErrorMessage,
   listEligibleLeadAssignees,
+  isCaptacaoLead,
 } from '@/services/leads'
 import { formatPhoneNumber } from '@/lib/clientUtils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -796,6 +797,11 @@ export default function Leads() {
                             <span className="font-normal text-sm text-foreground truncate">
                               {lead.name}
                             </span>
+                            {isCaptacaoLead(lead) && (
+                              <Badge variant="attention" className="text-[10px] shrink-0">
+                                Captação
+                              </Badge>
+                            )}
                             {lead.client_id && (
                               <Badge variant="default" className="text-[10px] shrink-0">
                                 Já é cliente
@@ -884,6 +890,11 @@ export default function Leads() {
                             <span className="font-normal text-sm text-foreground truncate">
                               {lead.name}
                             </span>
+                            {isCaptacaoLead(lead) && (
+                              <Badge variant="attention" className="text-[10px] shrink-0">
+                                Captação
+                              </Badge>
+                            )}
                             {lead.client_id && (
                               <Badge variant="default" className="text-[10px] shrink-0">
                                 Já é cliente
@@ -1022,6 +1033,14 @@ export default function Leads() {
                                     <span className="font-normal text-xs text-foreground line-clamp-1">
                                       {item.name}
                                     </span>
+                                    {isCaptacaoLead(item) && (
+                                      <Badge
+                                        variant="attention"
+                                        className="text-[9px] px-1 py-0 h-4 shrink-0"
+                                      >
+                                        Captação
+                                      </Badge>
+                                    )}
                                     {item.client_id && (
                                       <Badge
                                         variant="default"

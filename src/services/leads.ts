@@ -78,6 +78,23 @@ export const LEAD_EVENT_TYPE_LABELS: Record<LeadEventType, string> = {
   contato_repetido: 'Novo contato',
 }
 
+// Lead de captação (spec 2026-10-25): proprietário que quer anunciar um imóvel (vem da página /vender do site)
+export type LeadInterestKind = 'compra_locacao' | 'captacao'
+
+export const OWNER_PROPERTY_TYPE_LABELS: Record<string, string> = {
+  casa: 'Casa',
+  apartamento: 'Apartamento',
+  terreno: 'Terreno',
+  comercial: 'Sala ou loja comercial',
+  galpao: 'Galpão',
+  chacara: 'Chácara ou sítio',
+  outro: 'Outro',
+}
+
+export function isCaptacaoLead(lead?: { interest_kind?: string } | null): boolean {
+  return lead?.interest_kind === 'captacao'
+}
+
 export interface LeadUserRecord {
   id: string
   name?: string
@@ -124,6 +141,9 @@ export interface LeadRecord extends RecordModel {
   lost_reason?: LostReason
   dedupe_status?: DedupeStatus
   dedupe_of?: string
+  interest_kind?: LeadInterestKind | ''
+  owner_address?: string
+  owner_property_type?: string
   expand?: {
     assigned_to?: LeadUserRecord
     property_id?: LeadPropertyRecord
