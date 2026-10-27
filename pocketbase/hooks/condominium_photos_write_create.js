@@ -1,4 +1,4 @@
-// Envio de foto do condomínio: no máximo 10 fotos ativas por condomínio, da mesma organização.
+// Envio de foto do condomínio: no máximo 30 fotos ativas por condomínio, da mesma organização.
 onRecordCreateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record
@@ -17,8 +17,7 @@ onRecordCreateRequest((e) => {
     0,
     { c: condo.id },
   ).length
-  if (active >= 10) throw new BadRequestError('Limite de 10 fotos por condomínio.')
-  // a foto nova entra no fim da ordem
+  if (active >= 30) throw new BadRequestError('Limite de 30 fotos por condomínio.') // a foto nova entra no fim da ordem
   const last = $app.findRecordsByFilter(
     'condominium_photos',
     'condominium_id = {:c} && is_active = true',

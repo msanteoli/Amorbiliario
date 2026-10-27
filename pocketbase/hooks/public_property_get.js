@@ -81,7 +81,7 @@ routerAdd('GET', '/backend/v1/public/properties/{code}', (e) => {
           'condominium_photos',
           'condominium_id = {:c} && is_active = true',
           'position,created',
-          10,
+          30,
           0,
           { c: condo.id },
         )

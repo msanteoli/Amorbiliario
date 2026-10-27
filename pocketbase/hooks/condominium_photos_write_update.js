@@ -1,4 +1,4 @@
-// Desativar ou reativar foto do condomínio. Reativar respeita o limite de 10 fotos ativas.
+// Desativar ou reativar foto do condomínio. Reativar respeita o limite de 30 fotos ativas.
 onRecordUpdateRequest((e) => {
   if (e.hasSuperuserAuth()) return e.next()
   const rec = e.record
@@ -12,7 +12,7 @@ onRecordUpdateRequest((e) => {
       0,
       { c: rec.getString('condominium_id'), i: rec.id },
     ).length
-    if (active >= 10) throw new BadRequestError('Limite de 10 fotos por condomínio.')
+    if (active >= 30) throw new BadRequestError('Limite de 30 fotos por condomínio.')
   }
   return e.next()
 }, 'condominium_photos')
