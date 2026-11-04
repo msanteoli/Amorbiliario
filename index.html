@@ -1,28 +1,31 @@
-<!-- HTML template for the frontend react app: https://developer.mozilla.org/en-US/docs/Web/HTML -->
-<!doctype html>
+<!-- HTML template for the frontend react app: https://developer.mozilla.org/en-US/docs/Web/HTML --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Imobdigital - Gestão Imobiliária</title>
+    <title>Amorbiliário</title>
     <meta name="description" content="Sistema de gestão para imobiliárias" />
     <meta name="author" content="Imobdigital" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none'%3E%3Cpath d='M22 42H6V6h36v36h-4' stroke='%232346E0' stroke-width='4' stroke-linecap='square'/%3E%3Cpath d='M38 42V26' stroke='%232346E0' stroke-width='4' stroke-linecap='square'/%3E%3Cpath d='M22 42a16 16 0 0 1 16-16' stroke='%232346E0' stroke-width='2'/%3E%3C/svg%3E" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none'%3E%3Cpath d='M22 42H6V6h36v36h-4' stroke='%232346E0' stroke-width='4' stroke-linecap='square'/%3E%3Cpath d='M38 42V26' stroke='%232346E0' stroke-width='4' stroke-linecap='square'/%3E%3Cpath d='M22 42a16 16 0 0 1 16-16' stroke='%232346E0' stroke-width='2'/%3E%3C/svg%3E"
+    />
     <meta property="og:image" content="/og-image.png" />
     <script>
-      (function() {
+      (function () {
         try {
-          var key = 'imobdigital-theme';
+          var key = "imobdigital-theme";
           var stored = localStorage.getItem(key);
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           // Padrão sem preferência salva é tema claro ('light')
-          if (stored === 'dark' || (stored === 'auto' && prefersDark)) {
-            document.documentElement.classList.add('dark');
+          if (stored === "dark" || (stored === "auto" && prefersDark)) {
+            document.documentElement.classList.add("dark");
           } else {
-            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.remove("dark");
           }
         } catch (e) {
-          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.remove("dark");
         }
       })();
     </script>
