@@ -31,7 +31,7 @@ routerAdd(
       if (r === 10) r = 0
       if (r !== parseInt(d[9], 10)) return false
       s = 0
-      for (let i = 0; i < 10; i++) s += parseInt(d[10], 10) * (11 - i)
+      for (let i = 0; i < 10; i++) s += parseInt(d[i], 10) * (11 - i)
       r = (s * 10) % 11
       if (r === 10) r = 0
       return r === parseInt(d[10], 10)
