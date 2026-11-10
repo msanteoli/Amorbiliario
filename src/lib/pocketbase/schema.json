@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-10T14:46:46.509Z",
+  "generatedAt": "2026-11-10T23:29:10.409Z",
   "collections": [
     {
       "name": "users",
@@ -3258,6 +3258,101 @@
         }
       ],
       "indexes": []
+    },
+    {
+      "name": "property_change_requests",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.active = true && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || (requested_by = @request.auth.id && @request.auth.role = 'corretor'))",
+        "view": "@request.auth.active = true && organization_id = @request.auth.organization_id && (@request.auth.role = 'admin' || (requested_by = @request.auth.id && @request.auth.role = 'corretor'))",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "organization_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "organizations"
+        },
+        {
+          "name": "property_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "properties"
+        },
+        {
+          "name": "requested_by",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "changes",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "pendente",
+            "aprovado",
+            "recusado",
+            "substituido"
+          ]
+        },
+        {
+          "name": "decided_by",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "decided_at",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate"
+          ]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": [
+            "onCreate",
+            "onUpdate"
+          ]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_prop_changes_prop_status ON property_change_requests (property_id, status)",
+        "CREATE INDEX idx_prop_changes_org_status ON property_change_requests (organization_id, status)",
+        "CREATE INDEX idx_prop_changes_requested_by ON property_change_requests (requested_by, status)"
+      ]
     }
   ]
 }
