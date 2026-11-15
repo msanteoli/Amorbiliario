@@ -615,6 +615,22 @@ routerAdd(
         props: { codigo: { type: 'string' } },
         req: ['codigo'],
       },
+      {
+        nome: 'propor_tarefa',
+        desc: 'Propõe um lembrete ou tarefa para a pessoa confirmar no cartão. NÃO grava. Se devolver candidatos, pergunte qual.',
+        props: {
+          titulo: { type: 'string' },
+          prazo: {
+            type: 'string',
+            description: 'AAAA-MM-DD HH:MM no horário da Bahia; só a data vira 09:00',
+          },
+          responsavel: { type: 'string', description: 'nome da pessoa; vazio = quem pergunta' },
+          lead: { type: 'string', description: 'nome do lead' },
+          cliente: { type: 'string', description: 'nome do cliente' },
+          imovel: { type: 'string', description: 'código do imóvel' },
+        },
+        req: ['titulo'],
+      },
     ]
     const toolsDoModelo = FERRAMENTAS.map((t) => ({
       type: 'function',
@@ -881,6 +897,7 @@ routerAdd(
       .slice(0, 12)
     const msg = salvarMensagem(conv, 'assistant', resposta, {
       referencias: referencias,
+      proposta: proposta,
       tokens: tokens,
       modelo: modelo,
     })
