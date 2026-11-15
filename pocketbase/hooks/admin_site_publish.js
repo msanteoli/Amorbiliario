@@ -1,5 +1,6 @@
 // Ajustes do site, Fase 1 (spec docs/superpowers/specs/2026-10-19-ajustes-do-site-design.md). Só admin. Atenção (goja): nada de função no topo do arquivo.
 // Publica o rascunho: grava um snapshot novo (a publicação ativa passa a substituida). Auditoria site_publicado, só com a versão (nunca telefone ou e-mail).
+// Site tecnológico, Parte A (15/11): o snapshot leva também os banners ATIVOS (até 5, na ordem), com as URLs das imagens resolvidas.
 routerAdd(
   'POST',
   '/backend/v1/admin/site/publish',
@@ -88,6 +89,41 @@ routerAdd(
     const draft = loadDraft()
     if (!draft) throw new BadRequestError('Nada para publicar: salve o rascunho antes.')
     const snap = toSnap(draft)
+    const assetUrl = (assetId) => {
+      if (!assetId) return ''
+      try {
+        const a = $app.findRecordById('site_assets', assetId)
+        return '/api/files/site_assets/' + a.id + '/' + a.getString('file')
+      } catch (_) {
+        return ''
+      }
+    }
+    snap.banners = $app
+      .findRecordsByFilter(
+        'site_banners',
+        'organization_id = {:o} && active = true',
+        'position,created',
+        5,
+        0,
+        {
+          o: orgId,
+        },
+      )
+      .map((b) => ({
+        id: b.id,
+        title: b.getString('title'),
+        subtitle: b.getString('subtitle'),
+        button_text: b.getString('button_text'),
+        tipo: b.getString('tipo'),
+        destino_url: b.getString('destino_url'),
+        imovel_codigo: b.getString('imovel_codigo'),
+        desktop_url: assetUrl(b.getString('desktop_asset_id')),
+        mobile_url: assetUrl(b.getString('mobile_asset_id')),
+        night_desktop_url: assetUrl(b.getString('night_desktop_asset_id')),
+        night_mobile_url: assetUrl(b.getString('night_mobile_asset_id')),
+        start_at: b.getString('start_at'),
+        end_at: b.getString('end_at'),
+      }))
     let novaId = ''
     let novaVersao = 0
     $app.runInTransaction((tx) => {
