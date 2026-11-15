@@ -421,6 +421,131 @@ routerAdd(
         itens.sort((x, y) => String(x.quando).localeCompare(String(y.quando)))
         return { itens: itens.slice(0, LIMITE), mais: itens.length > LIMITE }
       }
+      if (nome === 'propor_tarefa') {
+        // Não grava nada: devolve a proposta para o cartão. O app grava pelo caminho normal (regras e hook de tasks).
+        const titulo = String(a.titulo || '').trim()
+        if (titulo.length < 2) return { erro: 'Informe o título da tarefa.' }
+        let due = ''
+        if (a.prazo) {
+          const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?$/.exec(String(a.prazo).trim())
+          if (!m) return { erro: 'Prazo inválido. Use AAAA-MM-DD HH:MM.' }
+          const h = m[4] === undefined ? 9 : Number(m[4])
+          const mi = m[5] === undefined ? 0 : Number(m[5])
+          const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), h + 3, mi))
+          if (isNaN(d.getTime()) || h > 23 || mi > 59)
+            return { erro: 'Prazo inválido. Use AAAA-MM-DD HH:MM.' }
+          due = d.toISOString().slice(0, 19).replace('T', ' ') + 'Z'
+        }
+        const candidatos = []
+        const escolher = (campo, rows, rotular) => {
+          const arr = paraArray(rows)
+          if (arr.length > 1) {
+            arr
+              .slice(0, 8)
+              .forEach((r) => candidatos.push({ campo: campo, id: r.id, rotulo: rotular(r) }))
+            return null
+          }
+          return arr[0] || null
+        }
+        // responsável: o corretor só cria para si; o admin para qualquer pessoa ativa da organização
+        const resp = txt(a.responsavel).toLowerCase()
+        const souEu =
+          !resp ||
+          ['eu', 'mim', 'me', 'você', 'voce', 'para mim'].indexOf(resp) >= 0 ||
+          actor.getString('name').toLowerCase().indexOf(resp) === 0
+        let assignedTo = actor.id
+        let assignedName = 'você'
+        if (!souEu) {
+          if (soCorretor) return { erro: 'O corretor só cria tarefas para si.' }
+          const rows = $app.findRecordsByFilter(
+            'users',
+            "organization_id = {:o} && active = true && (role = 'admin' || role = 'sdr' || role = 'corretor') && name ~ {:n}",
+            'name',
+            9,
+            0,
+            { o: orgId, n: resp },
+          )
+          if (!rows.length) return { erro: 'Pessoa não encontrada: ' + a.responsavel + '.' }
+          const u = escolher('responsavel', rows, (r) => r.getString('name'))
+          if (u) {
+            assignedTo = u.id
+            assignedName = u.id === actor.id ? 'você' : u.getString('name')
+          }
+        }
+        let leadId = ''
+        let leadNome = ''
+        if (txt(a.lead)) {
+          const f =
+            'organization_id = {:o} && name ~ {:n}' + (soCorretor ? ' && assigned_to = {:u}' : '')
+          const rows = $app.findRecordsByFilter('leads', f, '-created', 9, 0, {
+            o: orgId,
+            n: txt(a.lead),
+            u: actor.id,
+          })
+          if (!rows.length) return { erro: 'Lead não encontrado: ' + a.lead + '.' }
+          const l = escolher('lead', rows, (r) => r.getString('name'))
+          if (l) {
+            leadId = l.id
+            leadNome = l.getString('name')
+          }
+        }
+        let clienteId = ''
+        let clienteNome = ''
+        if (txt(a.cliente)) {
+          const f =
+            'organization_id = {:o} && name ~ {:n}' +
+            (soCorretor ? ' && responsible_id = {:u}' : '')
+          const rows = $app.findRecordsByFilter('clients', f, 'name', 9, 0, {
+            o: orgId,
+            n: txt(a.cliente),
+            u: actor.id,
+          })
+          if (!rows.length) return { erro: 'Cliente não encontrado: ' + a.cliente + '.' }
+          const c = escolher('cliente', rows, (r) => r.getString('name'))
+          if (c) {
+            clienteId = c.id
+            clienteNome = c.getString('name')
+          }
+        }
+        let imovelId = ''
+        let imovelCodigo = ''
+        if (txt(a.imovel)) {
+          const rows = $app.findRecordsByFilter(
+            'properties',
+            'organization_id = {:o} && (code = {:c} || title ~ {:c})',
+            '-updated',
+            9,
+            0,
+            { o: orgId, c: txt(a.imovel) },
+          )
+          if (!rows.length) return { erro: 'Imóvel não encontrado: ' + a.imovel + '.' }
+          const p = escolher(
+            'imovel',
+            rows,
+            (r) => r.getString('code') + ' ' + r.getString('title'),
+          )
+          if (p) {
+            imovelId = p.id
+            imovelCodigo = p.getString('code')
+          }
+        }
+        if (candidatos.length) return { candidatos: candidatos }
+        return {
+          proposta: {
+            tipo: 'tarefa',
+            title: titulo.slice(0, 200),
+            due_at: due,
+            assigned_to: assignedTo,
+            assigned_name: assignedName,
+            lead_id: leadId,
+            lead_nome: leadNome,
+            client_id: clienteId,
+            cliente_nome: clienteNome,
+            property_id: imovelId,
+            imovel_codigo: imovelCodigo,
+          },
+        }
+      }
       return null
     }
     const FERRAMENTAS = [
@@ -647,6 +772,9 @@ routerAdd(
       'Só afirme o que veio das ferramentas. Se a consulta voltar vazia, diga que não encontrou. Nunca complete com conhecimento próprio sobre a carteira, clientes, imóveis ou valores.',
       'Sobre mercado (preço do m², tendências, bairros em alta), responda: "Ainda não tenho dados de mercado. Posso olhar a sua carteira."',
       'Nunca peça nem repita CPF, data de nascimento ou documentos.',
+      'Para criar lembrete ou tarefa, use propor_tarefa. Você não grava nada: a pessoa confere e toca em Criar no cartão. Diga em uma frase o que propôs.',
+      'Converta "hoje", "amanhã", "sexta" e "daqui a 2 horas" para AAAA-MM-DD HH:MM no horário da Bahia, a partir de agora. Se faltar a hora, mande só a data.',
+      'Se uma ferramenta devolver candidatos, pergunte qual deles é, sem escolher sozinho.',
     ].join('\n')
 
     const mensagens = [{ role: 'system', content: sistema }]
@@ -686,6 +814,7 @@ routerAdd(
       }
     }
     const registrar = guardarReferencias()
+    let proposta = null
     let tokens = 0
     let modelo = 'fast'
     let resposta = ''
@@ -711,6 +840,7 @@ routerAdd(
           }
           const r = rodar(nomeF, args)
           registrar(nomeF, r)
+          if (nomeF === 'propor_tarefa' && r && r.proposta) proposta = r.proposta
           mensagens.push({
             role: 'tool',
             tool_call_id: tc.id,
@@ -761,7 +891,7 @@ routerAdd(
       message_id: msg.id,
       message: resposta,
       referencias: referencias,
-      proposta: null,
+      proposta: proposta,
     })
   },
   $apis.requireAuth(),
