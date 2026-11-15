@@ -19,6 +19,7 @@ onRecordsListRequest(
       site_settings: ['admin'],
       site_publications: ['admin'],
       site_preview_tokens: ['admin'],
+      site_banners: ['admin'],
       panel_layouts: ['admin'],
       // comissões e pedidos de alteração de imóvel (decisão do dono, 14/11/2026): o SDR não vê
       commission_rules: ['admin', 'corretor'],
@@ -82,6 +83,7 @@ onRecordsListRequest(
   'site_settings',
   'site_publications',
   'site_preview_tokens',
+  'site_banners',
   'panel_layouts',
   'agenda_blocks',
   'commission_rules',

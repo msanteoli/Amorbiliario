@@ -1,5 +1,6 @@
 // Ajustes do site, Fase 1 (spec docs/superpowers/specs/2026-10-19-ajustes-do-site-design.md). Só admin. Atenção (goja): nada de função no topo do arquivo.
-// Envia uma imagem (logo ou favicon): JPEG ou WebP, até 3 MB, SEM marcador EXIF ou GPS. A imagem nunca é substituída nem apagada.
+// Envia uma imagem (logo, favicon ou banner da capa, de computador ou de celular): JPEG ou WebP, até 3 MB, SEM marcador EXIF ou GPS.
+// A imagem nunca é substituída nem apagada. Banners: Site tecnológico, Parte A (spec 2026-11-15-site-tecnologico-design.md).
 routerAdd(
   'POST',
   '/backend/v1/admin/site/assets',
@@ -26,8 +27,8 @@ routerAdd(
     }
     const body = e.requestInfo().body || {}
     const kind = String(body.kind || '')
-    if (['logo', 'favicon'].indexOf(kind) < 0)
-      throw new BadRequestError('Tipo de imagem inválido (use logo ou favicon).')
+    if (['logo', 'favicon', 'banner_desktop', 'banner_mobile'].indexOf(kind) < 0)
+      throw new BadRequestError('Tipo de imagem inválido.')
     const files = e.findUploadedFiles('file')
     if (!files || !files.length) throw new BadRequestError('Envie o arquivo no campo "file".')
     const f = files[0]
