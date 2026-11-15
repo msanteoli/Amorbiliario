@@ -112,6 +112,9 @@ routerAdd(
       const when = (k) => {
         const v = str(k)
         if (v === '') return ''
+        // exige o fuso (Z ou -03:00): sem ele, a hora seria lida no fuso do servidor (revisão de 15/11)
+        if (!/(Z|[+-]\d\d:?\d\d)$/.test(v))
+          throw new BadRequestError('Informe a data com o fuso (ex.: 2026-11-30T23:59:00-03:00).')
         const t = new Date(v).getTime()
         if (isNaN(t)) throw new BadRequestError('Data inválida em "' + k + '".')
         return new Date(t).toISOString()
