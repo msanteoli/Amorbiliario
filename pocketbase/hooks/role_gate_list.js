@@ -20,6 +20,11 @@ onRecordsListRequest(
       site_publications: ['admin'],
       site_preview_tokens: ['admin'],
       panel_layouts: ['admin'],
+      // comissões e pedidos de alteração de imóvel (decisão do dono, 14/11): o SDR não vê
+      commission_rules: ['admin', 'corretor'],
+      commissions: ['admin', 'corretor'],
+      commission_installments: ['admin', 'corretor'],
+      property_change_requests: ['admin', 'corretor'],
     }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
@@ -75,4 +80,9 @@ onRecordsListRequest(
   'site_publications',
   'site_preview_tokens',
   'panel_layouts',
+  'agenda_blocks',
+  'commission_rules',
+  'commissions',
+  'commission_installments',
+  'property_change_requests',
 )
