@@ -144,11 +144,11 @@ export async function updateAdminSiteSettings(
 
 /**
  * POST /backend/v1/admin/site/assets
- * Envia multipart com file e kind ('logo' | 'favicon')
+ * Envia multipart com file e kind ('logo' | 'favicon' | 'banner_desktop' | 'banner_mobile')
  */
 export async function uploadSiteAsset(
   file: File | Blob,
-  kind: 'logo' | 'favicon',
+  kind: 'logo' | 'favicon' | 'banner_desktop' | 'banner_mobile',
   fileName = 'asset.webp',
 ): Promise<SiteAssetUploadResponse> {
   const formData = new FormData()
@@ -185,5 +185,105 @@ export async function publishSite(): Promise<SitePublishResponse> {
 export async function undoSitePublication(): Promise<SiteUndoResponse> {
   return await pb.send<SiteUndoResponse>('/backend/v1/admin/site/undo', {
     method: 'POST',
+  })
+}
+
+// ── Banners da capa (M33, Site tecnológico Parte A) ──────────────────────────
+
+export type SiteBannerTipo = 'campanha' | 'lancamento' | 'super_destaque'
+
+export interface SiteBanner {
+  id: string
+  title: string
+  subtitle: string
+  button_text: string
+  tipo: SiteBannerTipo
+  destino_url: string
+  imovel_codigo: string
+  desktop_asset_id: string
+  mobile_asset_id: string
+  night_desktop_asset_id: string
+  night_mobile_asset_id: string
+  start_at: string
+  end_at: string
+  position: number
+  active: boolean
+  desktop_url: string
+  mobile_url: string
+  night_desktop_url: string
+  night_mobile_url: string
+}
+
+export interface SiteBannerPayload {
+  title?: string
+  subtitle?: string
+  button_text?: string
+  tipo?: SiteBannerTipo
+  destino_url?: string
+  imovel_codigo?: string
+  desktop_asset_id?: string
+  mobile_asset_id?: string
+  night_desktop_asset_id?: string
+  night_mobile_asset_id?: string
+  start_at?: string
+  end_at?: string
+  active?: boolean
+}
+
+/** Mensagem do servidor ({ message }) sem traduzir o 409 como "versão anterior". */
+export function bannerErrorMessage(err: unknown, defaultMessage = 'Ocorreu um erro.'): string {
+  if (!err || typeof err !== 'object') return defaultMessage
+  const e = err as Record<string, unknown>
+  const response = e.response as Record<string, unknown> | undefined
+  if (response && typeof response.message === 'string' && response.message) return response.message
+  const data = e.data as Record<string, unknown> | undefined
+  if (data && typeof data.message === 'string' && data.message) return data.message
+  if (typeof e.message === 'string' && e.message) return e.message
+  return defaultMessage
+}
+
+/** GET /backend/v1/admin/site/banners */
+export async function listSiteBanners(): Promise<{ items: SiteBanner[] }> {
+  return await pb.send<{ items: SiteBanner[] }>('/backend/v1/admin/site/banners', {
+    method: 'GET',
+    requestKey: null,
+  })
+}
+
+/** POST /backend/v1/admin/site/banners (nasce inativo, a menos que active: true) */
+export async function createSiteBanner(body: SiteBannerPayload): Promise<{ banner: SiteBanner }> {
+  return await pb.send<{ banner: SiteBanner }>('/backend/v1/admin/site/banners', {
+    method: 'POST',
+    body,
+  })
+}
+
+/** PATCH /backend/v1/admin/site/banners/{id} (só os campos que mudaram) */
+export async function updateSiteBanner(
+  id: string,
+  changes: SiteBannerPayload,
+): Promise<{ banner: SiteBanner }> {
+  return await pb.send<{ banner: SiteBanner }>(
+    `/backend/v1/admin/site/banners/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: changes },
+  )
+}
+
+/** POST /backend/v1/admin/site/banners/{id}/active (409 com 5 ativos) */
+export async function setSiteBannerActive(
+  id: string,
+  active: boolean,
+): Promise<{ banner: SiteBanner }> {
+  return await pb.send<{ banner: SiteBanner }>(
+    `/backend/v1/admin/site/banners/${encodeURIComponent(id)}/active`,
+    { method: 'POST', body: { active } },
+  )
+}
+
+/** PUT /backend/v1/admin/site/banners/order (todos os ids, na nova ordem) */
+export async function orderSiteBanners(ids: string[]): Promise<{ items: SiteBanner[] }> {
+  return await pb.send<{ items: SiteBanner[] }>('/backend/v1/admin/site/banners/order', {
+    method: 'PUT',
+    body: { ids },
   })
 }

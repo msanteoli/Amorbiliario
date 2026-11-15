@@ -46,8 +46,11 @@ import {
   RotateCcw,
   Send,
   HelpCircle,
+  Images,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { SiteBannersTab } from '@/components/site/SiteBannersTab'
 
 const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024
 
@@ -738,7 +741,7 @@ export default function Site() {
             </div>
           ) : (
             <Tabs defaultValue="marca" className="w-full space-y-6">
-              <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full h-auto p-1 bg-muted/60">
+              <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full h-auto p-1 bg-muted/60">
                 <TabsTrigger value="marca" className="text-xs sm:text-sm font-sans py-2">
                   <Palette className="h-3.5 w-3.5 mr-1.5" />
                   Marca
@@ -750,6 +753,10 @@ export default function Site() {
                 <TabsTrigger value="links" className="text-xs sm:text-sm font-sans py-2">
                   <Link2 className="h-3.5 w-3.5 mr-1.5" />
                   Links
+                </TabsTrigger>
+                <TabsTrigger value="banners" className="text-xs sm:text-sm font-sans py-2">
+                  <Images className="h-3.5 w-3.5 mr-1.5" />
+                  Banners
                 </TabsTrigger>
                 <TabsTrigger value="previa" className="text-xs sm:text-sm font-sans py-2">
                   <Eye className="h-3.5 w-3.5 mr-1.5" />
@@ -1286,6 +1293,12 @@ export default function Site() {
               {/* ─────────────────────────────────────────────────────────────
                   ABA: PRÉVIA E PUBLICAR
                   ───────────────────────────────────────────────────────────── */}
+              <TabsContent value="banners" className="space-y-6">
+                <ErrorBoundary>
+                  <SiteBannersTab />
+                </ErrorBoundary>
+              </TabsContent>
+
               <TabsContent value="previa" className="space-y-6">
                 <div className="rounded-lg border border-border bg-card p-5 sm:p-6 space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
