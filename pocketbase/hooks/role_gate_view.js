@@ -22,6 +22,9 @@ onRecordViewRequest(
       commissions: ['admin', 'corretor'],
       commission_installments: ['admin', 'corretor'],
       property_change_requests: ['admin', 'corretor'],
+      // JaX (0055, 15/11/2026): conversas da IA do app do corretor
+      jax_conversations: ['admin', 'corretor'],
+      jax_messages: ['admin', 'corretor'],
     }
     const defaultAllowed = ['admin', 'sdr', 'corretor']
     const collectionName = e.collection.name
@@ -82,4 +85,6 @@ onRecordViewRequest(
   'commissions',
   'commission_installments',
   'property_change_requests',
+  'jax_conversations',
+  'jax_messages',
 )
