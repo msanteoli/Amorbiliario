@@ -72,7 +72,18 @@ routerAdd(
     const txt = (s) =>
       String(s || '')
         .trim()
-        .replace(/[%_]/g, '')
+        .replace(/[%_]/g, '') // só para buscas com ~
+    const val = (s) => String(s || '').trim() // filtros com = (o _ dos valores de enumeração é parte do valor)
+    const ETAPAS = ['novo', 'em_atendimento', 'visita_marcada', 'proposta', 'ganho', 'perdido']
+    const SIT_VISITA = [
+      'pendente_agenda',
+      'agendada',
+      'confirmada',
+      'realizada',
+      'cancelada',
+      'nao_compareceu',
+    ]
+    const dataDb = (ms) => new Date(ms).toISOString().replace('T', ' ')
     const num = (v) => {
       const n = Number(v)
       return isFinite(n) && n > 0 ? n : null
@@ -181,7 +192,7 @@ routerAdd(
           f.push('(title ~ {:t} || code ~ {:t} || neighborhood ~ {:t} || city ~ {:t})')
           P.t = t
         }
-        const sit = a.situacao === undefined ? 'disponivel' : txt(a.situacao)
+        const sit = a.situacao === undefined ? 'disponivel' : val(a.situacao)
         if (sit) {
           f.push('status = {:s}')
           P.s = sit
@@ -190,9 +201,9 @@ routerAdd(
           f.push("(purpose = {:fi} || purpose = 'ambos')")
           P.fi = a.finalidade
         }
-        if (txt(a.tipo)) {
+        if (val(a.tipo)) {
           f.push('property_type = {:ti}')
-          P.ti = txt(a.tipo)
+          P.ti = val(a.tipo)
         }
         if (txt(a.bairro)) {
           f.push('neighborhood ~ {:b}')
@@ -220,7 +231,7 @@ routerAdd(
           '',
           1,
           0,
-          { o: orgId, c: txt(a.codigo) },
+          { o: orgId, c: val(a.codigo) },
         )
         if (!rows.length) return { erro: 'Imóvel não encontrado.' }
         const item = imovelItem(rows[0])
@@ -240,16 +251,29 @@ routerAdd(
           f.push('(name ~ {:t} || phone ~ {:t})')
           P.t = t
         }
-        if (txt(a.etapa)) {
+        const etapa = val(a.etapa)
+        if (etapa) {
+          if (ETAPAS.indexOf(etapa) < 0)
+            return { erro: 'Etapa inválida. Use: ' + ETAPAS.join(', ') + '.' }
           f.push('stage = {:e}')
-          P.e = txt(a.etapa)
+          P.e = etapa
         } else f.push("stage != 'ganho' && stage != 'perdido'")
-        const rows = paraArray(
-          $app.findRecordsByFilter('leads', f.join(' && '), '-created', 200, 0, P),
-        )
         const d = num(a.parados_ha_dias)
-        let itens = rows.map(leadItem)
-        if (d) itens = itens.filter((x) => x.dias_parado >= d)
+        if (!d)
+          return lista(
+            $app.findRecordsByFilter('leads', f.join(' && '), '-created', LIMITE + 1, 0, P),
+            leadItem,
+          )
+        // parados: filtra no banco pela mesma referência do dias_parado (último contato, primeiro contato ou criação)
+        P.lim = dataDb(Date.now() - d * 86400000)
+        f.push(
+          "((last_contact_at != '' && last_contact_at < {:lim}) || (last_contact_at = '' && first_contact_at != '' && first_contact_at < {:lim}) || (last_contact_at = '' && first_contact_at = '' && created < {:lim}))",
+        )
+        const itens = paraArray(
+          $app.findRecordsByFilter('leads', f.join(' && '), 'created', 200, 0, P),
+        )
+          .map(leadItem)
+          .sort((x, y) => y.dias_parado - x.dias_parado)
         return { itens: itens.slice(0, LIMITE), mais: itens.length > LIMITE }
       }
       if (nome === 'ver_lead') {
@@ -335,9 +359,12 @@ routerAdd(
         P.a = ini
         P.b = fim
         if (soCorretor) f.push('broker_id = {:u}')
-        if (txt(a.situacao)) {
+        const sitV = val(a.situacao)
+        if (sitV) {
+          if (SIT_VISITA.indexOf(sitV) < 0)
+            return { erro: 'Situação inválida. Use: ' + SIT_VISITA.join(', ') + '.' }
           f.push('status = {:s}')
-          P.s = txt(a.situacao)
+          P.s = sitV
         }
         return lista(
           $app.findRecordsByFilter('visits', f.join(' && '), 'start_at', LIMITE + 1, 0, P),
@@ -346,15 +373,17 @@ routerAdd(
       }
       if (nome === 'agenda_do_dia') {
         const d = diaUTC(a.data)
+        const agora = dataDb(Date.now())
         const itens = []
+        // tarefas e próximos passos: até o fim do dia, incluindo os atrasados (como o /today)
         paraArray(
           $app.findRecordsByFilter(
             'tasks',
-            "organization_id = {:o} && assigned_to = {:u} && status = 'aberta' && due_at >= {:a} && due_at < {:b}",
+            "organization_id = {:o} && assigned_to = {:u} && status = 'aberta' && due_at != '' && due_at < {:b}",
             'due_at',
             50,
             0,
-            { o: orgId, u: actor.id, a: d[0], b: d[1] },
+            { o: orgId, u: actor.id, b: d[1] },
           ),
         ).forEach((t) =>
           itens.push({
@@ -362,16 +391,17 @@ routerAdd(
             id: t.id,
             quando: t.getString('due_at'),
             titulo: t.getString('title'),
+            atrasado: t.getString('due_at') < agora,
           }),
         )
         paraArray(
           $app.findRecordsByFilter(
             'leads',
-            "organization_id = {:o} && assigned_to = {:u} && next_step_due >= {:a} && next_step_due < {:b} && stage != 'ganho' && stage != 'perdido'",
+            "organization_id = {:o} && assigned_to = {:u} && next_step_due != '' && next_step_due < {:b} && stage != 'ganho' && stage != 'perdido'",
             'next_step_due',
             50,
             0,
-            { o: orgId, u: actor.id, a: d[0], b: d[1] },
+            { o: orgId, u: actor.id, b: d[1] },
           ),
         ).forEach((l) =>
           itens.push({
@@ -379,12 +409,13 @@ routerAdd(
             id: l.id,
             quando: l.getString('next_step_due'),
             titulo: l.getString('name') + ': ' + (l.getString('next_step') || 'próximo passo'),
+            atrasado: l.getString('next_step_due') < agora,
           }),
         )
         paraArray(
           $app.findRecordsByFilter(
             'visits',
-            "organization_id = {:o} && broker_id = {:u} && start_at >= {:a} && start_at < {:b} && status != 'cancelada'",
+            "organization_id = {:o} && broker_id = {:u} && start_at >= {:a} && start_at < {:b} && (status = 'agendada' || status = 'confirmada' || status = 'realizada')",
             'start_at',
             50,
             0,
@@ -447,15 +478,38 @@ routerAdd(
           }
           return arr[0] || null
         }
+        // por id (um candidato escolhido): valida organização e escopo do corretor
+        const porId = (colecao, id, ok) => {
+          let r = null
+          try {
+            r = $app.findRecordById(colecao, val(id))
+          } catch (_) {}
+          return r && r.getString('organization_id') === orgId && ok(r) ? r : null
+        }
         // responsável: o corretor só cria para si; o admin para qualquer pessoa ativa da organização
-        const resp = txt(a.responsavel).toLowerCase()
+        const resp = txt(a.responsavel)
+        const baixo = resp.toLowerCase()
         const souEu =
-          !resp ||
-          ['eu', 'mim', 'me', 'você', 'voce', 'para mim'].indexOf(resp) >= 0 ||
-          actor.getString('name').toLowerCase().indexOf(resp) === 0
+          !val(a.responsavel_id) &&
+          (!resp ||
+            ['eu', 'mim', 'me', 'você', 'voce', 'para mim'].indexOf(baixo) >= 0 ||
+            actor.getString('name').toLowerCase() === baixo)
         let assignedTo = actor.id
         let assignedName = 'você'
-        if (!souEu) {
+        if (val(a.responsavel_id)) {
+          const u = porId(
+            'users',
+            a.responsavel_id,
+            (r) =>
+              r.get('active') === true &&
+              ['admin', 'sdr', 'corretor'].indexOf(r.getString('role')) >= 0,
+          )
+          if (!u) return { erro: 'Pessoa não encontrada.' }
+          if (soCorretor && u.id !== actor.id)
+            return { erro: 'O corretor só cria tarefas para si.' }
+          assignedTo = u.id
+          assignedName = u.id === actor.id ? 'você' : u.getString('name')
+        } else if (!souEu) {
           if (soCorretor) return { erro: 'O corretor só cria tarefas para si.' }
           const rows = $app.findRecordsByFilter(
             'users',
@@ -474,7 +528,16 @@ routerAdd(
         }
         let leadId = ''
         let leadNome = ''
-        if (txt(a.lead)) {
+        if (val(a.lead_id)) {
+          const l = porId(
+            'leads',
+            a.lead_id,
+            (r) => !soCorretor || r.getString('assigned_to') === actor.id,
+          )
+          if (!l) return { erro: 'Lead não encontrado.' }
+          leadId = l.id
+          leadNome = l.getString('name')
+        } else if (txt(a.lead)) {
           const f =
             'organization_id = {:o} && name ~ {:n}' + (soCorretor ? ' && assigned_to = {:u}' : '')
           const rows = $app.findRecordsByFilter('leads', f, '-created', 9, 0, {
@@ -491,7 +554,16 @@ routerAdd(
         }
         let clienteId = ''
         let clienteNome = ''
-        if (txt(a.cliente)) {
+        if (val(a.cliente_id)) {
+          const c = porId(
+            'clients',
+            a.cliente_id,
+            (r) => !soCorretor || r.getString('responsible_id') === actor.id,
+          )
+          if (!c) return { erro: 'Cliente não encontrado.' }
+          clienteId = c.id
+          clienteNome = c.getString('name')
+        } else if (txt(a.cliente)) {
           const f =
             'organization_id = {:o} && name ~ {:n}' +
             (soCorretor ? ' && responsible_id = {:u}' : '')
@@ -509,7 +581,12 @@ routerAdd(
         }
         let imovelId = ''
         let imovelCodigo = ''
-        if (txt(a.imovel)) {
+        if (val(a.imovel_id)) {
+          const p = porId('properties', a.imovel_id, () => true)
+          if (!p) return { erro: 'Imóvel não encontrado.' }
+          imovelId = p.id
+          imovelCodigo = p.getString('code')
+        } else if (txt(a.imovel)) {
           const rows = $app.findRecordsByFilter(
             'properties',
             'organization_id = {:o} && (code = {:c} || title ~ {:c})',
@@ -628,6 +705,10 @@ routerAdd(
           lead: { type: 'string', description: 'nome do lead' },
           cliente: { type: 'string', description: 'nome do cliente' },
           imovel: { type: 'string', description: 'código do imóvel' },
+          responsavel_id: { type: 'string', description: 'use o id de um candidato escolhido' },
+          lead_id: { type: 'string', description: 'use o id de um candidato escolhido' },
+          cliente_id: { type: 'string', description: 'use o id de um candidato escolhido' },
+          imovel_id: { type: 'string', description: 'use o id de um candidato escolhido' },
         },
         req: ['titulo'],
       },
@@ -790,7 +871,7 @@ routerAdd(
       'Nunca peça nem repita CPF, data de nascimento ou documentos.',
       'Para criar lembrete ou tarefa, use propor_tarefa. Você não grava nada: a pessoa confere e toca em Criar no cartão. Diga em uma frase o que propôs.',
       'Converta "hoje", "amanhã", "sexta" e "daqui a 2 horas" para AAAA-MM-DD HH:MM no horário da Bahia, a partir de agora. Se faltar a hora, mande só a data.',
-      'Se uma ferramenta devolver candidatos, pergunte qual deles é, sem escolher sozinho.',
+      'Se uma ferramenta devolver candidatos, pergunte qual deles é, sem escolher sozinho. Depois que a pessoa escolher, chame de novo com o id do escolhido (responsavel_id, lead_id, cliente_id ou imovel_id).',
     ].join('\n')
 
     const mensagens = [{ role: 'system', content: sistema }]
