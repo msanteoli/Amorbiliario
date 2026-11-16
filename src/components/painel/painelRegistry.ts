@@ -50,39 +50,63 @@ export const PANEL_BLOCK_TITLES: Record<string, string> = {
   'apoio:visitas_semana': 'Visitas da semana',
 }
 
-// Padrão por função: o desenho de hoje em grade de 12 colunas (agenda à esquerda, indicadores e gráfico empilhados à direita)
+// Padrão por função: grade de 12 colunas em que CADA LINHA FECHA 12.
+// A ordem desta lista é a ordem que aparece na tela — sem buraco no meio da linha.
+// Regra para mexer aqui: some as larguras de cada linha; o total tem de dar 12.
 const DEFAULT_BY_ROLE: Record<string, PanelBlock[]> = {
+  // SDR — o que fazer primeiro, e o mês ao lado
   sdr: [
     { id: 'visitas_confirmar', w: 8 },
-    { id: 'agenda', w: 8 },
     { id: 'ind:leads_sem_followup', w: 4 },
+    { id: 'agenda', w: 8 },
     { id: 'ind:tempo_primeiro_atendimento', w: 4 },
     { id: 'ind:pct_repassados', w: 4 },
-    { id: 'grafico', w: 4 },
     { id: 'apoio:leads_sem_dono', w: 4 },
     { id: 'apoio:duplicidade', w: 4 },
+    { id: 'grafico', w: 8 },
     { id: 'apoio:visitas_pendentes', w: 4 },
   ],
+  // Corretor — a visita que ele precisa confirmar e o resultado dele
   corretor: [
     { id: 'visitas_confirmar', w: 8 },
-    { id: 'agenda', w: 8 },
     { id: 'ind:visitas', w: 4 },
+    { id: 'agenda', w: 8 },
     { id: 'ind:negociacoes', w: 4 },
     { id: 'ind:vgv_fechado', w: 4 },
-    { id: 'grafico', w: 4 },
+    { id: 'grafico', w: 8 },
   ],
+  // Admin — primeiro o que trava a operação, depois o resultado, depois o apoio
   admin: [
     { id: 'visitas_confirmar', w: 8 },
-    { id: 'agenda', w: 8 },
     { id: 'ind:vgv_equipe', w: 4 },
+    { id: 'agenda', w: 8 },
     { id: 'ind:funil', w: 4 },
     { id: 'ind:tarefas', w: 4 },
-    { id: 'grafico', w: 4 },
-    { id: 'apoio:etapas', w: 8 },
     { id: 'apoio:parados', w: 4 },
     { id: 'apoio:revisao', w: 4 },
+    { id: 'grafico', w: 8 },
     { id: 'apoio:visitas_semana', w: 4 },
+    { id: 'apoio:etapas', w: 12 },
   ],
+}
+
+/**
+ * Largura que fecha a linha corrente, para um quadro novo não nascer deixando buraco.
+ * Recebe o rascunho atual e devolve 4, 6, 8 ou 12 conforme o espaço que sobra.
+ */
+export function larguraParaFecharLinha(blocks: PanelBlock[]): PanelBlockWidth {
+  const soma = blocks.reduce((acc, b) => acc + (Number(b.w) || 0), 0)
+  const resta = 12 - (soma % 12)
+  if (resta === 12) return 12
+  if (resta >= 8) return 8
+  if (resta >= 6) return 6
+  return 4
+}
+
+/** Quanto falta para fechar a última linha (0 quando já fechou). */
+export function faltaParaFecharLinha(blocks: PanelBlock[]): number {
+  const soma = blocks.reduce((acc, b) => acc + (Number(b.w) || 0), 0)
+  return (12 - (soma % 12)) % 12
 }
 
 export function getDefaultBlocks(role: string): PanelBlock[] {

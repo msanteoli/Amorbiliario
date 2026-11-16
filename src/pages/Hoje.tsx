@@ -43,7 +43,9 @@ import {
   PANEL_BLOCK_TITLES,
   PANEL_CATALOG,
   colSpanClass,
+  faltaParaFecharLinha,
   getDefaultBlocks,
+  larguraParaFecharLinha,
   resolveBlocks,
 } from '@/components/painel/painelRegistry'
 import { Button } from '@/components/ui/button'
@@ -1029,12 +1031,23 @@ export default function Hoje() {
     setDraft((cur) => cur.filter((b) => b.id !== id))
   }
 
+  // Quadro novo nasce com a largura que FECHA a linha, para não abrir buraco no meio do painel
   const addBlock = (id: string) => {
-    const role = data?.role || ''
-    const def = getDefaultBlocks(role).find((b) => b.id === id)
     setDraft((cur) =>
-      cur.length >= 20 || cur.some((b) => b.id === id) ? cur : [...cur, { id, w: def ? def.w : 4 }],
+      cur.length >= 20 || cur.some((b) => b.id === id)
+        ? cur
+        : [...cur, { id, w: larguraParaFecharLinha(cur) }],
     )
+  }
+
+  // Completa a última linha com um quadro do catálogo que ainda não esteja na tela
+  const completarLinha = () => {
+    const role = data?.role || ''
+    const faltam = faltaParaFecharLinha(draft)
+    if (faltam === 0) return
+    const livre = (PANEL_CATALOG[role] || []).find((id) => !draft.some((b) => b.id === id))
+    if (!livre) return
+    setDraft((cur) => [...cur, { id: livre, w: faltam as PanelBlockWidth }])
   }
 
   // Voltar ao padrão: troca o rascunho pelo padrão da função; só vale (e apaga o arranjo salvo) no Concluir
@@ -1100,6 +1113,21 @@ export default function Hoje() {
           </Button>
           {draft.length >= 20 && (
             <span className="text-xs text-muted-foreground">Limite de 20 quadros.</span>
+          )}
+          {/* Fecha a última linha: quadro novo, ou completa com um dos que faltam. Evita buraco no meio. */}
+          {faltaParaFecharLinha(draft) > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={completarLinha}
+              className="rounded-full font-normal gap-2 border-attention/50 text-foreground hover:bg-attention/10"
+            >
+              <AlertTriangle className="h-3.5 w-3.5 text-attention" />
+              <span>Fechar a linha (falta {faltaParaFecharLinha(draft)} de 12)</span>
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground">Linhas fechadas em 12.</span>
           )}
           {!confirmReset ? (
             <Button
@@ -1177,16 +1205,19 @@ export default function Hoje() {
     return (
       <div className="space-y-4">
         {addBar}
-        <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-flow-dense gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {blocks.map((b, index) => (
             <div
               key={b.id}
               data-bloco={b.id}
               draggable={editing}
               onDragStart={(e) => {
+                // o arrastar só vale no modo Personalizar; fora dele o quadro é a tela normal
                 if (!editing) return
                 e.dataTransfer.effectAllowed = 'move'
                 e.dataTransfer.setData('text/plain', b.id)
+                // setData é obrigatório para o arrastar funcionar em todos os navegadores
+                e.dataTransfer.setData('application/x-painel-bloco', b.id)
                 setDragId(b.id)
               }}
               onDragOver={(e) => {
@@ -1202,51 +1233,45 @@ export default function Hoje() {
               className={cn(
                 'min-w-0 empty:hidden',
                 colSpanClass(b.w),
-                b.id === 'agenda' && b.w === 8 && 'lg:row-span-4',
+                // sem row-span: o quadro ocupa só a própria linha e a leitura fica em ordem
                 editing && 'rounded-xl border-2 border-dashed border-border p-2 space-y-2',
                 editing && dragId === b.id && 'opacity-50',
               )}
             >
               {editing && (
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    aria-label={`Mover ${PANEL_BLOCK_TITLES[b.id] || b.id} (setas do teclado)`}
-                    title="Arraste, ou use as setas do teclado"
-                    onKeyDown={(e) => {
-                      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-                        e.preventDefault()
-                        moveBlock(b.id, index - 1)
-                      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-                        e.preventDefault()
-                        moveBlock(b.id, index + 1)
-                      }
-                    }}
-                    className="hidden lg:block cursor-grab p-1 rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  <span
+                    aria-hidden="true"
+                    title="Arraste para mover"
+                    className="hidden lg:block cursor-grab p-1 rounded text-muted-foreground"
                   >
                     <GripVertical className="h-4 w-4" />
-                  </button>
+                  </span>
+                  <span className="dado text-[11px] text-muted-foreground shrink-0">
+                    {index + 1}
+                  </span>
                   <p className="flex-1 min-w-0 truncate text-xs font-medium text-muted-foreground">
                     {PANEL_BLOCK_TITLES[b.id] || b.id}
                   </p>
-                  <div className="inline-flex lg:hidden gap-1">
+                  {/* Setas em todos os tamanhos: mover por toque/clique, sem depender de arrastar */}
+                  <div className="inline-flex gap-1">
                     <button
                       type="button"
-                      aria-label={`Subir ${PANEL_BLOCK_TITLES[b.id] || b.id}`}
-                      title="Subir"
+                      aria-label={`Mover ${PANEL_BLOCK_TITLES[b.id] || b.id} para cima`}
+                      title="Mover para cima"
                       disabled={index === 0}
                       onClick={() => moveBlock(b.id, index - 1)}
-                      className="p-1.5 rounded border border-border text-muted-foreground disabled:opacity-40"
+                      className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent"
                     >
                       <ChevronUp className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
-                      aria-label={`Descer ${PANEL_BLOCK_TITLES[b.id] || b.id}`}
-                      title="Descer"
+                      aria-label={`Mover ${PANEL_BLOCK_TITLES[b.id] || b.id} para baixo`}
+                      title="Mover para baixo"
                       disabled={index === blocks.length - 1}
                       onClick={() => moveBlock(b.id, index + 1)}
-                      className="p-1.5 rounded border border-border text-muted-foreground disabled:opacity-40"
+                      className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent"
                     >
                       <ChevronDown className="h-4 w-4" />
                     </button>
