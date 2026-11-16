@@ -20,6 +20,7 @@ import {
 import { getEffectiveCondoCoverPhoto, getCondoPhotoUrl } from '@/services/condominiums'
 import { listEligibleResponsibleUsers, ResponsibleUser } from '@/services/clients'
 import { formatRoomsText, formatParkingText } from '@/lib/propertyCardUtils'
+import { tituloParaLista, pendenciasDoImovel } from '@/lib/imovelCampos'
 import { maskCurrencyInput, parseCurrencyInput } from '@/lib/currencyUtils'
 import { useAuth } from '@/contexts/AuthContext'
 import { Input } from '@/components/ui/input'
@@ -572,8 +573,7 @@ export default function Imoveis() {
             <div className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-border text-left eyebrow text-muted-foreground">
               <div className="col-span-1">Foto</div>
               <div className="col-span-1">Código</div>
-              <div className="col-span-4">Título</div>
-              <div className="col-span-2">Localização</div>
+              <div className="col-span-6">Título</div>
               <div className="col-span-2">Preço</div>
               <div className="col-span-2 text-right">Situação</div>
             </div>
@@ -584,10 +584,15 @@ export default function Imoveis() {
                   !coverPhoto && property.in_condominium && property.expand?.condominium_id
                     ? getEffectiveCondoCoverPhoto(property.expand.condominium_id as any)
                     : null
-                const isOutdated = isPropertyPendingReview(property)
                 const statusLabel = PROPERTY_STATUS_LABELS[property.status] || property.status
-                const locationText =
-                  [property.neighborhood, property.city].filter(Boolean).join(', ') || '—'
+                // fotos que o cadastro já carrega (expand) — usado pela pendência "pelo menos 5"
+                const fotosAtivas = Array.isArray(
+                  (property as any).expand?.property_photos_via_property_id,
+                )
+                  ? (property as any).expand.property_photos_via_property_id.filter(
+                      (p: any) => p && p.is_active === true,
+                    ).length
+                  : 0
 
                 return (
                   <div
@@ -627,116 +632,66 @@ export default function Imoveis() {
                       {property.code}
                     </div>
 
-                    <div className="col-span-4 min-w-0 space-y-0.5">
+                    <div className="col-span-6 min-w-0 space-y-0.5">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-normal text-sm text-foreground line-clamp-1">
-                          {property.title ||
-                            `${PROPERTY_TYPE_LABELS[property.property_type] || property.property_type} · ${property.neighborhood || 'Sem bairro'} · ${property.code}`}
+                          {tituloParaLista(property)}
                         </span>
                         {(() => {
                           const hl = (property as any).highlight_level || 'comum'
                           const untilStr = (property as any).highlight_until
-                          if (hl === 'destaque' || hl === 'super_destaque') {
-                            const isExpired =
-                              untilStr &&
-                              !isNaN(new Date(untilStr.replace(' ', 'T')).getTime()) &&
-                              new Date(untilStr.replace(' ', 'T')).getTime() < Date.now()
-                            if (isExpired) {
-                              const d = new Date(untilStr.replace(' ', 'T'))
-                              const dd = String(d.getUTCDate()).padStart(2, '0')
-                              const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-                              return (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] text-muted-foreground border-border shrink-0"
-                                >
-                                  Comum (destaque vencido em {dd}/{mm})
-                                </Badge>
-                              )
-                            }
-                            return (
-                              <Badge
-                                variant={hl === 'super_destaque' ? 'default' : 'secondary'}
-                                className={`text-[10px] shrink-0 ${
-                                  hl === 'super_destaque'
-                                    ? 'bg-primary text-primary-foreground border-primary font-medium'
-                                    : 'border-border text-foreground'
-                                }`}
-                              >
-                                {hl === 'super_destaque' ? 'Super-destaque' : 'Destaque'}
-                              </Badge>
-                            )
-                          }
-                          return null
+                          if (hl !== 'destaque' && hl !== 'super_destaque') return null
+                          const isExpired =
+                            untilStr &&
+                            !isNaN(new Date(untilStr.replace(' ', 'T')).getTime()) &&
+                            new Date(untilStr.replace(' ', 'T')).getTime() < Date.now()
+                          if (isExpired) return null
+                          // marca discreta junto ao título: a situação tem a coluna dela
+                          return (
+                            <span
+                              title={hl === 'super_destaque' ? 'Super-destaque' : 'Destaque'}
+                              className={`text-[11px] shrink-0 ${
+                                hl === 'super_destaque'
+                                  ? 'text-primary font-medium'
+                                  : 'text-muted-foreground'
+                              }`}
+                            >
+                              ★
+                            </span>
+                          )
+                        })()}
+                        {(() => {
+                          const pend = pendenciasDoImovel(property, fotosAtivas)
+                          if (pend.completo) return null
+                          return (
+                            <span
+                              title={pend.texto || 'revisão vencida'}
+                              className="text-[11px] text-amber-600 dark:text-amber-500 shrink-0"
+                            >
+                              ⚠
+                            </span>
+                          )
                         })()}
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {PROPERTY_TYPE_LABELS[property.property_type] || property.property_type}
-                        {formatRoomsText(property.bedrooms, property.suites) &&
-                          ` · ${formatRoomsText(property.bedrooms, property.suites)}`}
-                        {formatParkingText(property.parking) &&
-                          ` · ${formatParkingText(property.parking)}`}
+                      <span className="text-xs text-muted-foreground truncate block">
+                        {[
+                          formatRoomsText(property.bedrooms, property.suites),
+                          formatParkingText(property.parking),
+                          Number(property.area) > 0 ? `${Number(property.area)} m²` : '',
+                          pendenciasDoImovel(property, fotosAtivas).texto,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
-                    </div>
-
-                    <div className="col-span-2 text-xs text-muted-foreground truncate">
-                      {locationText}
                     </div>
 
                     <div className="col-span-2 dado text-foreground whitespace-nowrap">
                       {formatPropertyPrice(property)}
                     </div>
 
-                    <div className="col-span-2 text-right flex items-center justify-end gap-1.5 flex-wrap">
-                      {property.source === 'importacao' && (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] bg-muted/60 text-foreground border-border"
-                        >
-                          Importado
-                        </Badge>
-                      )}
-                      {(() => {
-                        const hl = (property as any).highlight_level || 'comum'
-                        const untilStr = (property as any).highlight_until
-                        if (hl === 'destaque' || hl === 'super_destaque') {
-                          const isExpired =
-                            untilStr &&
-                            !isNaN(new Date(untilStr.replace(' ', 'T')).getTime()) &&
-                            new Date(untilStr.replace(' ', 'T')).getTime() < Date.now()
-                          if (isExpired) {
-                            const d = new Date(untilStr.replace(' ', 'T'))
-                            const dd = String(d.getUTCDate()).padStart(2, '0')
-                            const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-                            return (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] text-muted-foreground border-border"
-                              >
-                                Comum (destaque vencido em {dd}/{mm})
-                              </Badge>
-                            )
-                          }
-                          return (
-                            <Badge
-                              variant={hl === 'super_destaque' ? 'default' : 'secondary'}
-                              className={`text-[10px] ${
-                                hl === 'super_destaque'
-                                  ? 'bg-primary text-primary-foreground border-primary font-medium'
-                                  : 'border-border text-foreground'
-                              }`}
-                            >
-                              {hl === 'super_destaque' ? 'Super-destaque' : 'Destaque'}
-                            </Badge>
-                          )
-                        }
-                        return null
-                      })()}
-                      {isOutdated && (
-                        <Badge variant="attention" className="text-[10px]">
-                          Desatualizado
-                        </Badge>
-                      )}
+                    {/* Uma etiqueta só: a situação do imóvel. Destaque, pendência e origem
+                        saíram daqui (marca junto ao título e filtro de lote). */}
+                    <div className="col-span-2 text-right flex items-center justify-end">
                       <Badge
                         variant={getPropertyBadgeVariant(property.status)}
                         className="text-[10px]"
@@ -758,11 +713,14 @@ export default function Imoveis() {
                 !coverPhoto && property.in_condominium && property.expand?.condominium_id
                   ? getEffectiveCondoCoverPhoto(property.expand.condominium_id as any)
                   : null
-              const isOutdated = isPropertyPendingReview(property)
               const statusLabel = PROPERTY_STATUS_LABELS[property.status] || property.status
-              const locationText =
-                [property.neighborhood, property.city].filter(Boolean).join(', ') ||
-                'Localização não informada'
+              const fotosAtivas = Array.isArray(
+                (property as any).expand?.property_photos_via_property_id,
+              )
+                ? (property as any).expand.property_photos_via_property_id.filter(
+                    (p: any) => p && p.is_active === true,
+                  ).length
+                : 0
 
               return (
                 <div
@@ -798,84 +756,70 @@ export default function Imoveis() {
 
                   {/* Informações centrais e preço em tabular */}
                   <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-                    <div className="flex items-start justify-between gap-1.5">
-                      <span className="dado text-muted-foreground text-[11px] shrink-0 pt-0.5">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="dado text-muted-foreground text-[11px] shrink-0">
                         {property.code}
                       </span>
-                      <div className="flex items-center gap-1 flex-wrap justify-end">
-                        {property.source === 'importacao' && (
-                          <Badge
-                            variant="outline"
-                            className="text-[9px] px-1 py-0 bg-muted/60 text-foreground border-border shrink-0"
-                          >
-                            Importado
-                          </Badge>
-                        )}
-                        {(() => {
-                          const hl = (property as any).highlight_level || 'comum'
-                          const untilStr = (property as any).highlight_until
-                          if (hl === 'destaque' || hl === 'super_destaque') {
-                            const isExpired =
-                              untilStr &&
-                              !isNaN(new Date(untilStr.replace(' ', 'T')).getTime()) &&
-                              new Date(untilStr.replace(' ', 'T')).getTime() < Date.now()
-                            if (isExpired) {
-                              const d = new Date(untilStr.replace(' ', 'T'))
-                              const dd = String(d.getUTCDate()).padStart(2, '0')
-                              const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-                              return (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[9px] px-1 py-0 text-muted-foreground border-border"
-                                >
-                                  Comum (destaque vencido em {dd}/{mm})
-                                </Badge>
-                              )
-                            }
-                            return (
-                              <Badge
-                                variant={hl === 'super_destaque' ? 'default' : 'secondary'}
-                                className={`text-[9px] px-1 py-0 ${
-                                  hl === 'super_destaque'
-                                    ? 'bg-primary text-primary-foreground border-primary font-medium'
-                                    : 'border-border text-foreground'
-                                }`}
-                              >
-                                {hl === 'super_destaque' ? 'Super-destaque' : 'Destaque'}
-                              </Badge>
-                            )
-                          }
-                          return null
-                        })()}
-                        {isOutdated && (
-                          <Badge variant="attention" className="text-[9px] px-1 py-0">
-                            Desatualizado
-                          </Badge>
-                        )}
-                        <Badge
-                          variant={getPropertyBadgeVariant(property.status)}
-                          className="text-[9px] px-1 py-0"
-                        >
-                          {statusLabel}
-                        </Badge>
-                      </div>
+                      {/* uma etiqueta só: a situação */}
+                      <Badge
+                        variant={getPropertyBadgeVariant(property.status)}
+                        className="text-[9px] px-1 py-0 shrink-0"
+                      >
+                        {statusLabel}
+                      </Badge>
                     </div>
 
-                    <span className="font-normal text-xs text-foreground line-clamp-1 mt-0.5">
-                      {property.title ||
-                        `${PROPERTY_TYPE_LABELS[property.property_type] || property.property_type} · ${property.neighborhood || 'Sem bairro'} · ${property.code}`}
+                    <span className="font-normal text-xs text-foreground truncate block mt-1">
+                      {tituloParaLista(property)}
+                      {(() => {
+                        const hl = (property as any).highlight_level || 'comum'
+                        const untilStr = (property as any).highlight_until
+                        if (hl !== 'destaque' && hl !== 'super_destaque') return null
+                        const isExpired =
+                          untilStr &&
+                          !isNaN(new Date(untilStr.replace(' ', 'T')).getTime()) &&
+                          new Date(untilStr.replace(' ', 'T')).getTime() < Date.now()
+                        if (isExpired) return null
+                        return (
+                          <span
+                            className={`ml-1 text-[10px] ${
+                              hl === 'super_destaque'
+                                ? 'text-primary font-medium'
+                                : 'text-muted-foreground'
+                            }`}
+                          >
+                            ★
+                          </span>
+                        )
+                      })()}
+                      {(() => {
+                        const pend = pendenciasDoImovel(property, fotosAtivas)
+                        if (pend.completo) return null
+                        return (
+                          <span
+                            className="ml-1 text-[10px] text-amber-600 dark:text-amber-500"
+                            title={pend.texto || 'revisão vencida'}
+                          >
+                            ⚠
+                          </span>
+                        )
+                      })()}
                     </span>
 
                     <span className="text-[11px] text-muted-foreground truncate block">
-                      {PROPERTY_TYPE_LABELS[property.property_type] || property.property_type}
-                      {formatRoomsText(property.bedrooms, property.suites) &&
-                        ` · ${formatRoomsText(property.bedrooms, property.suites)}`}
-                      {formatParkingText(property.parking) &&
-                        ` · ${formatParkingText(property.parking)}`}
+                      {[
+                        formatRoomsText(property.bedrooms, property.suites),
+                        formatParkingText(property.parking),
+                        pendenciasDoImovel(property, fotosAtivas).texto,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </span>
 
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-1">
-                      <span className="truncate max-w-[150px]">{locationText}</span>
+                      <span className="truncate max-w-[150px]">
+                        {[property.neighborhood, property.city].filter(Boolean).join(', ') || ''}
+                      </span>
                       <span className="dado text-foreground font-normal shrink-0">
                         {formatPropertyPrice(property)}
                       </span>

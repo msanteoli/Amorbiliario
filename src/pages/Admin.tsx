@@ -838,6 +838,9 @@ export default function Admin() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Controle de acessos, papéis e convites de novos colaboradores
                   </p>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    Reenviar convite envia o e-mail para a pessoa criar a senha.
+                  </p>
                 </div>
                 <Button
                   onClick={() => {
@@ -903,63 +906,61 @@ export default function Admin() {
                           <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                         </div>
 
-                        {/* Ações no Desktop (pílulas de contorno) */}
+                        {/* Ações no Desktop: uma linha só, posições fixas (Editar | Reenviar | Desativar).
+                            O espaço de um botão ausente fica reservado para os outros não se deslocarem. */}
                         <div className="hidden sm:flex items-center gap-2 shrink-0">
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => handleOpenEdit(u)}
-                            className="h-8 rounded-full px-3 text-xs font-normal border-border"
+                            className="h-8 min-w-[84px] rounded-full px-3 text-xs font-normal border-border"
                           >
                             Editar
                           </Button>
 
-                          {u.active && (
-                            <div className="flex flex-col items-end">
+                          {u.active ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReinvite(u)}
+                              disabled={reinvitingId === u.id}
+                              className="h-8 min-w-[140px] rounded-full px-3 text-xs font-normal border-border gap-1"
+                            >
+                              {reinvitingId === u.id && (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              )}
+                              <span>Reenviar convite</span>
+                            </Button>
+                          ) : (
+                            <span className="min-w-[140px]" aria-hidden="true" />
+                          )}
+
+                          {!isSelf ? (
+                            u.active ? (
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleReinvite(u)}
-                                disabled={reinvitingId === u.id}
-                                className="h-8 rounded-full px-3 text-xs font-normal border-border gap-1"
+                                onClick={() => handleStartDeactivate(u)}
+                                className="h-8 min-w-[92px] rounded-full px-3 text-xs font-normal border-border text-destructive hover:bg-destructive/10"
                               >
-                                {reinvitingId === u.id && (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                )}
-                                <span>Reenviar convite</span>
+                                Desativar
                               </Button>
-                              <span className="text-[11px] text-muted-foreground mt-0.5">
-                                Envia o e-mail para a pessoa criar a senha.
-                              </span>
-                            </div>
-                          )}
-
-                          {!isSelf && (
-                            <>
-                              {u.active ? (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleStartDeactivate(u)}
-                                  className="h-8 rounded-full px-3 text-xs font-normal border-border text-destructive hover:bg-destructive/10"
-                                >
-                                  Desativar
-                                </Button>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReactivate(u)}
-                                  className="h-8 rounded-full px-3 text-xs font-normal border-border"
-                                >
-                                  Reativar
-                                </Button>
-                              )}
-                            </>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleReactivate(u)}
+                                className="h-8 min-w-[92px] rounded-full px-3 text-xs font-normal border-border"
+                              >
+                                Reativar
+                              </Button>
+                            )
+                          ) : (
+                            <span className="min-w-[92px]" aria-hidden="true" />
                           )}
                         </div>
 
@@ -983,12 +984,8 @@ export default function Admin() {
                                 <DropdownMenuItem
                                   onClick={() => handleReinvite(u)}
                                   disabled={reinvitingId === u.id}
-                                  className="flex flex-col items-start gap-0.5"
                                 >
-                                  <span>Reenviar convite</span>
-                                  <span className="text-[10px] text-muted-foreground font-normal">
-                                    Envia o e-mail para a pessoa criar a senha.
-                                  </span>
+                                  Reenviar convite
                                 </DropdownMenuItem>
                               )}
                               {!isSelf && (
