@@ -53,39 +53,56 @@ export const PANEL_BLOCK_TITLES: Record<string, string> = {
 // Padrão por função: grade de 12 colunas em que CADA LINHA FECHA 12.
 // A ordem desta lista é a ordem que aparece na tela — sem buraco no meio da linha.
 // Regra para mexer aqui: some as larguras de cada linha; o total tem de dar 12.
+//
+// Organização pedida pela dona em 2026-11-17, seguindo o padrão de um painel de referência
+// (não é o visual dele, só a arrumação): os NÚMEROS no topo em fila, um GRÁFICO LARGO com uma
+// coluna estreita ao lado, e o bloco de DETALHE fechando na largura toda. Só a ordem e a
+// largura dos quadros mudam; nada de estilo, cor ou componente.
 const DEFAULT_BY_ROLE: Record<string, PanelBlock[]> = {
-  // SDR — o que fazer primeiro, e o mês ao lado
+  // SDR — fila de números, gráfico com o apoio ao lado, o trabalho em bloco largo
   sdr: [
-    { id: 'visitas_confirmar', w: 8 },
+    // 1) fila de números (4 + 4 + 4)
     { id: 'ind:leads_sem_followup', w: 4 },
-    { id: 'agenda', w: 8 },
     { id: 'ind:tempo_primeiro_atendimento', w: 4 },
     { id: 'ind:pct_repassados', w: 4 },
-    { id: 'apoio:leads_sem_dono', w: 4 },
-    { id: 'apoio:duplicidade', w: 4 },
+    // 2) gráfico largo + coluna estreita (8 + 4)
     { id: 'grafico', w: 8 },
     { id: 'apoio:visitas_pendentes', w: 4 },
-  ],
-  // Corretor — a visita que ele precisa confirmar e o resultado dele
-  corretor: [
-    { id: 'visitas_confirmar', w: 8 },
-    { id: 'ind:visitas', w: 4 },
+    // 3) trabalho do dia, largo, com o apoio ao lado (8 + 4)
     { id: 'agenda', w: 8 },
+    { id: 'apoio:leads_sem_dono', w: 4 },
+    // 4) detalhe na largura toda
+    { id: 'visitas_confirmar', w: 12 },
+    { id: 'apoio:duplicidade', w: 12 },
+  ],
+  // Corretor — fila de números, o que ele precisa confirmar com o gráfico ao lado, agenda inteira
+  corretor: [
+    // 1) fila de números (4 + 4 + 4)
+    { id: 'ind:visitas', w: 4 },
     { id: 'ind:negociacoes', w: 4 },
     { id: 'ind:vgv_fechado', w: 4 },
-    { id: 'grafico', w: 8 },
-  ],
-  // Admin — primeiro o que trava a operação, depois o resultado, depois o apoio
-  admin: [
+    // 2) o que ele precisa resolver + o gráfico na coluna estreita (8 + 4)
     { id: 'visitas_confirmar', w: 8 },
+    { id: 'grafico', w: 4 },
+    // 3) a agenda do dia na largura toda
+    { id: 'agenda', w: 12 },
+  ],
+  // Admin — fila de números, gráfico largo com a semana ao lado, o dia e o detalhe por último
+  admin: [
+    // 1) fila de números (4 + 4 + 4) — os três indicadores lado a lado, como no painel de referência
     { id: 'ind:vgv_equipe', w: 4 },
-    { id: 'agenda', w: 8 },
     { id: 'ind:funil', w: 4 },
     { id: 'ind:tarefas', w: 4 },
-    { id: 'apoio:parados', w: 4 },
-    { id: 'apoio:revisao', w: 4 },
+    // 2) gráfico largo + coluna estreita (8 + 4)
     { id: 'grafico', w: 8 },
     { id: 'apoio:visitas_semana', w: 4 },
+    // 3) agenda do dia + apoio ao lado (8 + 4)
+    { id: 'agenda', w: 8 },
+    { id: 'apoio:parados', w: 4 },
+    // 4) o que exige ação, largo, com o apoio ao lado (8 + 4)
+    { id: 'visitas_confirmar', w: 8 },
+    { id: 'apoio:revisao', w: 4 },
+    // 5) detalhe na largura toda, fechando o painel
     { id: 'apoio:etapas', w: 12 },
   ],
 }
