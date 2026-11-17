@@ -96,7 +96,7 @@ export function IndicatorCard({ item, highlight }: { item: IndicatorItem; highli
   return (
     <div
       className={cn(
-        'rounded-xl p-5 space-y-1.5',
+        'rounded-lg p-4 space-y-1.5 h-full',
         highlight ? 'bg-primary text-primary-foreground' : 'border border-border bg-card',
       )}
     >
@@ -152,8 +152,8 @@ export function MiniBarChart({
   const total = values.reduce((a, b) => a + b, 0)
   const top = values.indexOf(Math.max(...values))
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-      <div className="flex items-center justify-between gap-3">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3 h-full">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-foreground">{title}</h3>
         <span className="text-xs text-muted-foreground tabular-nums">{total} no período</span>
       </div>
@@ -201,7 +201,7 @@ export function StatCard({
     <button
       type="button"
       onClick={onClick}
-      className="text-left rounded-xl border border-border bg-card p-5 space-y-1.5 hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="text-left w-full rounded-lg border border-border bg-card p-4 space-y-1.5 h-full hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">{title}</p>
@@ -234,8 +234,8 @@ export function StageBars({
   const max = Math.max(1, ...items.map((i) => i.count))
   const total = items.reduce((a, b) => a + b.count, 0)
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-      <div className="flex items-center justify-between gap-3">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3 h-full">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-foreground">{title}</h3>
         <span className="text-xs text-muted-foreground tabular-nums">{total} leads</span>
       </div>

@@ -744,7 +744,7 @@ export default function Hoje() {
         <CheckSquare className="h-4 w-4" />
       )
     return (
-      <section className="rounded-xl border border-border bg-card p-5 space-y-3">
+      <section className="rounded-lg border border-border bg-card p-4 space-y-3 h-full min-h-0">
         <Cota
           title="Minha agenda de hoje"
           count={items.length}
@@ -801,7 +801,7 @@ export default function Hoje() {
     const ind = data?.indicators
     if (!ind) {
       return (
-        <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground h-full">
           Indicadores indisponíveis agora. Tente atualizar.
         </div>
       )
@@ -813,7 +813,7 @@ export default function Hoje() {
           ? 'Visitas'
           : 'Negociações fechadas') + (ind.period === 'semana' ? ' por dia' : ' por semana')
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {ind.items.map((it, idx) => (
           <IndicatorCard key={it.key} item={it} highlight={idx === 0} />
         ))}
@@ -830,7 +830,7 @@ export default function Hoje() {
       const unassigned = data.sections.new_unassigned_leads
       const late = unassigned ? unassigned.items.filter((i) => i.overdue).length : 0
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <StatCard
             title="Leads novos sem dono"
             value={cnt(unassigned)}
@@ -854,14 +854,14 @@ export default function Hoje() {
     if (data.role === 'admin') {
       const stages = data.sections.leads_by_stage?.items || []
       return (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <StageBars
             title="Leads por etapa"
             items={stages}
             labelOf={(s) => LEAD_STAGE_LABELS[s as LeadStage] || s}
             onPick={(s) => navigate(`/leads?stage=${encodeURIComponent(s)}`)}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <StatCard
               title="Leads parados sem dono"
               value={cnt(data.sections.stalled_leads)}
@@ -889,7 +889,7 @@ export default function Hoje() {
 
   // Quadros do Painel: cada id do registro (painelRegistry) vira um pedaço da tela, com o conteúdo que já existia
   const unavailableCard = (
-    <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+    <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground h-full w-full">
       Indicador indisponível agora. Tente atualizar.
     </div>
   )
@@ -1194,18 +1194,18 @@ export default function Hoje() {
 
     if (blocks.length === 0) {
       return (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {addBar}
-          <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             Seu painel está vazio. Use Personalizar para adicionar quadros.
           </div>
         </div>
       )
     }
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {addBar}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
           {blocks.map((b, index) => (
             <div
               key={b.id}
@@ -1231,13 +1231,15 @@ export default function Hoje() {
               }}
               onDragEnd={() => setDragId(null)}
               className={cn(
-                'min-w-0 empty:hidden',
+                'min-w-0 empty:hidden flex flex-col min-h-0',
                 colSpanClass(b.w),
-                // sem row-span: o quadro ocupa só a própria linha e a leitura fica em ordem
-                editing && 'rounded-xl border-2 border-dashed border-border p-2 space-y-2',
+                // Alinhamento entre quadros: a célula estica e o quadro dentro dela preenche a altura
+                // da linha (h-full); nada de overflow-hidden — se um quadro tiver mais conteúdo, ele cresce.
+                editing && 'rounded-lg border-2 border-dashed border-border p-2 space-y-2',
                 editing && dragId === b.id && 'opacity-50',
               )}
             >
+              {' '}
               {editing && (
                 <div className="flex items-center gap-2">
                   <span
@@ -1307,7 +1309,7 @@ export default function Hoje() {
                 </div>
               )}
               {editing ? (
-                <div className="pointer-events-none select-none">{renderBlock(b.id)}</div>
+                <div className="pointer-events-none select-none flex-1">{renderBlock(b.id)}</div>
               ) : (
                 renderBlock(b.id)
               )}
@@ -1319,9 +1321,9 @@ export default function Hoje() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-5">
       {/* Top Header: Título .display-sm ("Hoje"), papel e horário de atualização abaixo, botão Atualizar em pílula de contorno */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-2 border-b border-border">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 pb-2 border-b border-border">
         <div>
           <h1 className="display-sm text-foreground">{greetingText}</h1>
           <p className="text-xs text-muted-foreground mt-1">
@@ -1480,7 +1482,7 @@ export default function Hoje() {
 
       {/* Painel: aviso fixo (admin) no topo e, abaixo, a grade de quadros (arranjo da pessoa ou padrão da função) */}
       {!loading && data && layoutReady && (
-        <div className="space-y-8">
+        <div className="space-y-5">
           {layoutError && editing && (
             <div
               role="alert"

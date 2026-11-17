@@ -158,7 +158,7 @@ export function PendingVisitsConfirmationBlock({
       <section
         role="region"
         aria-label="Visitas para confirmar"
-        className={`rounded-[8px] border border-border bg-card p-4 sm:p-5 shadow-none space-y-4 ${className || ''}`}
+        className={`rounded-lg border border-border bg-card p-4 shadow-none space-y-3 h-full flex flex-col ${className || ''}`}
       >
         <div className="border-b border-border pb-2">
           <Cota
@@ -359,7 +359,7 @@ export function PendingVisitsConfirmationBlock({
       <section
         role="region"
         aria-label="Aguardando confirmação"
-        className={`rounded-[8px] border border-border bg-card p-4 sm:p-5 shadow-none space-y-4 ${className || ''}`}
+        className={`rounded-lg border border-border bg-card p-4 shadow-none space-y-3 h-full flex flex-col ${className || ''}`}
       >
         <div className="border-b border-border pb-2">
           <Cota
